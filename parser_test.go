@@ -16,6 +16,13 @@ func TestParse(t *testing.T) {
 	}{
 		// success cases
 		{
+			name:  "parse brand, emei, owner rule",
+			rule:  `emei("one", "two", "three") OR brand(one, two) OR owner(five)`,
+			isErr: false,
+			typ:   &BinaryExpr{},
+		},
+
+		{
 			name: "parse intersectsLine rule",
 			rule: `(
                         intersectsLine(@line) AND intersectsLine(@lin2, @line1, @line3)
@@ -60,6 +67,12 @@ func TestParse(t *testing.T) {
 		{
 			name:  "parse exceeds the number of arguments",
 			rule:  "speed(0, 20, 30)",
+			isErr: true,
+		},
+
+		{
+			name:  "parse without arguments",
+			rule:  "emei() OR brand() OR owner()",
 			isErr: true,
 		},
 	}

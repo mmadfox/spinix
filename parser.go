@@ -74,8 +74,9 @@ func (p *Parser) parse() (Expr, error) {
 func (p *Parser) parseExprOrKeyword() (Expr, error) {
 	tok, lit := p.next()
 	switch tok {
-	case BATTERY_CHARGE,
-		SPEED:
+	case EMEI, OWNER, BRAND:
+		return p.parseCallExprWithArgs(tok)
+	case BATTERY_CHARGE, SPEED:
 		return p.parseCallExprWithRangeArgs(tok)
 	case INTERSECTS_LINE,
 		INTERSECTS_POLYGON,
@@ -156,6 +157,60 @@ func (p *Parser) parseCallExprWithRangeArgs(keyword Token) (Expr, error) {
 	}
 }
 
+func (p *Parser) parseCallExprWithArgs(keyword Token) (Expr, error) {
+	lparen, _ := p.next()
+	if lparen != LPAREN {
+		return nil, fmt.Errorf("georule/parser: %s missed (", keyword)
+	}
+
+	var (
+		prev   Token
+		list   []Expr
+		unique map[string]struct{}
+	)
+
+	for {
+		tok, lit := p.next()
+		if tok == ILLEGAL {
+			tok = IDENT
+		}
+		if tok == EOF || (tok != RPAREN && tok != COMMA && tok != IDENT && tok != STRING) {
+			return nil, fmt.Errorf("georule/parser: %s args error tok=%s, lit=%s",
+				keyword, tok, lit)
+		}
+		if tok == IDENT && prev != COMMA && prev != ILLEGAL {
+			return nil, fmt.Errorf("georule/parser: %s args error missed %s token",
+				keyword, COMMA)
+		}
+		if tok == RPAREN {
+			if len(list) == 0 {
+				return nil, fmt.Errorf("georule/parser: %s arguments not found", keyword)
+			}
+			return &CallExpr{
+				Fun:  keyword,
+				Args: list,
+			}, nil
+		}
+		prev = tok
+		if tok == IDENT || tok == STRING {
+			if err := p.validateLen(lit); err != nil {
+				return nil, err
+			}
+			if unique == nil {
+				unique = make(map[string]struct{})
+			}
+			_, found := unique[lit]
+			if found {
+				continue
+			}
+			unique[lit] = struct{}{}
+			list = append(list, &StringLit{
+				Value: lit,
+			})
+		}
+	}
+}
+
 func (p *Parser) parseCallExprWithVarsArgs(keyword Token) (Expr, error) {
 	lparen, _ := p.next()
 	if lparen != LPAREN {
@@ -205,7 +260,7 @@ func (p *Parser) parseCallExprWithVarsArgs(keyword Token) (Expr, error) {
 			}
 			unique[lit] = struct{}{}
 			list = append(list, &StringLit{
-				Value: lit,
+				Value: fmt.Sprintf("%s%s", VAR, lit),
 			})
 		}
 	}

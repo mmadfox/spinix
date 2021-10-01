@@ -86,7 +86,7 @@ func (e *CallExpr) String() string {
 }
 
 func (e *StringLit) String() string {
-	return fmt.Sprintf("%s%s", VAR, e.Value)
+	return fmt.Sprintf("%s", e.Value)
 }
 
 func (e *IntLit) String() string {

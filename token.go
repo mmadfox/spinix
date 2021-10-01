@@ -50,6 +50,9 @@ const (
 	keywordBegin
 	VAR                //
 	SPEED              // speed(min, max), speed(max)
+	EMEI               // emei(one, two, three)
+	OWNER              // owner(one, two, three)
+	BRAND              // brand(one, two, three)
 	BATTERY_CHARGE     // batteryCharge(min, max), batteryCharge(max)
 	INTERSECTS_LINE    // intersectsLine(@lineID), intersectsLine(@lineID1, @lineID2, ...)
 	INSIDE_POLYGON     // insidePolygon(@polygonID), insidePolygon(@polygonID1, ...)
@@ -104,6 +107,9 @@ var tokens = [...]string{
 	VAR: "@",
 
 	SPEED:              "speed",
+	EMEI:               "emei",
+	OWNER:              "owner",
+	BRAND:              "brand",
 	BATTERY_CHARGE:     "batteryCharge",
 	INTERSECTS_LINE:    "intersectsLine",
 	INSIDE_POLYGON:     "insidePolygon",
