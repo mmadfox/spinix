@@ -101,6 +101,10 @@ func (p *Parser) scan() (rune, string) {
 	return p.tok, p.lit
 }
 
+func (p *Parser) parseCallExprWithRangeArgs(keyword Token) (Expr, error) {
+	return nil, nil
+}
+
 func (p *Parser) parseCallExprWithVarsArgs(keyword Token) (Expr, error) {
 	lparen, _ := p.next()
 	if lparen != LPAREN {
