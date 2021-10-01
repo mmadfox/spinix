@@ -1,7 +1,9 @@
 package georule
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -35,10 +37,29 @@ func TestParse(t *testing.T) {
 			typ:   &BinaryExpr{},
 		},
 
+		{
+			name:  "parse speed rule",
+			rule:  "speed(0, 20) OR speed(20)",
+			isErr: false,
+			typ:   &BinaryExpr{},
+		},
+
 		// failure cases
 		{
 			name:  "parse invalid someFunc rule",
 			rule:  `someFunc(@line)`,
+			isErr: true,
+		},
+
+		{
+			name:  "parse to long ident",
+			rule:  fmt.Sprintf("intersectsLine(@%s)", strings.Repeat("s", 257)),
+			isErr: true,
+		},
+
+		{
+			name:  "parse exceeds the number of arguments",
+			rule:  "speed(0, 20, 30)",
 			isErr: true,
 		},
 	}

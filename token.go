@@ -49,7 +49,8 @@ const (
 
 	keywordBegin
 	VAR                //
-	SPEED              // speed(from, to), speed(to)
+	SPEED              // speed(min, max), speed(max)
+	BATTERY_CHARGE     // batteryCharge(min, max), batteryCharge(max)
 	INTERSECTS_LINE    // intersectsLine(@lineID), intersectsLine(@lineID1, @lineID2, ...)
 	INSIDE_POLYGON     // insidePolygon(@polygonID), insidePolygon(@polygonID1, ...)
 	OUTSIDE_POLYGON    // outsidePolygon(@polygonID), outsidePolygon(@polygonID1, ...)
@@ -103,6 +104,7 @@ var tokens = [...]string{
 	VAR: "@",
 
 	SPEED:              "speed",
+	BATTERY_CHARGE:     "batteryCharge",
 	INTERSECTS_LINE:    "intersectsLine",
 	INSIDE_POLYGON:     "insidePolygon",
 	OUTSIDE_POLYGON:    "outsidePolygon",

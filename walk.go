@@ -1,18 +1,18 @@
 package georule
 
 type Visitor interface {
-	Visit(Node) Visitor
+	Visit(Expr) Visitor
 }
 
-func WalkFunc(node Node, fn func(Node)) {
+func WalkFunc(node Expr, fn func(Expr)) {
 	Walk(walkFuncVisitor(fn), node)
 }
 
-type walkFuncVisitor func(Node)
+type walkFuncVisitor func(Expr)
 
-func (fn walkFuncVisitor) Visit(n Node) Visitor { fn(n); return fn }
+func (fn walkFuncVisitor) Visit(n Expr) Visitor { fn(n); return fn }
 
-func Walk(v Visitor, node Node) {
+func Walk(v Visitor, node Expr) {
 	if v = v.Visit(node); v == nil {
 		return
 	}

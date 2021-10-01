@@ -3,6 +3,7 @@ package georule
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"text/scanner"
 )
@@ -73,20 +74,16 @@ func (p *Parser) parse() (Expr, error) {
 func (p *Parser) parseExprOrKeyword() (Expr, error) {
 	tok, lit := p.next()
 	switch tok {
+	case BATTERY_CHARGE,
+		SPEED:
+		return p.parseCallExprWithRangeArgs(tok)
 	case INTERSECTS_LINE,
 		INTERSECTS_POLYGON,
 		OUTSIDE_POLYGON,
 		INSIDE_POLYGON:
 		return p.parseCallExprWithVarsArgs(tok)
 	case LPAREN:
-		expr, err := p.parse()
-		if err != nil {
-			return nil, err
-		}
-		if tok, _ := p.next(); tok != RPAREN {
-			return nil, fmt.Errorf("georule/parser: missing )")
-		}
-		return &ParenExpr{Expr: expr}, nil
+		return p.parseParenExpr()
 	default:
 		return nil, fmt.Errorf("georule/parser: parsing error: tok=%v, lit=%v", tok, lit)
 	}
@@ -101,8 +98,62 @@ func (p *Parser) scan() (rune, string) {
 	return p.tok, p.lit
 }
 
+func (p *Parser) parseParenExpr() (Expr, error) {
+	expr, err := p.parse()
+	if err != nil {
+		return nil, err
+	}
+	if tok, _ := p.next(); tok != RPAREN {
+		return nil, fmt.Errorf("georule/parser: missing )")
+	}
+	return &ParenExpr{Expr: expr}, nil
+}
+
 func (p *Parser) parseCallExprWithRangeArgs(keyword Token) (Expr, error) {
-	return nil, nil
+	lparen, _ := p.next()
+	if lparen != LPAREN {
+		return nil, fmt.Errorf("georule/parser: %s missed (", keyword)
+	}
+	var list []Expr
+	for {
+		tok, lit := p.next()
+		if tok == ILLEGAL {
+			tok = IDENT
+		}
+		if tok == EOF ||
+			(tok != RPAREN && tok != COMMA && tok != INT && tok != FLOAT) {
+			return nil, fmt.Errorf("georule/parser: %s args error tok=%s, lit=%s",
+				keyword, tok, lit)
+		}
+		if tok == INT {
+			v, err := strconv.Atoi(lit)
+			if err != nil {
+				return nil, fmt.Errorf("georule/parser: %s args error tok=%s, lit=%s",
+					keyword, tok, lit)
+			}
+			list = append(list, &IntLit{Value: v})
+		}
+		if tok == FLOAT {
+			v, err := strconv.ParseFloat(lit, 64)
+			if err != nil {
+				return nil, fmt.Errorf("georule/parser: %s args error tok=%s, lit=%s",
+					keyword, tok, lit)
+			}
+			list = append(list, &FloatLit{Value: v})
+		}
+		if tok == RPAREN {
+			if len(list) == 0 {
+				return nil, fmt.Errorf("georule/parser: %s arguments not found", keyword)
+			}
+			if len(list) > 2 {
+				return nil, fmt.Errorf("georule/parser: %s exceeds the number of arguments", keyword)
+			}
+			return &CallExpr{
+				Fun:  keyword,
+				Args: list,
+			}, nil
+		}
+	}
 }
 
 func (p *Parser) parseCallExprWithVarsArgs(keyword Token) (Expr, error) {
@@ -142,6 +193,9 @@ func (p *Parser) parseCallExprWithVarsArgs(keyword Token) (Expr, error) {
 		}
 		prev = tok
 		if tok == IDENT {
+			if err := p.validateLen(lit); err != nil {
+				return nil, err
+			}
 			if unique == nil {
 				unique = make(map[string]struct{})
 			}
@@ -150,12 +204,18 @@ func (p *Parser) parseCallExprWithVarsArgs(keyword Token) (Expr, error) {
 				continue
 			}
 			unique[lit] = struct{}{}
-			list = append(list, &BasicLit{
-				Kind:  IDENT,
+			list = append(list, &StringLit{
 				Value: lit,
 			})
 		}
 	}
+}
+
+func (p *Parser) validateLen(lit string) (err error) {
+	if len(lit) > 256 {
+		err = fmt.Errorf("georule/parser: identificator %s too long", lit)
+	}
+	return
 }
 
 func (p *Parser) next() (tok Token, lit string) {

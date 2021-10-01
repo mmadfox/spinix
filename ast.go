@@ -5,72 +5,63 @@ import (
 	"strings"
 )
 
-type Node interface {
-	node()
-	String() string
-}
-
 type Expr interface {
-	Node
+	String() string
+
 	expr()
 }
 
 type (
-	// An Ident node represents an identifier.
+	// An Ident expr represents an identifier.
 	Ident struct {
-		NamePos Pos    // identifier position
-		Name    string // identifier name
+		Name string
 	}
 
-	// A UnaryExpr node represents a unary expression.
+	// A UnaryExpr expr represents a unary expression.
 	UnaryExpr struct {
-		OpPos Pos   // position of Op
-		Op    Token // operator
-		X     Expr  // operand
+		Op Token // operator
+		X  Expr  // operand
 	}
 
-	// A BinaryExpr node represents a binary expression.
+	// A BinaryExpr expr represents a binary expression.
 	BinaryExpr struct {
-		LHS   Expr  // left operand
-		OpPos Pos   // position of Op
-		Op    Token // operator
-		RHS   Expr  // right operand
+		LHS Expr  // left operand
+		Op  Token // operator
+		RHS Expr  // right operand
 	}
 
-	// A ParenExpr node represents a parenthesized expression.
+	// A ParenExpr expr represents a parenthesized expression.
 	ParenExpr struct {
-		Lparen Pos  // position of "("
-		Expr   Expr // parenthesized expression
-		Rparen Pos  // position of ")"
+		Expr Expr // parenthesized expression
 	}
 
-	// An IndexExpr node represnts an expression followed by an index.
+	// An IndexExpr expr represnts an expression followed by an index.
 	IndexExpr struct {
-		Expr   Expr // expression
-		Lbrack Pos  // position of "["
-		Index  Expr // index expression
-		Rbrack Pos  // position of "]"
+		Expr  Expr // expression
+		Index Expr // index expression
 	}
 
-	// A CallExpr node represents an expression followed by an argument list.
+	// A CallExpr expr represents an expression followed by an argument list.
 	CallExpr struct {
-		Fun    Token  // keyword
-		Lparen Pos    // position of "("
-		Args   []Expr // function arguments; or nil
-		Rparen Pos    // position of ")"
+		Fun  Token  // keyword
+		Args []Expr // function arguments; or nil
 	}
 
-	// A BasicLit node represents a literal of basic type.
-	BasicLit struct {
-		ValuePos Pos    // literal position
-		Kind     Token  // token.INT, token.FLOAT, token.STRING
-		Value    string // literal string; e.g. 42, 0x7f, 3.14, 1e-9, 2.4i, 'a', '\x7f', "foo" or `\m\n\o`
+	// A StringLit expr represents a literal of string type.
+	StringLit struct {
+		Value string
+	}
+
+	// A NumberLit expr represents a literal of int type.
+	IntLit struct {
+		Value int
+	}
+
+	// A FloatLit expr represents a literal of float type.
+	FloatLit struct {
+		Value float64
 	}
 )
-
-type ExprStmt struct {
-	Expr Expr // expression
-}
 
 func (e *ParenExpr) String() string {
 	return fmt.Sprintf("(%s)", e.Expr.String())
@@ -94,16 +85,21 @@ func (e *CallExpr) String() string {
 	return fmt.Sprintf("%s%s", e.Fun, sb.String())
 }
 
-func (e *BasicLit) String() string {
+func (e *StringLit) String() string {
 	return fmt.Sprintf("%s%s", VAR, e.Value)
 }
 
-func (_ *ParenExpr) node()  {}
-func (_ *BinaryExpr) node() {}
-func (_ *CallExpr) node()   {}
-func (_ *BasicLit) node()   {}
+func (e *IntLit) String() string {
+	return fmt.Sprintf("%d", e.Value)
+}
+
+func (e *FloatLit) String() string {
+	return fmt.Sprintf("%.2f", e.Value)
+}
 
 func (_ *ParenExpr) expr()  {}
 func (_ *BinaryExpr) expr() {}
 func (_ *CallExpr) expr()   {}
-func (_ *BasicLit) expr()   {}
+func (_ *StringLit) expr()  {}
+func (_ *IntLit) expr()     {}
+func (_ *FloatLit) expr()   {}
