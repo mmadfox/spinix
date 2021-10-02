@@ -1,22 +1,24 @@
 # georule
 GPS/GEO based minimalist rules engine
 
-# Status
+## Status
 Work in progress ...
 
-# Table of contents
+## Table of contents
 - [Variables](#variables)
     * [{device.speed}](#devicespeed)
     * [{device.status}](#devicestatus)
 - [Functions](#functions)
     * [speed(min, max), speed(max)](#speedmin-max-speedmax)
+    * [intersects(@id), intersectsLine(@id), intersectsPoint(@id), intersectsPoly(@id), intersectsRect(@id)](#intersectsid)
+    * [within(@id), withinLine(@id), withinPoint(@id), withinPoly(@id), withinRect(@id)](#withinid)
 
 ## Variables
 #### {device.speed}
 filter by device speed (km/h)
 
 Example:
-```shell script
+```gotemplate
 {device.speed} >= 0 AND {device.speed} <= 50
 ```
 
@@ -24,7 +26,7 @@ Example:
 Filter by device status
 
 Example:
-```shell script
+```gotemplate
 {device.status} == 1 OR {device.status} IN [2,4]
 {device.status} == 1 OR {device.status} == 2 OR {device.status} == 4
 {device.status} == 1 AND {device.status} == 2 
@@ -43,3 +45,32 @@ Example:
 speed(0, 120) OR speed(300)
 ```
 
+#### intersects(@id)
+
+Detect intersection of device coordinates(lat, lon) with the geo object
+
+- intersects(@id)
+- intersectsLine(@id)
+- intersectsPoint(@id)
+- intersectsPoly(@id)
+- intersectsRect(@id)
+
+Example:
+```gotemplate
+intersectsPoly(@someid) OR intersectsLine(@someid) 
+```
+
+#### within(@id)
+
+Detect device coordinates(lat, lon) within the geo object
+
+- within(@id)
+- withinLine(@id)
+- withinPoint(@id)
+- withinPoly(@id)
+- withinRect(@id)
+
+Example:
+```gotemplate
+within(@id) OR withinPoly(@id) 
+```
