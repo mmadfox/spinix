@@ -35,7 +35,7 @@ Example:
 ```
 
 #### {device.status}
-*type: INT, FLOAT*
+*type: INT*
 
 Filter by device status
 
