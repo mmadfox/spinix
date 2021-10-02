@@ -74,6 +74,11 @@ const (
 	FUN_PRESSURE    // pressure(0, 30)
 	FUN_FUELLEVEL   // fuellevel(0, 30)
 
+	FUN_DURATION         // duration(300)
+	FUN_DURATION_SECONDS // durationSeconds(300)
+	FUN_DURATION_MINUTES // durationMinutes(30)
+	FUN_DURATION_HOURS   // durationHours(30)
+
 	FUN_WITHIN
 	FUN_WITHIN_RECT
 	FUN_WITHIN_POINT
@@ -183,6 +188,11 @@ var tokens = [...]string{
 
 	FUN_CONTAINS:    "contains",
 	FUN_NOTCONTAINS: "not contains",
+
+	FUN_DURATION:         "duration",
+	FUN_DURATION_SECONDS: "durationSeconds",
+	FUN_DURATION_MINUTES: "durationMinutes",
+	FUN_DURATION_HOURS:   "durationHours",
 
 	FUN_WITHIN:       "within",
 	FUN_WITHIN_LINE:  "withinLine",

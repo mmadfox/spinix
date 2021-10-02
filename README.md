@@ -27,6 +27,7 @@ Work in progress ...
     * [luminosity(min, max), luminosity(max)](#luminositymin-max-luminositymax)
     * [pressure(min, max), pressure(max)](#pressuremin-max-pressuremax)
     * [fuellevel(min, max), fuellevel(max)](#fuellevelmin-max-fuellevelmax)
+    * [duration(min, max), duration(max)](#durationmin-max-durationmax)
     * [intersects(@id), intersectsLine(@id), intersectsPoint(@id), intersectsPoly(@id), intersectsRect(@id)](#intersectsid)
     * [within(@id), withinLine(@id), withinPoint(@id), withinPoly(@id), withinRect(@id)](#withinid)
 
@@ -242,6 +243,20 @@ Filter by device fuellevel
 Example:
 ```shell script
 fuellevel(0, 100) OR fuellevel(70)
+```
+
+#### duration(min, max), duration(max)
+*type: FLOAT*
+
+Filter by device duration in seconds
+
+- durationSeconds
+- durationMinutes
+- durationHours
+
+Example:
+```shell script
+duration(0, 100) OR duration(70)
 ```
 
 #### intersects(@id)

@@ -52,6 +52,13 @@ func TestParse(t *testing.T) {
 		},
 
 		{
+			name:  "parse duration rule",
+			rule:  `duration(300) OR durationSeconds(300) OR durationMinutes(30) OR durationHours(24)`,
+			isErr: false,
+			typ:   &BinaryExpr{},
+		},
+
+		{
 			name: "parse distance rule",
 			rule: `(
                         distanceLine(@line1) >= 3000 AND distance(@lin2) <= 9000
