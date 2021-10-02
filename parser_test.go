@@ -2,16 +2,10 @@ package georule
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"testing"
 )
-
-func TestTest(t *testing.T) {
-	expr, err := ParseString(`({device.owner} == "5597dfe5-ef3b-41a4-9a31-2d926d8edd74" AND {device.owner} == "5597dfe5-ef3b-41a4-9a31-2d926d8edd74") OR ({device.owner} == "5597dfe5-ef3b-41a4-9a31-2d926d8edd74")`)
-	log.Print(expr, err)
-}
 
 func TestParse(t *testing.T) {
 	testCases := []struct {
