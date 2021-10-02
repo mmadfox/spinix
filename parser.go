@@ -131,6 +131,12 @@ func (p *Parser) parseArrayExpr() (Expr, error) {
 			return list, nil
 		}
 		switch tok {
+		case STRING, ILLEGAL:
+			expr, err := p.parseStringExpr(lit)
+			if err != nil {
+				return nil, err
+			}
+			list.Items = append(list.Items, expr)
 		case INT:
 			expr, err := p.parseIntExpr(lit)
 			if err != nil {
@@ -163,6 +169,14 @@ func (p *Parser) parseVarExpr() (Expr, error) {
 		tok = VAR_SPEED
 	case "status":
 		tok = VAR_STATUS
+	case "emei":
+		tok = VAR_EMEI
+	case "owner":
+		tok = VAR_OWNER
+	case "brand":
+		tok = VAR_BRAND
+	case "model":
+		tok = VAR_MODEL
 	default:
 		return nil, fmt.Errorf("georule/parser: parsing error: tok=%v, lit=%v", tok, lit)
 	}

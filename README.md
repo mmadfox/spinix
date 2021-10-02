@@ -9,6 +9,10 @@ Work in progress ...
 - [Variables](#variables)
     * [{device.speed}](#devicespeed)
     * [{device.status}](#devicestatus)
+    * [{device.owner}](#deviceowner)
+    * [{device.brand}](#devicebrand)
+    * [{device.model}](#devicemodel)
+    * [{device.emei}](#deviceemei)
 - [Functions](#functions)
     * [speed(min, max), speed(max)](#speedmin-max-speedmax)
     * [intersects(@id), intersectsLine(@id), intersectsPoint(@id), intersectsPoly(@id), intersectsRect(@id)](#intersectsid)
@@ -20,7 +24,9 @@ Work in progress ...
 - ```!=```, ```<=```, ```>=``` 
 
 ## Variables
-#### {device.speed}
+#### {device.speed} 
+*type: INT, FLOAT*
+
 Filter by device speed (km/h)
 
 Example:
@@ -29,6 +35,8 @@ Example:
 ```
 
 #### {device.status}
+*type: INT, FLOAT*
+
 Filter by device status
 
 Example:
@@ -40,10 +48,63 @@ Example:
 ({device.status} == 1 OR {device.status} IN [2,4]) OR ({device.status} >= 0 AND {device.status} < 10)
 ```
 
+#### {device.owner}
+*type: STRING*
+
+Filter by device owner
+
+Example:
+```gotemplate
+{device.owner} == "5597dfe5-ef3b-41a4-9a31-2d926d8edd74"
+{device.owner} IN ["5597dfe5-ef3b-41a4-9a31-2d926d8edd74", "5597dfe5-ef3b-41a4-9a31-2d926d8edd74", "5597dfe5-ef3b-41a4-9a31-2d926d8edd74"]
+{device.owner} NOT IN ["5597dfe5-ef3b-41a4-9a31-2d926d8edd74", "5597dfe5-ef3b-41a4-9a31-2d926d8edd74", "5597dfe5-ef3b-41a4-9a31-2d926d8edd74"]
+({device.owner} == "5597dfe5-ef3b-41a4-9a31-2d926d8edd74" AND {device.owner} == "5597dfe5-ef3b-41a4-9a31-2d926d8edd74") OR ({device.owner} == "5597dfe5-ef3b-41a4-9a31-2d926d8edd74")
+```
+
+#### {device.brand}
+*type: STRING*
+
+Filter by device brand
+
+Example:
+```gotemplate
+{device.brand} == "TrackerTOk"
+{device.brand} IN ["TrackerTOk", "TrackerTOk2"]
+{device.brand} NOT IN ["TrackerTOk", "TrackerTOk2"]
+({device.brand} == "TrackerTOk" AND {device.brand} == "TrackerTOk2") OR ({device.brand} == "TrackerTOk4")
+```
+
+#### {device.model}
+*type: STRING*
+
+Filter by device model
+
+Example:
+```gotemplate
+{device.model} == "Model v45-x1"
+{device.model} IN ["Model v45-x1", "Model v45-x2"]
+{device.model} NOT IN ["Model v45-x1", "Model v45-x2"]
+```
+
+#### {device.emei}
+*type: STRING*
+
+Filter by device EMEI
+
+Example:
+```gotemplate
+{device.emei} == "AA-BBBBBB-CCCCCC-D"
+{device.emei} IN ["AA-BBBBBB-CCCCCC-D"]
+{device.emei} NOT IN ["AA-BBBBBB-CCCCCC-D"]
+```
+
+
 ## Functions
 @ - variable identifier
 
 #### speed(min, max), speed(max)
+*type: INT, FLOAT*
+
 Filter by device speed (km/h)
 
 Example:
@@ -52,6 +113,8 @@ speed(0, 120) OR speed(300)
 ```
 
 #### intersects(@id)
+
+*type: @ID*
 
 Detect intersection of device coordinates(lat, lon) with the geo object
 
@@ -68,6 +131,8 @@ NOT intersectsPoly(@someid) OR NOT intersectsLine(@someid)
 ```
 
 #### within(@id)
+
+*type: @ID*
 
 Detect device coordinates(lat, lon) within the geo object
 

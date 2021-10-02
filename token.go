@@ -56,6 +56,10 @@ const (
 
 	VAR_SPEED  // {device.speed}
 	VAR_STATUS // {device.status}
+	VAR_EMEI   // {device.emei}
+	VAR_OWNER  // {device.owner}
+	VAR_BRAND  // {device.brand}
+	VAR_MODEL  // {device.model}
 
 	FUN_SPEED // speed(min, max), speed(max)
 	FUN_EMEI  // emei(one, two, three)
@@ -150,6 +154,10 @@ var tokens = [...]string{
 
 	VAR_SPEED:  "device.speed",
 	VAR_STATUS: "device.status",
+	VAR_EMEI:   "device.emei",
+	VAR_OWNER:  "device.owner",
+	VAR_BRAND:  "device.brand",
+	VAR_MODEL:  "device.model",
 
 	FUN_SPEED:          "speed",
 	FUN_EMEI:           "emei",

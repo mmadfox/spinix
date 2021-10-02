@@ -6,6 +6,7 @@ type Device struct {
 	IMEI          string
 	Owner         string
 	Brand         string
+	Model         string
 	Latitude      float64
 	Longitude     float64
 	Altitude      float64
