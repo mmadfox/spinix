@@ -5,6 +5,7 @@ GPS/GEO based minimalist rules engine
 Work in progress ...
 
 ## Table of contents
+- [Operators](#operators)
 - [Variables](#variables)
     * [{device.speed}](#devicespeed)
     * [{device.status}](#devicestatus)
@@ -13,9 +14,14 @@ Work in progress ...
     * [intersects(@id), intersectsLine(@id), intersectsPoint(@id), intersectsPoly(@id), intersectsRect(@id)](#intersectsid)
     * [within(@id), withinLine(@id), withinPoint(@id), withinPoly(@id), withinRect(@id)](#withinid)
 
+## Operators
+- ```AND```, ```OR```, ```NOT```, ```IN```
+- ```==```, ```<```, ```>```,
+- ```!=```, ```<=```, ```>=``` 
+
 ## Variables
 #### {device.speed}
-filter by device speed (km/h)
+Filter by device speed (km/h)
 
 Example:
 ```gotemplate
@@ -58,6 +64,7 @@ Detect intersection of device coordinates(lat, lon) with the geo object
 Example:
 ```gotemplate
 intersectsPoly(@someid) OR intersectsLine(@someid) 
+NOT intersectsPoly(@someid) OR NOT intersectsLine(@someid) 
 ```
 
 #### within(@id)
@@ -72,5 +79,6 @@ Detect device coordinates(lat, lon) within the geo object
 
 Example:
 ```gotemplate
-within(@id) OR withinPoly(@id) 
+within(@id) OR withinPoly(@id)
+NOT within(@id) AND NOT withinLine(@id) 
 ```
