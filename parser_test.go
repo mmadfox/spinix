@@ -14,17 +14,39 @@ func TestParse(t *testing.T) {
 		isErr bool
 		typ   Expr
 	}{
-		// success cases
+		// success vars cases
 		{
-			name:  "parse brand, emei, owner rule",
-			rule:  `emei("one", "two", "three") OR brand(one, two) OR owner(five)`,
+			name:  "parse {device.status}",
+			rule:  `({device.status} == 1 OR {device.status} IN [2,4]) OR ({device.status} >= 0 AND {device.status} < 10)`,
 			isErr: false,
 			typ:   &BinaryExpr{},
 		},
 
 		{
-			name:  "parse {device.status}",
-			rule:  `({device.status} == 1 OR {device.status} IN [2,4]) OR ({device.status} >= 0 AND {device.status} < 10)`,
+			name:  "parse {device.speed} variable",
+			rule:  `{device.speed} >= 0 AND {device.speed} <= 50`,
+			isErr: false,
+			typ:   &BinaryExpr{},
+		},
+
+		// success func cases
+		{
+			name: "parse fuellevel, pressure, luminosity, humidity, temperature, batteryCharge, speed rule",
+			rule: `(
+                       fuellevel(0, 10) OR fuellevel(10)
+                   ) AND (
+                       pressure(0, 10) OR pressure(40)
+                   ) AND (
+                       luminosity(0, 10) OR luminosity(300)
+                   ) AND (
+                       humidity(0, 40) OR humidity(50)  
+                   ) AND (
+                       temperature(0, 10) OR temperature(90)
+                   ) AND (
+                       batteryCharge(0, 10) OR batteryCharge(40)
+                   ) AND (
+                       speed(0, 10) OR speed(50)
+                   )`,
 			isErr: false,
 			typ:   &BinaryExpr{},
 		},
@@ -96,13 +118,6 @@ func TestParse(t *testing.T) {
 			rule:  "not contains(@point, @line, @poly, @rect)",
 			isErr: false,
 			typ:   &CallExpr{},
-		},
-
-		{
-			name:  "parse {device.speed} variable",
-			rule:  `{device.speed} >= 0 AND {device.speed} <= 50`,
-			isErr: false,
-			typ:   &BinaryExpr{},
 		},
 
 		{

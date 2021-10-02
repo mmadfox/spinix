@@ -22,6 +22,11 @@ Work in progress ...
 - [Functions](#functions)
     * [speed(min, max), speed(max)](#speedmin-max-speedmax)
     * [batteryCharge(min, max), batteryCharge(max)](#batterychargemin-max-batterychargemax)
+    * [temperature(min, max), temperature(max)](#temperaturemin-max-temperaturemax)
+    * [humidity(min, max), humidity(max)](#humiditymin-max-humiditymax)
+    * [luminosity(min, max), luminosity(max)](#luminositymin-max-luminositymax)
+    * [pressure(min, max), pressure(max)](#pressuremin-max-pressuremax)
+    * [fuellevel(min, max), fuellevel(max)](#fuellevelmin-max-fuellevelmax)
     * [intersects(@id), intersectsLine(@id), intersectsPoint(@id), intersectsPoly(@id), intersectsRect(@id)](#intersectsid)
     * [within(@id), withinLine(@id), withinPoint(@id), withinPoly(@id), withinRect(@id)](#withinid)
 
@@ -187,6 +192,56 @@ Filter by device battery charge
 Example:
 ```shell script
 batteryCharge(0, 100) OR batteryCharge(70)
+```
+
+#### temperature(min, max), temperature(max)
+*type: FLOAT*
+
+Filter by device temperature
+
+Example:
+```shell script
+temperature(0, 100) OR temperature(70)
+```
+
+#### humidity(min, max), humidity(max)
+*type: FLOAT*
+
+Filter by device humidity
+
+Example:
+```shell script
+humidity(0, 100) OR humidity(70)
+```
+
+#### luminosity(min, max), luminosity(max)
+*type: FLOAT*
+
+Filter by device luminosity
+
+Example:
+```shell script
+luminosity(0, 100) OR luminosity(70)
+```
+
+#### pressure(min, max), pressure(max)
+*type: FLOAT*
+
+Filter by device pressure
+
+Example:
+```shell script
+pressure(0, 100) OR pressure(70)
+```
+
+#### fuellevel(min, max), fuellevel(max)
+*type: FLOAT*
+
+Filter by device fuellevel
+
+Example:
+```shell script
+fuellevel(0, 100) OR fuellevel(70)
 ```
 
 #### intersects(@id)

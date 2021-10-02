@@ -67,10 +67,12 @@ const (
 	VAR_TEMPERATURE // {device.temperature}
 	VAR_BATTERY     // {device.battery}
 
-	FUN_SPEED // speed(min, max), speed(max)
-	FUN_EMEI  // emei(one, two, three)
-	FUN_OWNER // owner(one, two, three)
-	FUN_BRAND // brand(one, two, three)
+	FUN_SPEED       // speed(min, max), speed(max)
+	FUN_TEMPERATURE // temperature(0, 30)
+	FUN_HUMIDITY    // humidity(0, 30)
+	FUN_LUMONOSITY  // luminosity(0, 30)
+	FUN_PRESSURE    // pressure(0, 30)
+	FUN_FUELLEVEL   // fuellevel(0, 30)
 
 	FUN_WITHIN
 	FUN_WITHIN_RECT
@@ -172,10 +174,12 @@ var tokens = [...]string{
 	VAR_BATTERY:     "device.battery",
 
 	FUN_SPEED:          "speed",
-	FUN_EMEI:           "emei",
-	FUN_OWNER:          "owner",
-	FUN_BRAND:          "brand",
 	FUN_BATTERY_CHARGE: "batteryCharge",
+	FUN_TEMPERATURE:    "temperature",
+	FUN_HUMIDITY:       "humidity",
+	FUN_LUMONOSITY:     "luminosity",
+	FUN_PRESSURE:       "pressure",
+	FUN_FUELLEVEL:      "fuellevel",
 
 	FUN_CONTAINS:    "contains",
 	FUN_NOTCONTAINS: "not contains",
