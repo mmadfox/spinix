@@ -3,6 +3,7 @@ package georule
 import (
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 	"text/scanner"
@@ -74,14 +75,26 @@ func (p *Parser) parse() (Expr, error) {
 func (p *Parser) parseExprOrKeyword() (Expr, error) {
 	tok, lit := p.next()
 	switch tok {
-	case EMEI, OWNER, BRAND:
+	case LBRACK:
+		return p.parseArrayExpr()
+	case LBRACE:
+		return p.parseVarExpr()
+	case INT:
+		return p.parseIntExpr(lit)
+	case FLOAT:
+		return p.parseFloatExpr(lit)
+	case STRING:
+		return p.parseStringExpr(lit)
+	case FUN_EMEI, FUN_OWNER, FUN_BRAND:
 		return p.parseCallExprWithArgs(tok)
-	case BATTERY_CHARGE, SPEED:
+	case FUN_BATTERY_CHARGE, FUN_SPEED:
 		return p.parseCallExprWithRangeArgs(tok)
-	case INTERSECTS_LINE,
-		INTERSECTS_POLYGON,
-		OUTSIDE_POLYGON,
-		INSIDE_POLYGON:
+	case FUN_INTERSECTS, FUN_INTERSECTS_LINE, FUN_INTERSECTS_POINT, FUN_INTERSECTS_POLY, FUN_INTERSECTS_RECT,
+		FUN_DISTANCE, FUN_DISTANCE_LINE, FUN_DISTANCE_POINT, FUN_DISTANCE_POLY, FUN_DISTANCE_RECT,
+		FUN_NOTINTERSECTS, FUN_NOTINTERSECTS_LINE, FUN_NOTINTERSECTS_POINT, FUN_NOTINTERSECTS_POLY, FUN_NOTINTERSECTS_RECT,
+		FUN_WITHIN, FUN_WITHIN_LINE, FUN_WITHIN_POINT, FUN_WITHIN_POLY, FUN_WITHIN_RECT,
+		FUN_NOTWITHIN, FUN_NOTWITHIN_LINE, FUN_NOTWITHIN_POINT, FUN_NOTWITHIN_POLY, FUN_NOTWITHIN_RECT,
+		FUN_CONTAINS, FUN_NOTCONTAINS:
 		return p.parseCallExprWithVarsArgs(tok)
 	case LPAREN:
 		return p.parseParenExpr()
@@ -97,6 +110,79 @@ func (p *Parser) scan() (rune, string) {
 		p.tok, p.lit = p.s.Scan(), p.s.TokenText()
 	}
 	return p.tok, p.lit
+}
+
+func (p *Parser) parseIntExpr(lit string) (Expr, error) {
+	v, err := strconv.Atoi(lit)
+	if err != nil {
+		return nil, fmt.Errorf("georule/parser: parseIntExpr(%s) => %v", lit, err)
+	}
+	return &IntLit{Value: v}, nil
+}
+
+func (p *Parser) parseArrayExpr() (Expr, error) {
+	list := &ListLit{}
+	for i := 0; i < math.MaxInt16; i++ {
+		tok, lit := p.next()
+		if tok == EOF || tok == RBRACK {
+			if len(list.Items) == 0 {
+				return nil, fmt.Errorf("georule/parser: parsing error: tok=%v, lit=%v", tok, lit)
+			}
+			return list, nil
+		}
+		switch tok {
+		case INT:
+			expr, err := p.parseIntExpr(lit)
+			if err != nil {
+				return nil, err
+			}
+			list.Items = append(list.Items, expr)
+		case FLOAT:
+			expr, err := p.parseFloatExpr(lit)
+			if err != nil {
+				return nil, err
+			}
+			list.Items = append(list.Items, expr)
+		case COMMA:
+		default:
+			return nil, fmt.Errorf("georule/parser: parseArrayExpr() parsing error: tok=%v, lit=%v", tok, lit)
+		}
+	}
+	return nil, nil
+}
+
+func (p *Parser) parseVarExpr() (Expr, error) {
+	tok, lit := p.next()
+	if lit != "device" {
+		return nil, fmt.Errorf("georule/parser: parsing error: tok=%v, lit=%v", tok, lit)
+	}
+	p.next()
+	_, lit = p.next()
+	switch strings.ToLower(lit) {
+	case "speed":
+		tok = VAR_SPEED
+	case "status":
+		tok = VAR_STATUS
+	default:
+		return nil, fmt.Errorf("georule/parser: parsing error: tok=%v, lit=%v", tok, lit)
+	}
+	rbrace, _ := p.next()
+	if rbrace != RBRACE {
+		return nil, fmt.Errorf("georule/parser: missing }")
+	}
+	return &VarLit{Value: tok}, nil
+}
+
+func (p *Parser) parseFloatExpr(lit string) (Expr, error) {
+	v, err := strconv.ParseFloat(lit, 64)
+	if err != nil {
+		return nil, fmt.Errorf("georule/parser: parseFloatExpr(%s) => %v", lit, err)
+	}
+	return &FloatLit{Value: v}, nil
+}
+
+func (p *Parser) parseStringExpr(lit string) (Expr, error) {
+	return &StringLit{Value: lit}, nil
 }
 
 func (p *Parser) parseParenExpr() (Expr, error) {
@@ -229,13 +315,13 @@ func (p *Parser) parseCallExprWithVarsArgs(keyword Token) (Expr, error) {
 			tok = IDENT
 		}
 		if tok == EOF ||
-			(tok != RPAREN && tok != VAR && tok != COMMA && tok != IDENT) {
+			(tok != RPAREN && tok != VAR_IDENT && tok != COMMA && tok != IDENT) {
 			return nil, fmt.Errorf("georule/parser: %s args error tok=%s, lit=%s",
 				keyword, tok, lit)
 		}
-		if tok == IDENT && prev != VAR {
+		if tok == IDENT && prev != VAR_IDENT {
 			return nil, fmt.Errorf("georule/parser: %s args error missed %s token",
-				keyword, VAR)
+				keyword, VAR_IDENT)
 		}
 		if tok == RPAREN {
 			if len(list) == 0 {
@@ -260,7 +346,7 @@ func (p *Parser) parseCallExprWithVarsArgs(keyword Token) (Expr, error) {
 			}
 			unique[lit] = struct{}{}
 			list = append(list, &StringLit{
-				Value: fmt.Sprintf("%s%s", VAR, lit),
+				Value: fmt.Sprintf("%s%s", VAR_IDENT, lit),
 			})
 		}
 	}
@@ -279,13 +365,63 @@ func (p *Parser) next() (tok Token, lit string) {
 	case scanner.EOF:
 		tok = EOF
 	case '@':
-		tok = VAR
+		tok = VAR_IDENT
 	case '(':
 		tok = LPAREN
 	case ')':
 		tok = RPAREN
 	case ',':
 		tok = COMMA
+	case '[':
+		tok = LBRACK
+	case ']':
+		tok = RBRACK
+	case '{':
+		tok = LBRACE
+	case '}':
+		tok = RBRACE
+	case '>':
+		st, sl = p.scan()
+		if st == '=' {
+			tok = GEQ
+			sl = ">="
+		} else {
+			tok = GTR
+			sl = ">"
+			p.reset()
+		}
+	case '<':
+		st, sl = p.scan()
+		if st == '=' {
+			tok = LEQ
+			sl = "<="
+		} else {
+			tok = LSS
+			sl = "<"
+			p.reset()
+		}
+	case '!':
+		st, sl = p.scan()
+		if st == '=' {
+			tok = NEQ
+			sl = "!="
+		} else if st == '~' {
+			tok = NEREG
+			sl = "!~"
+		} else {
+			tok = ILLEGAL
+		}
+	case '=':
+		st, sl = p.scan()
+		if st == '=' {
+			tok = EQL
+			sl = "=="
+		} else if st == '~' {
+			tok = EREG
+			sl = "=~"
+		} else {
+			tok = ILLEGAL
+		}
 	case scanner.Float:
 		tok = FLOAT
 	case scanner.Int:
@@ -297,12 +433,44 @@ func (p *Parser) next() (tok Token, lit string) {
 		if found {
 			tok = keyword
 		} else {
-			tu := strings.ToUpper(sl)
-			switch tu {
+			switch strings.ToUpper(sl) {
+			case "IN":
+				tok = IN
 			case "AND":
 				tok = AND
 			case "OR":
 				tok = OR
+			case "NOT":
+				_, not := p.scan()
+				switch not {
+				case "in", "IN":
+					tok = NOTIN
+				case "contains":
+					tok = FUN_NOTCONTAINS
+				case "within":
+					tok = FUN_NOTWITHIN
+				case "withinLine":
+					tok = FUN_NOTWITHIN_LINE
+				case "withinPoint":
+					tok = FUN_NOTWITHIN_POINT
+				case "withinPoly":
+					tok = FUN_NOTWITHIN_POLY
+				case "withinRect":
+					tok = FUN_NOTWITHIN_RECT
+				case "intersects":
+					tok = FUN_NOTINTERSECTS
+				case "intersectsLine":
+					tok = FUN_NOTINTERSECTS_LINE
+				case "intersectsPoint":
+					tok = FUN_NOTINTERSECTS_POINT
+				case "intersectsPoly":
+					tok = FUN_NOTINTERSECTS_POLY
+				case "intersectsRect":
+					tok = FUN_NOTINTERSECTS_RECT
+				default:
+					p.reset()
+					tok = ILLEGAL
+				}
 			default:
 				tok = ILLEGAL
 			}

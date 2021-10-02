@@ -12,15 +12,17 @@ const (
 	EOF
 
 	literalBegin
-	IDENT  // SPEED
+	IDENT  // FUN_SPEED
 	INT    // 12345
 	FLOAT  // 123.45
 	STRING // "abc"
 	literalEnd
 
 	operatorBegin
-	AND //  AND
-	OR  //  OR
+	AND   //  AND
+	OR    //  OR
+	IN    // IN
+	NOTIN // NOT IN
 
 	ADD // +
 	SUB // -
@@ -36,6 +38,8 @@ const (
 	NEQ    // !=
 	LEQ    // <=
 	GEQ    // >=
+	EREG   // =~
+	NEREG  // !~
 
 	LBRACK // [
 	LBRACE // {
@@ -48,16 +52,50 @@ const (
 	operatorEnd
 
 	keywordBegin
-	VAR                //
-	SPEED              // speed(min, max), speed(max)
-	EMEI               // emei(one, two, three)
-	OWNER              // owner(one, two, three)
-	BRAND              // brand(one, two, three)
-	BATTERY_CHARGE     // batteryCharge(min, max), batteryCharge(max)
-	INTERSECTS_LINE    // intersectsLine(@lineID), intersectsLine(@lineID1, @lineID2, ...)
-	INSIDE_POLYGON     // insidePolygon(@polygonID), insidePolygon(@polygonID1, ...)
-	OUTSIDE_POLYGON    // outsidePolygon(@polygonID), outsidePolygon(@polygonID1, ...)
-	INTERSECTS_POLYGON // intersectPolygon(@polygonID), intersectPolygon(@polygonID1, ...)
+	VAR_IDENT // @ident
+
+	VAR_SPEED  // {device.speed}
+	VAR_STATUS // {device.status}
+
+	FUN_SPEED // speed(min, max), speed(max)
+	FUN_EMEI  // emei(one, two, three)
+	FUN_OWNER // owner(one, two, three)
+	FUN_BRAND // brand(one, two, three)
+
+	FUN_WITHIN
+	FUN_WITHIN_RECT
+	FUN_WITHIN_POINT
+	FUN_WITHIN_POLY
+	FUN_WITHIN_LINE
+
+	FUN_NOTWITHIN
+	FUN_NOTWITHIN_RECT
+	FUN_NOTWITHIN_POINT
+	FUN_NOTWITHIN_POLY
+	FUN_NOTWITHIN_LINE
+
+	FUN_CONTAINS
+	FUN_NOTCONTAINS
+
+	FUN_INTERSECTS
+	FUN_INTERSECTS_RECT
+	FUN_INTERSECTS_POINT
+	FUN_INTERSECTS_LINE
+	FUN_INTERSECTS_POLY
+
+	FUN_NOTINTERSECTS
+	FUN_NOTINTERSECTS_RECT
+	FUN_NOTINTERSECTS_POINT
+	FUN_NOTINTERSECTS_LINE
+	FUN_NOTINTERSECTS_POLY
+
+	FUN_DISTANCE
+	FUN_DISTANCE_RECT
+	FUN_DISTANCE_POINT
+	FUN_DISTANCE_LINE
+	FUN_DISTANCE_POLY
+
+	FUN_BATTERY_CHARGE
 	keywordEnd
 
 	RPAREN // )
@@ -80,18 +118,22 @@ var tokens = [...]string{
 	QUO: "/",
 	REM: "%",
 
-	AND: "AND",
-	OR:  "OR",
+	AND:   "AND",
+	OR:    "OR",
+	NOT:   "NOT",
+	IN:    "IN",
+	NOTIN: "NOT IN",
 
 	EQL:    "==",
 	LSS:    "<",
 	GTR:    ">",
 	ASSIGN: "=",
-	NOT:    "!",
 
-	NEQ: "!=",
-	LEQ: "<=",
-	GEQ: ">=",
+	NEQ:   "!=",
+	LEQ:   "<=",
+	GEQ:   ">=",
+	EREG:  "=~",
+	NEREG: "!~",
 
 	LPAREN: "(",
 	LBRACK: "[",
@@ -104,17 +146,49 @@ var tokens = [...]string{
 	RBRACE: "}",
 	COLON:  ":",
 
-	VAR: "@",
+	VAR_IDENT: "@",
 
-	SPEED:              "speed",
-	EMEI:               "emei",
-	OWNER:              "owner",
-	BRAND:              "brand",
-	BATTERY_CHARGE:     "batteryCharge",
-	INTERSECTS_LINE:    "intersectsLine",
-	INSIDE_POLYGON:     "insidePolygon",
-	OUTSIDE_POLYGON:    "outsidePolygon",
-	INTERSECTS_POLYGON: "intersectsPolygon",
+	VAR_SPEED:  "device.speed",
+	VAR_STATUS: "device.status",
+
+	FUN_SPEED:          "speed",
+	FUN_EMEI:           "emei",
+	FUN_OWNER:          "owner",
+	FUN_BRAND:          "brand",
+	FUN_BATTERY_CHARGE: "batteryCharge",
+
+	FUN_CONTAINS:    "contains",
+	FUN_NOTCONTAINS: "not contains",
+
+	FUN_WITHIN:       "within",
+	FUN_WITHIN_LINE:  "withinLine",
+	FUN_WITHIN_POINT: "withinPoint",
+	FUN_WITHIN_POLY:  "withinPoly",
+	FUN_WITHIN_RECT:  "withinRect",
+
+	FUN_NOTWITHIN:       "not within",
+	FUN_NOTWITHIN_LINE:  "not withinLine",
+	FUN_NOTWITHIN_POINT: "not withinPoint",
+	FUN_NOTWITHIN_POLY:  "not withinPoly",
+	FUN_NOTWITHIN_RECT:  "not withinRect",
+
+	FUN_INTERSECTS:       "intersects",
+	FUN_INTERSECTS_LINE:  "intersectsLine",
+	FUN_INTERSECTS_POINT: "intersectsPoint",
+	FUN_INTERSECTS_POLY:  "intersectsPoly",
+	FUN_INTERSECTS_RECT:  "intersectsRect",
+
+	FUN_NOTINTERSECTS:       "not intersects",
+	FUN_NOTINTERSECTS_LINE:  "not intersectsLine",
+	FUN_NOTINTERSECTS_POINT: "not intersectsPoint",
+	FUN_NOTINTERSECTS_POLY:  "not intersectsPoly",
+	FUN_NOTINTERSECTS_RECT:  "not intersectsRect",
+
+	FUN_DISTANCE:       "distance",
+	FUN_DISTANCE_LINE:  "distanceLine",
+	FUN_DISTANCE_POINT: "distancePoint",
+	FUN_DISTANCE_POLY:  "distancePoly",
+	FUN_DISTANCE_RECT:  "distanceRect",
 }
 
 func (tok Token) IsLiteral() bool {

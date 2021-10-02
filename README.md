@@ -1,18 +1,45 @@
 # georule
 GPS/GEO based minimalist rules engine
 
-# work in progress ...
+# Status
+Work in progress ...
+
+# Table of contents
+- [Variables](#variables)
+    * [{device.speed}](#devicespeed)
+    * [{device.status}](#devicestatus)
+- [Functions](#functions)
+    * [speed(min, max), speed(max)](#speedmin-max-speedmax)
+
+## Variables
+#### {device.speed}
+filter by device speed (km/h)
+
+Example:
+```shell script
+{device.speed} >= 0 AND {device.speed} <= 50
+```
+
+#### {device.status}
+Filter by device status
+
+Example:
+```shell script
+{device.status} == 1 OR {device.status} IN [2,4]
+{device.status} == 1 OR {device.status} == 2 OR {device.status} == 4
+{device.status} == 1 AND {device.status} == 2 
+{device.status} >= 0 AND {device.status} < 10
+({device.status} == 1 OR {device.status} IN [2,4]) OR ({device.status} >= 0 AND {device.status} < 10)
+```
 
 ## Functions
 @ - variable identifier
 
-| Name                                                                   | Example                                            | Description                             |
-|------------------------------------------------------------------------|----------------------------------------------------|-----------------------------------------|
-| speed(min, max) OR speed(max)                                          | speed(0, 30) OR speed(30.5)                        | Device speed range 0 - 30 km/h          |
-| batteryCharge(min, max) OR batteryCharge(max)                          | batteryCharge(2.2, 40) OR batteryCharge(30)        | Device battery charge range 2.2 - 40%   |
-| intersectsLine(@lineID) OR intersectsLine(@lineID1, @lineID2)          | intersectsLine(@one) OR intersectsLine(@one, @two) | Device crosses the line @one OR @two    |
-| insidePolygon(@polygonID) OR insidePolygon(@polygonID1, @polygonID2)   | insidePolygon(@one) OR insidePolygon(@one, @two)   | Device inside the polygon @one OR @two  |
-| outsidePolygon(@polygonID) OR outsidePolygon(@polygonID1, @polygonID2) | outsidePolygon(@one) OR outsidePolygon(@one, @two) | Device outside the polygon @one OR @two |
-| emei(one, two, "three")                                                | emei(998f196f-b028-4641-9d16-36ee4344d3a1)         | Filter by device IMEI                   |
-| owner(one, two, "three")                                               | owner(998f196f-b028-4641-9d16-36ee4344d3a1)        | Filter by device owner                  |
-| brand(one, two, "three")                                               | brand(GPSv55Tracker, "GPS v56 Tracker")            | Filter by device brand                  |
+#### speed(min, max), speed(max)
+Filter by device speed (km/h)
+
+Example:
+```shell script
+speed(0, 120) OR speed(300)
+```
+

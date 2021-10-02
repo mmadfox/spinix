@@ -47,12 +47,17 @@ type (
 		Args []Expr // function arguments; or nil
 	}
 
+	// A ListLit represents a list of int or float type.
+	ListLit struct {
+		Items []Expr
+	}
+
 	// A StringLit expr represents a literal of string type.
 	StringLit struct {
 		Value string
 	}
 
-	// A NumberLit expr represents a literal of int type.
+	// An IntLit expr represents a literal of int type.
 	IntLit struct {
 		Value int
 	}
@@ -60,6 +65,11 @@ type (
 	// A FloatLit expr represents a literal of float type.
 	FloatLit struct {
 		Value float64
+	}
+
+	// A VarLit expr represents a variable type.
+	VarLit struct {
+		Value Token
 	}
 )
 
@@ -74,6 +84,7 @@ func (e *BinaryExpr) String() string {
 func (e *CallExpr) String() string {
 	var sb strings.Builder
 	li := len(e.Args) - 1
+	sb.WriteString(e.Fun.String())
 	sb.WriteString(LPAREN.String())
 	for i, arg := range e.Args {
 		sb.WriteString(arg.String())
@@ -82,7 +93,7 @@ func (e *CallExpr) String() string {
 		}
 	}
 	sb.WriteString(RPAREN.String())
-	return fmt.Sprintf("%s%s", e.Fun, sb.String())
+	return sb.String()
 }
 
 func (e *StringLit) String() string {
@@ -97,9 +108,29 @@ func (e *FloatLit) String() string {
 	return fmt.Sprintf("%.2f", e.Value)
 }
 
+func (e *VarLit) String() string {
+	return fmt.Sprintf("{%s}", e.Value)
+}
+
+func (e *ListLit) String() string {
+	var sb strings.Builder
+	li := len(e.Items) - 1
+	sb.WriteString("[")
+	for i, expr := range e.Items {
+		sb.WriteString(expr.String())
+		if i != li {
+			sb.WriteString(COMMA.String())
+		}
+	}
+	sb.WriteString("]")
+	return sb.String()
+}
+
 func (_ *ParenExpr) expr()  {}
 func (_ *BinaryExpr) expr() {}
 func (_ *CallExpr) expr()   {}
 func (_ *StringLit) expr()  {}
 func (_ *IntLit) expr()     {}
 func (_ *FloatLit) expr()   {}
+func (_ *VarLit) expr()     {}
+func (_ *ListLit) expr()    {}

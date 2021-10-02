@@ -23,35 +23,102 @@ func TestParse(t *testing.T) {
 		},
 
 		{
-			name: "parse intersectsLine rule",
+			name:  "parse {device.status}",
+			rule:  `({device.status} == 1 OR {device.status} IN [2,4]) OR ({device.status} >= 0 AND {device.status} < 10)`,
+			isErr: false,
+			typ:   &BinaryExpr{},
+		},
+
+		{
+			name: "parse distance rule",
 			rule: `(
-                        intersectsLine(@line) AND intersectsLine(@lin2, @line1, @line3)
+                        distanceLine(@line1) >= 3000 AND distance(@lin2) <= 9000
                    ) OR (
-                        insidePolygon(@polygon1) and outsidePolygon(@polygon2)
+                        distancePoint(@polygon1) > 0 and distanceRect(@polygon2) < 10 and distanceRect(@rect1) == 400
                    )`,
 			isErr: false,
 			typ:   &BinaryExpr{},
 		},
 
 		{
-			name: "parse insidePolygon rule",
+			name: "parse within rule",
 			rule: `(
-                        intersectsLine(@line) AND intersectsLine(@lin2, @line1, @line3)
+                        within(@line) AND withinLine(@lin2, @line1, @line3)
                    ) OR (
-                        insidePolygon(@polygon1) and outsidePolygon(@polygon2)
+                        withinPoint(@polygon1) and withinPoly(@polygon2) and withinRect(@rect1)
                    )`,
+			isErr: false,
+			typ:   &BinaryExpr{},
+		},
+
+		{
+			name: "parse not within rule",
+			rule: `(
+                        not within(@line) AND not withinLine(@lin2, @line1, @line3)
+                   ) OR (
+                        not withinPoint(@polygon1) and not withinPoly(@polygon2) and not withinRect(@rect1)
+                   )`,
+			isErr: false,
+			typ:   &BinaryExpr{},
+		},
+
+		{
+			name: "parse intersects rule",
+			rule: `(
+                        intersects(@line) AND intersectsLine(@lin2, @line1, @line3)
+                   ) OR (
+                        intersectsPoint(@polygon1) and intersectsPoly(@polygon2) and intersectsRect(@rect1)
+                   )`,
+			isErr: false,
+			typ:   &BinaryExpr{},
+		},
+
+		{
+			name: "parse not intersects rule",
+			rule: `(
+                        not intersects(@line) AND not intersectsLine(@lin2, @line1, @line3)
+                   ) OR (
+                        not intersectsPoint(@polygon1) and not intersectsPoly(@polygon2) and not intersectsRect(@rect1)
+                   )`,
+			isErr: false,
+			typ:   &BinaryExpr{},
+		},
+
+		{
+			name:  "parse contains rule",
+			rule:  "contains(@point, @line, @poly, @rect)",
+			isErr: false,
+			typ:   &CallExpr{},
+		},
+
+		{
+			name:  "parse not contains rule",
+			rule:  "not contains(@point, @line, @poly, @rect)",
+			isErr: false,
+			typ:   &CallExpr{},
+		},
+
+		{
+			name:  "parse {device.speed} variable",
+			rule:  `{device.speed} >= 0 AND {device.speed} <= 50`,
 			isErr: false,
 			typ:   &BinaryExpr{},
 		},
 
 		{
 			name:  "parse speed rule",
-			rule:  "speed(0, 20) OR speed(20)",
+			rule:  "speed(0, 20) OR speed(20.3)",
 			isErr: false,
 			typ:   &BinaryExpr{},
 		},
 
 		// failure cases
+		{
+			name:  "parse invalid variable",
+			rule:  `{somevar}`,
+			isErr: true,
+		},
+
 		{
 			name:  "parse invalid someFunc rule",
 			rule:  `someFunc(@line)`,
