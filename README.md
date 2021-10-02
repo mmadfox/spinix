@@ -28,6 +28,7 @@ Work in progress ...
     * [pressure(min, max), pressure(max)](#pressuremin-max-pressuremax)
     * [fuellevel(min, max), fuellevel(max)](#fuellevelmin-max-fuellevelmax)
     * [duration(min, max), duration(max)](#durationmin-max-durationmax)
+    * [distance(@id)](#distanceid)
     * [intersects(@id), intersectsLine(@id), intersectsPoint(@id), intersectsPoly(@id), intersectsRect(@id)](#intersectsid)
     * [within(@id), withinLine(@id), withinPoint(@id), withinPoly(@id), withinRect(@id)](#withinid)
 
@@ -257,6 +258,21 @@ Filter by device duration in seconds
 Example:
 ```shell script
 duration(0, 100) OR duration(70)
+```
+
+#### distance(@ID)
+*type: @ID*
+
+Detect distance in meters from of device coordinates(lat, lon) to the geo object
+
+- distanceLine(@id)
+- distancePoint(@id)
+- distancePoly(@id)
+- distanceRect(@id)
+
+Example:
+```shell script
+distanceLine(@line1) >= 3000 AND distance(@lin2) <= 9000
 ```
 
 #### intersects(@id)
