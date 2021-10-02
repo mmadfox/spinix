@@ -13,8 +13,15 @@ Work in progress ...
     * [{device.brand}](#devicebrand)
     * [{device.model}](#devicemodel)
     * [{device.emei}](#deviceemei)
+    * [{device.battery}](#devicebattery)
+    * [{device.temperature}](#devicetemperature)
+    * [{device.humidity}](#devicehumidity)
+    * [{device.luminosity}](#deviceluminosity)
+    * [{device.pressure}](#devicepressure)
+    * [{device.fuellevel}](#devicefuellevel)
 - [Functions](#functions)
     * [speed(min, max), speed(max)](#speedmin-max-speedmax)
+    * [batteryCharge(min, max), batteryCharge(max)](#batterychargemin-max-batterychargemax)
     * [intersects(@id), intersectsLine(@id), intersectsPoint(@id), intersectsPoly(@id), intersectsRect(@id)](#intersectsid)
     * [within(@id), withinLine(@id), withinPoint(@id), withinPoly(@id), withinRect(@id)](#withinid)
 
@@ -98,6 +105,66 @@ Example:
 {device.emei} NOT IN ["AA-BBBBBB-CCCCCC-D"]
 ```
 
+#### {device.battery}
+*type: FLOAT*
+
+Filter by device battery charge
+
+Example:
+```gotemplate
+{device.battery} >= 0 AND {device.battery} <= 50  
+```
+
+#### {device.temperature}
+*type: FLOAT*
+
+Filter by device temperature
+
+Example:
+```gotemplate
+{device.temperature} >= 0 AND {device.temperature} <= 50  
+```
+
+#### {device.humidity}
+*type: FLOAT*
+
+Filter by device humidity
+
+Example:
+```gotemplate
+{device.humidity} >= 0 AND {device.humidity} <= 50  
+```
+
+#### {device.luminosity}
+*type: FLOAT*
+
+Filter by device luminosity
+
+Example:
+```gotemplate
+{device.luminosity} >= 0 AND {device.luminosity} <= 50  
+```
+
+#### {device.pressure}
+*type: FLOAT*
+
+Filter by device pressure
+
+Example:
+```gotemplate
+{device.pressure} >= 0 AND {device.pressure} <= 50  
+```
+
+#### {device.fuellevel}
+*type: FLOAT*
+
+Filter by device fuellevel
+
+Example:
+```gotemplate
+{device.fuellevel} >= 0 AND {device.fuellevel} <= 50  
+```
+
 
 ## Functions
 @ - variable identifier
@@ -110,6 +177,16 @@ Filter by device speed (km/h)
 Example:
 ```shell script
 speed(0, 120) OR speed(300)
+```
+
+#### batteryCharge(min, max), batteryCharge(max)
+*type: FLOAT*
+
+Filter by device battery charge
+
+Example:
+```shell script
+batteryCharge(0, 100) OR batteryCharge(70)
 ```
 
 #### intersects(@id)

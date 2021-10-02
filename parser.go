@@ -177,6 +177,18 @@ func (p *Parser) parseVarExpr() (Expr, error) {
 		tok = VAR_BRAND
 	case "model":
 		tok = VAR_MODEL
+	case "fuellevel":
+		tok = VAR_FUELLEVEL
+	case "pressure":
+		tok = VAR_PRESSURE
+	case "luminosity":
+		tok = VAR_LUMONOSITY
+	case "humidity":
+		tok = VAR_HUMIDITY
+	case "temperature":
+		tok = VAR_TEMPERATURE
+	case "battery":
+		tok = VAR_BATTERY
 	default:
 		return nil, fmt.Errorf("georule/parser: parsing error: tok=%v, lit=%v", tok, lit)
 	}

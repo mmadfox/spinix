@@ -54,12 +54,18 @@ const (
 	keywordBegin
 	VAR_IDENT // @ident
 
-	VAR_SPEED  // {device.speed}
-	VAR_STATUS // {device.status}
-	VAR_EMEI   // {device.emei}
-	VAR_OWNER  // {device.owner}
-	VAR_BRAND  // {device.brand}
-	VAR_MODEL  // {device.model}
+	VAR_SPEED       // {device.speed}
+	VAR_STATUS      // {device.status}
+	VAR_EMEI        // {device.emei}
+	VAR_OWNER       // {device.owner}
+	VAR_BRAND       // {device.brand}
+	VAR_MODEL       // {device.model}
+	VAR_FUELLEVEL   // {device.fuellevel}
+	VAR_PRESSURE    // {device.pressure}
+	VAR_LUMONOSITY  // {device.luminosity}
+	VAR_HUMIDITY    // {device.humidity}
+	VAR_TEMPERATURE // {device.temperature}
+	VAR_BATTERY     // {device.battery}
 
 	FUN_SPEED // speed(min, max), speed(max)
 	FUN_EMEI  // emei(one, two, three)
@@ -152,12 +158,18 @@ var tokens = [...]string{
 
 	VAR_IDENT: "@",
 
-	VAR_SPEED:  "device.speed",
-	VAR_STATUS: "device.status",
-	VAR_EMEI:   "device.emei",
-	VAR_OWNER:  "device.owner",
-	VAR_BRAND:  "device.brand",
-	VAR_MODEL:  "device.model",
+	VAR_SPEED:       "device.speed",
+	VAR_STATUS:      "device.status",
+	VAR_EMEI:        "device.emei",
+	VAR_OWNER:       "device.owner",
+	VAR_BRAND:       "device.brand",
+	VAR_MODEL:       "device.model",
+	VAR_FUELLEVEL:   "device.fuellevel",
+	VAR_PRESSURE:    "device.pressure",
+	VAR_LUMONOSITY:  "device.luminosity",
+	VAR_HUMIDITY:    "device.humidity",
+	VAR_TEMPERATURE: "device.temperature",
+	VAR_BATTERY:     "device.battery",
 
 	FUN_SPEED:          "speed",
 	FUN_EMEI:           "emei",
