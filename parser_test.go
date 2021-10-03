@@ -7,6 +7,12 @@ import (
 	"testing"
 )
 
+// TODO
+// exitFrom(@id)
+// entranceIn(@id)
+// movingIn(@id)
+// durationIn(@id, duration)
+
 func TestParse(t *testing.T) {
 	testCases := []struct {
 		name  string

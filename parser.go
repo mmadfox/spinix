@@ -56,7 +56,8 @@ func (p *Parser) parse() (Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		if lhs, ok := expr.(*BinaryExpr); ok && lhs.Op.Precedence() <= operator.Precedence() {
+		lhs, ok := expr.(*BinaryExpr)
+		if ok && lhs.Op.Precedence() <= operator.Precedence() {
 			expr = &BinaryExpr{
 				LHS: lhs.LHS,
 				RHS: &BinaryExpr{LHS: lhs.RHS, RHS: rhs, Op: operator},

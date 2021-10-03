@@ -1,0 +1,222 @@
+package georule
+
+import (
+	"fmt"
+	"math"
+)
+
+var (
+	falseExpr = &BooleanLit{}
+	epsilon   = 1e-6
+)
+
+func eval(expr Expr, ctx *Context) (Expr, error) {
+	if expr == nil || ctx == nil || ctx.Device == nil {
+		return falseExpr, nil
+	}
+	var (
+		err    error
+		lv, rv Expr
+	)
+
+	switch n := expr.(type) {
+	case *ParenExpr:
+		return eval(n.Expr, ctx)
+	case *BinaryExpr:
+		lv, err = eval(n.LHS, ctx)
+		if err != nil {
+			return falseExpr, err
+		}
+		rv, err = eval(n.RHS, ctx)
+		if err != nil {
+			return falseExpr, err
+		}
+		return applyOperator(n.Op, lv, rv)
+	case *VarLit:
+		switch n.Value {
+		case VAR_SPEED:
+			return &FloatLit{Value: ctx.Device.Speed}, nil
+		case VAR_BATTERY:
+			return &FloatLit{Value: ctx.Device.BatteryCharge}, nil
+		case VAR_TEMPERATURE:
+			return &FloatLit{Value: ctx.Device.Temperature}, nil
+		case VAR_HUMIDITY:
+			return &FloatLit{Value: ctx.Device.Humidity}, nil
+		case VAR_LUMONOSITY:
+			return &FloatLit{Value: ctx.Device.Luminosity}, nil
+		case VAR_PRESSURE:
+			return &FloatLit{Value: ctx.Device.Pressure}, nil
+		case VAR_FUELLEVEL:
+			return &FloatLit{Value: ctx.Device.FuelLevel}, nil
+		case VAR_MODEL:
+			return &StringLit{Value: ctx.Device.Model}, nil
+		case VAR_BRAND:
+			return &StringLit{Value: ctx.Device.Brand}, nil
+		case VAR_OWNER:
+			return &StringLit{Value: ctx.Device.Owner}, nil
+		case VAR_EMEI:
+			return &StringLit{Value: ctx.Device.IMEI}, nil
+		case VAR_STATUS:
+			return &IntLit{Value: ctx.Device.Status}, nil
+		}
+	case *CallExpr:
+	}
+	return expr, nil
+}
+
+func applyOperator(op Token, l, r Expr) (*BooleanLit, error) {
+	switch op {
+	case AND:
+		return applyAND(l, r) // AND
+	case OR:
+		return applyOR(l, r) // OR
+	case GEQ:
+		return applyGEQ(l, r) // >=
+	case GTR:
+		return applyGTR(l, r) // >
+	case LEQ:
+		return applyLEQ(l, r) // <=
+	case LSS:
+		return applyLSS(l, r) // <
+	}
+	return falseExpr, fmt.Errorf("georule: unsupported operator: %s", op)
+}
+
+// AND
+func applyAND(l, r Expr) (*BooleanLit, error) {
+	var (
+		a, b bool
+		err  error
+	)
+	a, err = booleanVal(l)
+	if err != nil {
+		return nil, err
+	}
+	b, err = booleanVal(r)
+	if err != nil {
+		return nil, err
+	}
+	return &BooleanLit{Value: a && b}, nil
+}
+
+// OR
+func applyOR(l, r Expr) (*BooleanLit, error) {
+	var (
+		a, b bool
+		err  error
+	)
+	a, err = booleanVal(l)
+	if err != nil {
+		return nil, err
+	}
+	b, err = booleanVal(r)
+	if err != nil {
+		return nil, err
+	}
+	return &BooleanLit{Value: a || b}, nil
+}
+
+// >=
+func applyGEQ(l, r Expr) (*BooleanLit, error) {
+	var (
+		a, b float64
+		err  error
+	)
+	a, err = numberVal(l)
+	if err != nil {
+		return nil, err
+	}
+	b, err = numberVal(r)
+	if err != nil {
+		return nil, err
+	}
+	return &BooleanLit{Value: (a > b) || float64Equal(a, b)}, nil
+}
+
+// >
+func applyGTR(l, r Expr) (*BooleanLit, error) {
+	var (
+		a, b float64
+		err  error
+	)
+	a, err = numberVal(l)
+	if err != nil {
+		return nil, err
+	}
+	b, err = numberVal(r)
+	if err != nil {
+		return nil, err
+	}
+	return &BooleanLit{Value: a > b}, nil
+}
+
+// <=
+func applyLEQ(l, r Expr) (*BooleanLit, error) {
+	var (
+		a, b float64
+		err  error
+	)
+	a, err = numberVal(l)
+	if err != nil {
+		return falseExpr, err
+	}
+	b, err = numberVal(r)
+	if err != nil {
+		return falseExpr, err
+	}
+	return &BooleanLit{Value: (a < b) || float64Equal(a, b)}, nil
+}
+
+// <
+func applyLSS(l, r Expr) (*BooleanLit, error) {
+	var (
+		a, b float64
+		err  error
+	)
+	a, err = numberVal(l)
+	if err != nil {
+		return falseExpr, err
+	}
+	b, err = numberVal(r)
+	if err != nil {
+		return falseExpr, err
+	}
+	return &BooleanLit{Value: a < b}, nil
+}
+
+func booleanVal(e Expr) (bool, error) {
+	switch n := e.(type) {
+	case *BooleanLit:
+		return n.Value, nil
+	default:
+		return false, fmt.Errorf("georule: literal is not a boolean: %v", n)
+	}
+}
+
+func numberVal(e Expr) (float64, error) {
+	switch n := e.(type) {
+	case *FloatLit:
+		return n.Value, nil
+	case *IntLit:
+		return float64(n.Value), nil
+	default:
+		return 0, fmt.Errorf("georule: literal is not a number: %v", n)
+	}
+}
+
+func float64Equal(a float64, b float64) bool {
+	absA := math.Abs(a)
+	absB := math.Abs(b)
+	diff := math.Abs(a - b)
+	zero := float64(0)
+	if a == b {
+		return true
+	}
+	if diff > epsilon {
+		return false
+	}
+	if a == zero || b == zero {
+		return diff < epsilon*math.SmallestNonzeroFloat32
+	}
+	return diff/math.Min(absA+absB, math.MaxFloat64) < epsilon
+}

@@ -67,9 +67,14 @@ type (
 		Value float64
 	}
 
-	// A VarLit expr represents a variable type.
+	// A VarLit represents a variable literal.
 	VarLit struct {
 		Value Token
+	}
+
+	// A BooleanLit represents a boolean literal.
+	BooleanLit struct {
+		Value bool
 	}
 )
 
@@ -104,7 +109,7 @@ func (e *IntLit) String() string {
 	return fmt.Sprintf("%d", e.Value)
 }
 
-func (e *FloatLit) String() string {
+func (e FloatLit) String() string {
 	return fmt.Sprintf("%.2f", e.Value)
 }
 
@@ -126,6 +131,14 @@ func (e *ListLit) String() string {
 	return sb.String()
 }
 
+func (e *BooleanLit) String() string {
+	if e.Value {
+		return "true"
+	} else {
+		return "false"
+	}
+}
+
 func (_ *ParenExpr) expr()  {}
 func (_ *BinaryExpr) expr() {}
 func (_ *CallExpr) expr()   {}
@@ -134,3 +147,4 @@ func (_ *IntLit) expr()     {}
 func (_ *FloatLit) expr()   {}
 func (_ *VarLit) expr()     {}
 func (_ *ListLit) expr()    {}
+func (_ *BooleanLit) expr() {}

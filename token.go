@@ -225,6 +225,15 @@ var tokens = [...]string{
 	FUN_DISTANCE_RECT:  "distanceRect",
 }
 
+var keywords map[string]Token
+
+func init() {
+	keywords = make(map[string]Token)
+	for i := keywordBegin + 1; i < keywordEnd; i++ {
+		keywords[tokens[i]] = i
+	}
+}
+
 func (tok Token) IsLiteral() bool {
 	return literalBegin < tok && tok < literalEnd
 }
@@ -243,7 +252,7 @@ func (tok Token) Precedence() int {
 		return 1
 	case AND:
 		return 2
-	case NEQ:
+	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR:
 		return 3
 	}
 	return 0
@@ -258,4 +267,9 @@ func (tok Token) String() string {
 		s = "token(" + strconv.Itoa(int(tok)) + ")"
 	}
 	return s
+}
+
+func LookupKeyword(ident string) (tok Token, found bool) {
+	tok, found = keywords[ident]
+	return
 }
