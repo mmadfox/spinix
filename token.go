@@ -30,16 +30,15 @@ const (
 	QUO // /
 	REM // %
 
-	EQL    // ==
-	LSS    // <
-	GTR    // >
-	ASSIGN // =
-	NOT    // !
-	NEQ    // !=
-	LEQ    // <=
-	GEQ    // >=
-	EREG   // =~
-	NEREG  // !~
+	EQL   // ==
+	LSS   // <
+	GTR   // >
+	NOT   // !
+	NEQ   // !=
+	LEQ   // <=
+	GEQ   // >=
+	EREG  // =~
+	NEREG // !~
 
 	LBRACK // [
 	LBRACE // {
@@ -141,16 +140,12 @@ var tokens = [...]string{
 	IN:    "IN",
 	NOTIN: "NOT IN",
 
-	EQL:    "==",
-	LSS:    "<",
-	GTR:    ">",
-	ASSIGN: "=",
-
-	NEQ:   "!=",
-	LEQ:   "<=",
-	GEQ:   ">=",
-	EREG:  "=~",
-	NEREG: "!~",
+	EQL: "==",
+	LSS: "<",
+	GTR: ">",
+	NEQ: "!=",
+	LEQ: "<=",
+	GEQ: ">=",
 
 	LPAREN: "(",
 	LBRACK: "[",
