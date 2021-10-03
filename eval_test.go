@@ -22,6 +22,7 @@ func TestEval(t *testing.T) {
 			expr: []Expr{
 				rule(t, "{device.speed} >= 0 AND {device.speed} <= 60"),
 				rule(t, "{device.speed} > 0 AND {device.speed} < 60"),
+				rule(t, "{device.speed} != 0 AND {device.speed} > 30"),
 			},
 			want: "true",
 		},

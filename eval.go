@@ -78,6 +78,10 @@ func applyOperator(op Token, l, r Expr) (*BooleanLit, error) {
 		return applyLEQ(l, r) // <=
 	case LSS:
 		return applyLSS(l, r) // <
+	case NEQ:
+		return applyNEQ(l, r) // !=
+	case EQL:
+		return applyEQL(l, r) // ==
 	}
 	return falseExpr, fmt.Errorf("georule: unsupported operator: %s", op)
 }
@@ -184,6 +188,58 @@ func applyLSS(l, r Expr) (*BooleanLit, error) {
 	return &BooleanLit{Value: a < b}, nil
 }
 
+// !=
+func applyNEQ(l, r Expr) (*BooleanLit, error) {
+	v, err := applyEQL(l, r)
+	if err != nil {
+		return nil, err
+	}
+	v.Value = !v.Value
+	return v, nil
+}
+
+// ==
+func applyEQL(l, r Expr) (*BooleanLit, error) {
+	var (
+		as, bs string
+		an, bn float64
+		ab, bb bool
+		err    error
+	)
+
+	// strings
+	as, err = stringVal(l)
+	if err == nil {
+		bs, err = stringVal(r)
+		if err != nil {
+			return falseExpr, fmt.Errorf("georule: cannot compare string with non-string")
+		}
+		return &BooleanLit{Value: as == bs}, nil
+	}
+
+	// numbers
+	an, err = numberVal(l)
+	if err == nil {
+		bn, err = numberVal(r)
+		if err != nil {
+			return falseExpr, fmt.Errorf("georule: cannot compare number with non-number")
+		}
+		return &BooleanLit{Value: float64Equal(an, bn)}, nil
+	}
+
+	// boolean
+	ab, err = booleanVal(l)
+	if err == nil {
+		bb, err = booleanVal(r)
+		if err != nil {
+			return falseExpr, fmt.Errorf("georule: cannot compare boolean with non-boolean")
+		}
+		return &BooleanLit{Value: ab == bb}, nil
+	}
+
+	return falseExpr, nil
+}
+
 func booleanVal(e Expr) (bool, error) {
 	switch n := e.(type) {
 	case *BooleanLit:
@@ -201,6 +257,15 @@ func numberVal(e Expr) (float64, error) {
 		return float64(n.Value), nil
 	default:
 		return 0, fmt.Errorf("georule: literal is not a number: %v", n)
+	}
+}
+
+func stringVal(e Expr) (string, error) {
+	switch n := e.(type) {
+	case *StringLit:
+		return n.Value, nil
+	default:
+		return "", fmt.Errorf("georule: literal is not a string: %v", n)
 	}
 }
 
