@@ -1,5 +1,6 @@
-# georule
-GPS/GEO based minimalist rules engine
+# Spinix
+
+GPS/GEO minimalist rules engine
 
 ## Status
 Work in progress ...
