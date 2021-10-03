@@ -2,17 +2,15 @@ package georule
 
 import (
 	"fmt"
-
-	"github.com/rs/xid"
 )
 
 type S struct {
-	id   xid.ID
+	id   string
 	name string
 	expr Expr
 }
 
-func Spec(name string, spec string) (S, error) {
+func Spec(id string, name string, spec string) (S, error) {
 	if len(spec) == 0 {
 		return S{}, fmt.Errorf("georule: specification not defined")
 	}
@@ -21,7 +19,7 @@ func Spec(name string, spec string) (S, error) {
 		return S{}, err
 	}
 	return S{
-		id:   xid.New(),
+		id:   id,
 		name: name,
 		expr: expr,
 	}, nil
@@ -35,7 +33,7 @@ func (r S) Name() string {
 	return r.name
 }
 
-func (r S) ID() xid.ID {
+func (r S) ID() string {
 	return r.id
 }
 
