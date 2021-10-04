@@ -6,18 +6,16 @@ import (
 
 func TestEval(t *testing.T) {
 	testCases := []struct {
-		name  string
-		ctx   *Context
-		expr  []Expr
-		isErr bool
-		want  string
+		name   string
+		device *Device
+		expr   []Expr
+		isErr  bool
+		want   string
 	}{
 		{
 			name: "device.speed",
-			ctx: &Context{
-				Device: &Device{
-					Speed: 40,
-				},
+			device: &Device{
+				Speed: 40,
 			},
 			expr: []Expr{
 				rule(t, "{device.speed} >= 0 AND {device.speed} <= 60"),
@@ -29,10 +27,8 @@ func TestEval(t *testing.T) {
 
 		{
 			name: "device.battery",
-			ctx: &Context{
-				Device: &Device{
-					BatteryCharge: 15,
-				},
+			device: &Device{
+				BatteryCharge: 15,
 			},
 			expr: []Expr{
 				rule(t, "{device.battery} >= 0 AND {device.battery} <= 60"),
@@ -43,10 +39,8 @@ func TestEval(t *testing.T) {
 
 		{
 			name: "device.temperature",
-			ctx: &Context{
-				Device: &Device{
-					Temperature: 85,
-				},
+			device: &Device{
+				Temperature: 85,
 			},
 			expr: []Expr{
 				rule(t, "{device.temperature} >= 50 AND {device.temperature} <= 90"),
@@ -57,12 +51,10 @@ func TestEval(t *testing.T) {
 
 		{
 			name: "device.humidity",
-			ctx: &Context{
-				Device: &Device{
-					Speed:       50,
-					Temperature: 89,
-					Humidity:    78,
-				},
+			device: &Device{
+				Speed:       50,
+				Temperature: 89,
+				Humidity:    78,
 			},
 			expr: []Expr{
 				rule(t, "{device.humidity} >= 50 AND {device.humidity} <= 90"),
@@ -73,10 +65,8 @@ func TestEval(t *testing.T) {
 
 		{
 			name: "device.luminosity",
-			ctx: &Context{
-				Device: &Device{
-					Luminosity: 3,
-				},
+			device: &Device{
+				Luminosity: 3,
 			},
 			expr: []Expr{
 				rule(t, "{device.luminosity} >= 0 AND {device.luminosity} <= 9"),
@@ -87,10 +77,8 @@ func TestEval(t *testing.T) {
 
 		{
 			name: "device.pressure",
-			ctx: &Context{
-				Device: &Device{
-					Pressure: 3,
-				},
+			device: &Device{
+				Pressure: 3,
 			},
 			expr: []Expr{
 				rule(t, "{device.pressure} >= 0 AND {device.pressure} <= 9"),
@@ -101,10 +89,8 @@ func TestEval(t *testing.T) {
 
 		{
 			name: "device.fuellevel",
-			ctx: &Context{
-				Device: &Device{
-					FuelLevel: 3,
-				},
+			device: &Device{
+				FuelLevel: 3,
 			},
 			expr: []Expr{
 				rule(t, "{device.fuellevel} >= 0 AND {device.fuellevel} <= 9"),
@@ -117,7 +103,7 @@ func TestEval(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, rule := range tc.expr {
-				res, err := eval(rule, tc.ctx)
+				res, err := eval(rule, tc.device, &State{})
 				if tc.isErr {
 					if err == nil {
 						t.Fatalf("eval(%s) => got nil, expected non nil error", tc.expr)

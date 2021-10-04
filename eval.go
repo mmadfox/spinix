@@ -10,8 +10,8 @@ var (
 	epsilon   = 1e-6
 )
 
-func eval(expr Expr, ctx *Context) (Expr, error) {
-	if expr == nil || ctx == nil || ctx.Device == nil {
+func eval(expr Expr, device *Device, state *State) (Expr, error) {
+	if expr == nil || device == nil || state == nil {
 		return falseExpr, nil
 	}
 	var (
@@ -21,13 +21,13 @@ func eval(expr Expr, ctx *Context) (Expr, error) {
 
 	switch n := expr.(type) {
 	case *ParenExpr:
-		return eval(n.Expr, ctx)
+		return eval(n.Expr, device, state)
 	case *BinaryExpr:
-		lv, err = eval(n.LHS, ctx)
+		lv, err = eval(n.LHS, device, state)
 		if err != nil {
 			return falseExpr, err
 		}
-		rv, err = eval(n.RHS, ctx)
+		rv, err = eval(n.RHS, device, state)
 		if err != nil {
 			return falseExpr, err
 		}
@@ -35,29 +35,29 @@ func eval(expr Expr, ctx *Context) (Expr, error) {
 	case *VarLit:
 		switch n.Value {
 		case VAR_SPEED:
-			return &FloatLit{Value: ctx.Device.Speed}, nil
+			return &FloatLit{Value: device.Speed}, nil
 		case VAR_BATTERY:
-			return &FloatLit{Value: ctx.Device.BatteryCharge}, nil
+			return &FloatLit{Value: device.BatteryCharge}, nil
 		case VAR_TEMPERATURE:
-			return &FloatLit{Value: ctx.Device.Temperature}, nil
+			return &FloatLit{Value: device.Temperature}, nil
 		case VAR_HUMIDITY:
-			return &FloatLit{Value: ctx.Device.Humidity}, nil
+			return &FloatLit{Value: device.Humidity}, nil
 		case VAR_LUMONOSITY:
-			return &FloatLit{Value: ctx.Device.Luminosity}, nil
+			return &FloatLit{Value: device.Luminosity}, nil
 		case VAR_PRESSURE:
-			return &FloatLit{Value: ctx.Device.Pressure}, nil
+			return &FloatLit{Value: device.Pressure}, nil
 		case VAR_FUELLEVEL:
-			return &FloatLit{Value: ctx.Device.FuelLevel}, nil
+			return &FloatLit{Value: device.FuelLevel}, nil
 		case VAR_MODEL:
-			return &StringLit{Value: ctx.Device.Model}, nil
+			return &StringLit{Value: device.Model}, nil
 		case VAR_BRAND:
-			return &StringLit{Value: ctx.Device.Brand}, nil
+			return &StringLit{Value: device.Brand}, nil
 		case VAR_OWNER:
-			return &StringLit{Value: ctx.Device.Owner}, nil
+			return &StringLit{Value: device.Owner}, nil
 		case VAR_EMEI:
-			return &StringLit{Value: ctx.Device.IMEI}, nil
+			return &StringLit{Value: device.IMEI}, nil
 		case VAR_STATUS:
-			return &IntLit{Value: ctx.Device.Status}, nil
+			return &IntLit{Value: device.Status}, nil
 		}
 	case *CallExpr:
 	}
