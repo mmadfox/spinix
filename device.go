@@ -1,7 +1,6 @@
 package georule
 
 import (
-	"fmt"
 	"sync"
 	"time"
 )
@@ -70,19 +69,4 @@ func (s *State) Update(device *Device) {
 	s.luminosity = device.Luminosity
 	s.pressure = device.Pressure
 	s.fuelLevel = device.FuelLevel
-}
-
-func Detect(spec S, device *Device, state *State) (bool, error) {
-	if spec.IsEmpty() {
-		return false, nil
-	}
-	res, err := eval(spec.Expr(), device, state)
-	if err != nil {
-		return false, err
-	}
-	switch typ := res.(type) {
-	case *BooleanLit:
-		return typ.Value, nil
-	}
-	return false, fmt.Errorf("georule: unexpected result %#v", res)
 }
