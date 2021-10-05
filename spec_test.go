@@ -1,6 +1,19 @@
 package georule
 
-import "testing"
+import (
+	"testing"
+)
+
+func TestVars(t *testing.T) {
+	s, err := Spec("id", "test", "intersectsPoly(@id1, @id2, @id3) OR intersectsPoly(@id4, @id4, @id4)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	vars := VarsFrom(s)
+	if len(vars) != 4 {
+		t.Fatalf("VarsFrom(%s) => %d, want 4", s, len(vars))
+	}
+}
 
 func TestFromString(t *testing.T) {
 	testCases := []struct {

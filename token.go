@@ -97,7 +97,9 @@ const (
 	FUN_INTERSECTS_RECT
 	FUN_INTERSECTS_POINT
 	FUN_INTERSECTS_LINE
+	FUN_INTERSECTS_MULTILINE
 	FUN_INTERSECTS_POLY
+	FUN_INTERSECTS_MULTIPOLY
 
 	FUN_NOTINTERSECTS
 	FUN_NOTINTERSECTS_RECT
@@ -201,11 +203,13 @@ var tokens = [...]string{
 	FUN_NOTWITHIN_POLY:  "not withinPoly",
 	FUN_NOTWITHIN_RECT:  "not withinRect",
 
-	FUN_INTERSECTS:       "intersects",
-	FUN_INTERSECTS_LINE:  "intersectsLine",
-	FUN_INTERSECTS_POINT: "intersectsPoint",
-	FUN_INTERSECTS_POLY:  "intersectsPoly",
-	FUN_INTERSECTS_RECT:  "intersectsRect",
+	FUN_INTERSECTS:           "intersects",
+	FUN_INTERSECTS_LINE:      "intersectsLine",
+	FUN_INTERSECTS_MULTILINE: "intersectsMultiLine",
+	FUN_INTERSECTS_POINT:     "intersectsPoint",
+	FUN_INTERSECTS_POLY:      "intersectsPoly",
+	FUN_INTERSECTS_MULTIPOLY: "intersectsMultiPoly",
+	FUN_INTERSECTS_RECT:      "intersectsRect",
 
 	FUN_NOTINTERSECTS:       "not intersects",
 	FUN_NOTINTERSECTS_LINE:  "not intersectsLine",
@@ -247,7 +251,7 @@ func (tok Token) Precedence() int {
 		return 1
 	case AND:
 		return 2
-	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR:
+	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR, FUN_INTERSECTS_POLY:
 		return 3
 	}
 	return 0

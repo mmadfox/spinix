@@ -1,8 +1,11 @@
 package georule
 
 import (
+	"context"
 	"fmt"
 	"math"
+
+	"github.com/tidwall/geojson"
 )
 
 var (
@@ -10,7 +13,14 @@ var (
 	epsilon   = 1e-6
 )
 
-func eval(expr Expr, device *Device, state *State) (Expr, error) {
+func eval(
+	ctx context.Context,
+	expr Expr,
+	device *Device,
+	state *State,
+	spatial Geospatial,
+	vars Vars,
+) (Expr, error) {
 	if expr == nil || device == nil || state == nil {
 		return falseExpr, nil
 	}
@@ -21,13 +31,13 @@ func eval(expr Expr, device *Device, state *State) (Expr, error) {
 
 	switch n := expr.(type) {
 	case *ParenExpr:
-		return eval(n.Expr, device, state)
+		return eval(ctx, n.Expr, device, state, spatial, vars)
 	case *BinaryExpr:
-		lv, err = eval(n.LHS, device, state)
+		lv, err = eval(ctx, n.LHS, device, state, spatial, vars)
 		if err != nil {
 			return falseExpr, err
 		}
-		rv, err = eval(n.RHS, device, state)
+		rv, err = eval(ctx, n.RHS, device, state, spatial, vars)
 		if err != nil {
 			return falseExpr, err
 		}
@@ -60,6 +70,47 @@ func eval(expr Expr, device *Device, state *State) (Expr, error) {
 			return &IntLit{Value: device.Status}, nil
 		}
 	case *CallExpr:
+		switch n.Fun {
+		case FUN_INTERSECTS_POLY, FUN_INTERSECTS_MULTIPOLY,
+			FUN_INTERSECTS_LINE, FUN_INTERSECTS_MULTILINE, FUN_INTERSECTS_RECT,
+			FUN_INTERSECTS_POINT:
+			args := args2str(n.Args)
+			for _, id := range args {
+				object, err := vars.Lookup(ctx, id)
+				if err != nil {
+					return falseExpr, err
+				}
+				switch typ := object.(type) {
+				case *geojson.Point:
+					if !spatial.IntersectsPoint(device, typ) {
+						return falseExpr, nil
+					}
+				case *geojson.Rect:
+					if !spatial.IntersectsRect(device, typ) {
+						return falseExpr, nil
+					}
+				case *geojson.LineString:
+					if !spatial.IntersectsLine(device, typ) {
+						return falseExpr, nil
+					}
+				case *geojson.MultiLineString:
+					if !spatial.IntersectsMultiLine(device, typ) {
+						return falseExpr, nil
+					}
+				case *geojson.Polygon:
+					if !spatial.IntersectsPoly(device, typ) {
+						return falseExpr, nil
+					}
+				case *geojson.MultiPolygon:
+					if !spatial.IntersectsMultiPoly(device, typ) {
+						return falseExpr, nil
+					}
+				default:
+					return falseExpr, fmt.Errorf("georule/eval: %v unknown geospatial type", typ)
+				}
+			}
+			return &BooleanLit{Value: true}, nil
+		}
 	}
 	return expr, nil
 }
@@ -83,7 +134,7 @@ func applyOperator(op Token, l, r Expr) (*BooleanLit, error) {
 	case EQL:
 		return applyEQL(l, r) // ==
 	}
-	return falseExpr, fmt.Errorf("georule: unsupported operator: %s", op)
+	return falseExpr, fmt.Errorf("georule/eval: unsupported operator: %s", op)
 }
 
 // AND
@@ -212,7 +263,7 @@ func applyEQL(l, r Expr) (*BooleanLit, error) {
 	if err == nil {
 		bs, err = stringVal(r)
 		if err != nil {
-			return falseExpr, fmt.Errorf("georule: cannot compare string with non-string")
+			return falseExpr, fmt.Errorf("georule/eval: cannot compare string with non-string")
 		}
 		return &BooleanLit{Value: as == bs}, nil
 	}
@@ -222,7 +273,7 @@ func applyEQL(l, r Expr) (*BooleanLit, error) {
 	if err == nil {
 		bn, err = numberVal(r)
 		if err != nil {
-			return falseExpr, fmt.Errorf("georule: cannot compare number with non-number")
+			return falseExpr, fmt.Errorf("georule/eval: cannot compare number with non-number")
 		}
 		return &BooleanLit{Value: float64Equal(an, bn)}, nil
 	}
@@ -232,7 +283,7 @@ func applyEQL(l, r Expr) (*BooleanLit, error) {
 	if err == nil {
 		bb, err = booleanVal(r)
 		if err != nil {
-			return falseExpr, fmt.Errorf("georule: cannot compare boolean with non-boolean")
+			return falseExpr, fmt.Errorf("georule/eval: cannot compare boolean with non-boolean")
 		}
 		return &BooleanLit{Value: ab == bb}, nil
 	}
@@ -245,7 +296,7 @@ func booleanVal(e Expr) (bool, error) {
 	case *BooleanLit:
 		return n.Value, nil
 	default:
-		return false, fmt.Errorf("georule: literal is not a boolean: %v", n)
+		return false, fmt.Errorf("georule/eval: literal is not a boolean: %v", n)
 	}
 }
 
@@ -256,7 +307,7 @@ func numberVal(e Expr) (float64, error) {
 	case *IntLit:
 		return float64(n.Value), nil
 	default:
-		return 0, fmt.Errorf("georule: literal is not a number: %v", n)
+		return 0, fmt.Errorf("georule/eval: literal is not a number: %v", n)
 	}
 }
 
@@ -265,7 +316,7 @@ func stringVal(e Expr) (string, error) {
 	case *StringLit:
 		return n.Value, nil
 	default:
-		return "", fmt.Errorf("georule: literal is not a string: %v", n)
+		return "", fmt.Errorf("georule/eval: literal is not a string: %v", n)
 	}
 }
 
@@ -284,4 +335,12 @@ func float64Equal(a float64, b float64) bool {
 		return diff < epsilon*math.SmallestNonzeroFloat32
 	}
 	return diff/math.Min(absA+absB, math.MaxFloat64) < epsilon
+}
+
+func args2str(args []Expr) []string {
+	ids := make([]string, len(args))
+	for i, expr := range args {
+		ids[i] = expr.String()
+	}
+	return ids
 }

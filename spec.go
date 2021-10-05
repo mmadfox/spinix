@@ -18,11 +18,12 @@ func Spec(id string, name string, spec string) (S, error) {
 	if err != nil {
 		return S{}, err
 	}
-	return S{
+	newSpec := S{
 		id:   id,
 		name: name,
 		expr: expr,
-	}, nil
+	}
+	return newSpec, nil
 }
 
 func (r S) String() string {
@@ -43,4 +44,21 @@ func (r S) Expr() Expr {
 
 func (r S) IsEmpty() bool {
 	return r.expr == nil
+}
+
+func VarsFrom(s S) []string {
+	vars := make([]string, 0, 8)
+	WalkFunc(s.Expr(), func(expr Expr) {
+		switch typ := expr.(type) {
+		case *CallExpr:
+			for _, arg := range typ.Args {
+				lit, ok := arg.(*StringLit)
+				if !ok {
+					continue
+				}
+				vars = append(vars, lit.Value[1:])
+			}
+		}
+	})
+	return vars
 }
