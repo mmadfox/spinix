@@ -21,7 +21,7 @@ func eval(
 	geospatial Geospatial,
 	vars Vars,
 ) (Expr, error) {
-	if expr == nil || device == nil || state == nil {
+	if expr == nil || device == nil || state == nil || vars == nil || geospatial == nil {
 		return falseExpr, nil
 	}
 	var (

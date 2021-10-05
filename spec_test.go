@@ -9,9 +9,9 @@ func TestVars(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	vars := VarsFrom(s)
+	vars := VarsFromSpec(s)
 	if len(vars) != 4 {
-		t.Fatalf("VarsFrom(%s) => %d, want 4", s, len(vars))
+		t.Fatalf("VarsFromSpec(%s) => %d, want 4", s, len(vars))
 	}
 }
 

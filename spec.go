@@ -45,20 +45,3 @@ func (r S) Expr() Expr {
 func (r S) IsEmpty() bool {
 	return r.expr == nil
 }
-
-func VarsFrom(s S) []string {
-	vars := make([]string, 0, 8)
-	WalkFunc(s.Expr(), func(expr Expr) {
-		switch typ := expr.(type) {
-		case *CallExpr:
-			for _, arg := range typ.Args {
-				lit, ok := arg.(*StringLit)
-				if !ok {
-					continue
-				}
-				vars = append(vars, lit.Value[1:])
-			}
-		}
-	})
-	return vars
-}

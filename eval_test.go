@@ -1,8 +1,88 @@
 package georule
 
 import (
+	"context"
 	"testing"
+
+	"github.com/tidwall/geojson"
+	"github.com/tidwall/geojson/geometry"
 )
+
+func TestEvalSpatial(t *testing.T) {
+	v := NewInMemVars()
+	_ = v.Set("p1", geojson.NewPolygon(geometry.NewPoly([]geometry.Point{
+		{
+			X: 42.9267814,
+			Y: -72.2808671,
+		},
+		{
+			X: 42.9267736,
+			Y: -72.2808778,
+		},
+		{
+			X: 42.9254773,
+			Y: -72.2807062,
+		},
+		{
+			X: 42.9258466,
+			Y: -72.2787755,
+		},
+		{
+			X: 42.9267814,
+			Y: -72.2808671,
+		},
+	}, nil, nil)))
+	expr := rule(t, "intersectsPoly(@p1)")
+	ctx := context.Background()
+	res, err := eval(ctx, expr, &Device{Latitude: 42.9262708, Longitude: -72.2799339}, &State{}, geospatial{}, v)
+	if err != nil {
+		t.Fatalf("should not be nil")
+	}
+	if !res.(*BooleanLit).Value {
+		t.Fatalf("should not be false")
+	}
+}
+
+func BenchmarkEvalSpatial(b *testing.B) {
+	v := NewInMemVars()
+	_ = v.Set("p1", geojson.NewPolygon(geometry.NewPoly([]geometry.Point{
+		{
+			X: 42.9267814,
+			Y: -72.2808671,
+		},
+		{
+			X: 42.9267736,
+			Y: -72.2808778,
+		},
+		{
+			X: 42.9254773,
+			Y: -72.2807062,
+		},
+		{
+			X: 42.9258466,
+			Y: -72.2787755,
+		},
+		{
+			X: 42.9267814,
+			Y: -72.2808671,
+		},
+	}, nil, nil)))
+	expr, err := ParseString("intersectsPoly(@p1)")
+	if err != nil {
+		b.Fatal(err)
+	}
+	ctx := context.Background()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		res, err := eval(ctx, expr, &Device{Latitude: 42.9262708, Longitude: -72.2799339}, &State{}, geospatial{}, v)
+		if err != nil {
+			b.Fatalf("should not be nil")
+		}
+		if !res.(*BooleanLit).Value {
+			b.Fatalf("should not be false")
+		}
+	}
+}
 
 //func TestEvalFunc(t *testing.T) {
 //	expr := rule(t, "intersectsPoly(@id) and intersectsPoly(@id2)")

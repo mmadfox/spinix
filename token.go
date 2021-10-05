@@ -93,6 +93,7 @@ const (
 	FUN_CONTAINS
 	FUN_NOTCONTAINS
 
+	keywordGeospatialBegin
 	FUN_INTERSECTS
 	FUN_INTERSECTS_RECT
 	FUN_INTERSECTS_POINT
@@ -112,6 +113,7 @@ const (
 	FUN_DISTANCE_POINT
 	FUN_DISTANCE_LINE
 	FUN_DISTANCE_POLY
+	keywordGeospatialEnd
 
 	FUN_BATTERY_CHARGE
 	keywordEnd
@@ -243,6 +245,13 @@ func (tok Token) IsOperator() bool {
 
 func (tok Token) IsKeyword() bool {
 	return keywordBegin < tok && tok < keywordEnd
+}
+
+func (tok Token) IsGeospatialKeyword() bool {
+	if !tok.IsKeyword() {
+		return false
+	}
+	return keywordGeospatialBegin < tok && tok < keywordGeospatialEnd
 }
 
 func (tok Token) Precedence() int {

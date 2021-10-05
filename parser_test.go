@@ -20,7 +20,7 @@ func TestParse(t *testing.T) {
 		isErr bool
 		typ   Expr
 	}{
-		// success VarsFrom cases
+		// success VarsFromSpec cases
 		{
 			name:  "parse {device.status}",
 			rule:  `({device.status} == 1 OR {device.status} IN [2,4]) OR ({device.status} >= 0 AND {device.status} < 10)`,
