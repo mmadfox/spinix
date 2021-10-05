@@ -18,7 +18,7 @@ func eval(
 	expr Expr,
 	device *Device,
 	state *State,
-	spatial Geospatial,
+	geospatial Geospatial,
 	vars Vars,
 ) (Expr, error) {
 	if expr == nil || device == nil || state == nil {
@@ -31,13 +31,13 @@ func eval(
 
 	switch n := expr.(type) {
 	case *ParenExpr:
-		return eval(ctx, n.Expr, device, state, spatial, vars)
+		return eval(ctx, n.Expr, device, state, geospatial, vars)
 	case *BinaryExpr:
-		lv, err = eval(ctx, n.LHS, device, state, spatial, vars)
+		lv, err = eval(ctx, n.LHS, device, state, geospatial, vars)
 		if err != nil {
 			return falseExpr, err
 		}
-		rv, err = eval(ctx, n.RHS, device, state, spatial, vars)
+		rv, err = eval(ctx, n.RHS, device, state, geospatial, vars)
 		if err != nil {
 			return falseExpr, err
 		}
@@ -82,27 +82,27 @@ func eval(
 				}
 				switch typ := object.(type) {
 				case *geojson.Point:
-					if !spatial.IntersectsPoint(device, typ) {
+					if !geospatial.IntersectsPoint(device, typ) {
 						return falseExpr, nil
 					}
 				case *geojson.Rect:
-					if !spatial.IntersectsRect(device, typ) {
+					if !geospatial.IntersectsRect(device, typ) {
 						return falseExpr, nil
 					}
 				case *geojson.LineString:
-					if !spatial.IntersectsLine(device, typ) {
+					if !geospatial.IntersectsLine(device, typ) {
 						return falseExpr, nil
 					}
 				case *geojson.MultiLineString:
-					if !spatial.IntersectsMultiLine(device, typ) {
+					if !geospatial.IntersectsMultiLine(device, typ) {
 						return falseExpr, nil
 					}
 				case *geojson.Polygon:
-					if !spatial.IntersectsPoly(device, typ) {
+					if !geospatial.IntersectsPoly(device, typ) {
 						return falseExpr, nil
 					}
 				case *geojson.MultiPolygon:
-					if !spatial.IntersectsMultiPoly(device, typ) {
+					if !geospatial.IntersectsMultiPoly(device, typ) {
 						return falseExpr, nil
 					}
 				default:

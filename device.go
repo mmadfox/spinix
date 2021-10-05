@@ -52,7 +52,6 @@ func NewState() *State {
 func (s *State) Update(device *Device) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
 	s.imei = device.IMEI
 	s.owner = device.Owner
 	s.brand = device.Brand
