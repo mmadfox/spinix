@@ -45,8 +45,14 @@ type State struct {
 	init          bool
 }
 
-func NewState() *State {
-	return &State{}
+func NewState(imei string) *State {
+	return &State{
+		imei: imei,
+	}
+}
+
+func (s *State) IMEI() string {
+	return s.imei
 }
 
 func (s *State) Update(device *Device) {

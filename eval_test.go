@@ -10,7 +10,8 @@ import (
 
 func TestEvalSpatial(t *testing.T) {
 	v := NewInMemVars()
-	_ = v.Set("p1", geojson.NewPolygon(geometry.NewPoly([]geometry.Point{
+	ctx := context.Background()
+	_ = v.Set(ctx, "p1", geojson.NewPolygon(geometry.NewPoly([]geometry.Point{
 		{
 			X: 42.9267814,
 			Y: -72.2808671,
@@ -33,7 +34,6 @@ func TestEvalSpatial(t *testing.T) {
 		},
 	}, nil, nil)))
 	expr := rule(t, "intersectsPoly(@p1)")
-	ctx := context.Background()
 	res, err := eval(ctx, expr, &Device{Latitude: 42.9262708, Longitude: -72.2799339}, &State{}, geospatial{}, v)
 	if err != nil {
 		t.Fatalf("should not be nil")
@@ -44,8 +44,9 @@ func TestEvalSpatial(t *testing.T) {
 }
 
 func BenchmarkEvalSpatial(b *testing.B) {
+	ctx := context.Background()
 	v := NewInMemVars()
-	_ = v.Set("p1", geojson.NewPolygon(geometry.NewPoly([]geometry.Point{
+	_ = v.Set(ctx, "p1", geojson.NewPolygon(geometry.NewPoly([]geometry.Point{
 		{
 			X: 42.9267814,
 			Y: -72.2808671,
@@ -71,7 +72,6 @@ func BenchmarkEvalSpatial(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	ctx := context.Background()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		res, err := eval(ctx, expr, &Device{Latitude: 42.9262708, Longitude: -72.2799339}, &State{}, geospatial{}, v)

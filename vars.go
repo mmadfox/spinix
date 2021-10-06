@@ -9,23 +9,25 @@ import (
 
 type Vars interface {
 	Lookup(ctx context.Context, id string) (interface{}, error)
+	Set(ctx context.Context, id string, v interface{}) error
+	Remove(ctx context.Context, id string) error
 }
 
 var _ Vars = InMemVars{}
 
 const bucketCount = 64
 
-type InMemVars []*bucket
+type InMemVars []*varBucket
 
 func NewInMemVars() InMemVars {
 	buckets := make(InMemVars, bucketCount)
 	for i := 0; i < bucketCount; i++ {
-		buckets[i] = &bucket{items: make(map[string]interface{})}
+		buckets[i] = &varBucket{items: make(map[string]interface{})}
 	}
 	return buckets
 }
 
-func (s InMemVars) bucket(id string) *bucket {
+func (s InMemVars) bucket(id string) *varBucket {
 	return s[fnv32(id)%bucketCount]
 }
 
@@ -43,7 +45,7 @@ func (s InMemVars) Lookup(_ context.Context, id string) (interface{}, error) {
 	return val, nil
 }
 
-func (s InMemVars) Set(id string, v interface{}) error {
+func (s InMemVars) Set(_ context.Context, id string, v interface{}) error {
 	if !strings.HasPrefix(id, "@") {
 		id = "@" + id
 	}
@@ -58,7 +60,7 @@ func (s InMemVars) Set(id string, v interface{}) error {
 	return nil
 }
 
-func (s InMemVars) Remove(id string) {
+func (s InMemVars) Remove(_ context.Context, id string) error {
 	if !strings.HasPrefix(id, "@") {
 		id = "@" + id
 	}
@@ -66,10 +68,11 @@ func (s InMemVars) Remove(id string) {
 	b.Lock()
 	defer b.Unlock()
 	delete(b.items, id)
+	return nil
 }
 
-func VarsFromSpec(s S) []string {
-	vars := make([]string, 0, 8)
+func VarsFromSpec(s S) map[string]struct{} {
+	vars := make(map[string]struct{})
 	WalkFunc(s.Expr(), func(expr Expr) {
 		switch typ := expr.(type) {
 		case *CallExpr:
@@ -78,14 +81,14 @@ func VarsFromSpec(s S) []string {
 				if !ok {
 					continue
 				}
-				vars = append(vars, lit.Value[1:])
+				vars[lit.Value[1:]] = struct{}{}
 			}
 		}
 	})
 	return vars
 }
 
-type bucket struct {
+type varBucket struct {
 	items map[string]interface{}
 	sync.RWMutex
 }

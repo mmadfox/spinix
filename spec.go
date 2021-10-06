@@ -5,24 +5,34 @@ import (
 )
 
 type S struct {
-	id   string
-	name string
-	expr Expr
+	id        string
+	name      string
+	expr      Expr
+	isSpatial bool
 }
 
 func Spec(id string, name string, spec string) (S, error) {
 	if len(spec) == 0 {
 		return S{}, fmt.Errorf("georule: specification not defined")
 	}
-	expr, err := ParseString(spec)
+	rule, err := ParseString(spec)
 	if err != nil {
 		return S{}, err
 	}
 	newSpec := S{
 		id:   id,
 		name: name,
-		expr: expr,
+		expr: rule,
 	}
+	WalkFunc(rule, func(expr Expr) {
+		switch typ := expr.(type) {
+		case *CallExpr:
+			if typ.Fun.IsGeospatialKeyword() {
+				newSpec.isSpatial = true
+				return
+			}
+		}
+	})
 	return newSpec, nil
 }
 
@@ -44,4 +54,8 @@ func (r S) Expr() Expr {
 
 func (r S) IsEmpty() bool {
 	return r.expr == nil
+}
+
+func (r S) IsSpatial() bool {
+	return r.isSpatial
 }

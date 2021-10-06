@@ -17,11 +17,12 @@ func TestInMemVars_Lookup(t *testing.T) {
 }
 
 func TestInMemVars_Set(t *testing.T) {
+	ctx := context.Background()
 	vars := NewInMemVars()
-	if have, want := vars.Set("key1", "value"), error(nil); have != want {
+	if have, want := vars.Set(ctx, "key1", "value"), error(nil); have != want {
 		t.Fatalf("vars.Set(key1, value) => %v, want %v", have, want)
 	}
-	if have, want := vars.Set("key1", "value"), error(nil); have == want {
+	if have, want := vars.Set(ctx, "key1", "value"), error(nil); have == want {
 		t.Fatalf("vars.Set(key1, value) => %v, want %v", have, want)
 	}
 	v, err := vars.Lookup(context.Background(), "key1")
@@ -38,10 +39,11 @@ func TestInMemVars_Set(t *testing.T) {
 
 func TestInMemVars_Remove(t *testing.T) {
 	vars := NewInMemVars()
-	if have, want := vars.Set("key1", "value"), error(nil); have != want {
+	ctx := context.Background()
+	if have, want := vars.Set(ctx, "key1", "value"), error(nil); have != want {
 		t.Fatalf("vars.Set(key1, value) => %v, want %v", have, want)
 	}
-	vars.Remove("key1")
+	_ = vars.Remove(ctx, "key1")
 	v, err := vars.Lookup(context.Background(), "key1")
 	if err == nil {
 		t.Fatalf("should not be nil")
