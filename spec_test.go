@@ -5,7 +5,7 @@ import (
 )
 
 func TestVars(t *testing.T) {
-	s, err := Spec("id", "test", "intersectsPoly(@id1, @id2, @id3) OR intersectsPoly(@id4, @id4, @id4)")
+	s, err := ParseSpec("id", "test", "intersectsPoly(@id1, @id2, @id3) OR intersectsPoly(@id4, @id4, @id4)")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,10 +46,10 @@ func TestFromString(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		spec, err := Spec(tc.id, tc.name, tc.spec)
+		spec, err := ParseSpec(tc.id, tc.name, tc.spec)
 		if tc.isErr {
 			if err == nil {
-				t.Fatalf("Spec(%s, %s) => got nil, expected non nil error", tc.name, tc.spec)
+				t.Fatalf("ParseSpec(%s, %s) => got nil, expected non nil error", tc.name, tc.spec)
 			} else {
 				return
 			}

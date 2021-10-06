@@ -11,7 +11,7 @@ type S struct {
 	isSpatial bool
 }
 
-func Spec(id string, name string, spec string) (S, error) {
+func ParseSpec(id string, name string, spec string) (S, error) {
 	if len(spec) == 0 {
 		return S{}, fmt.Errorf("georule: specification not defined")
 	}

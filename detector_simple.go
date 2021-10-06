@@ -11,8 +11,6 @@ import (
 	"github.com/rs/xid"
 )
 
-var _ Detector = &SimpleDetector{}
-
 type SimpleDetectorOption func(*SimpleDetector)
 
 type SimpleDetector struct {
@@ -22,12 +20,16 @@ type SimpleDetector struct {
 	geospatial Geospatial
 }
 
-func NewSimpleDetector() *SimpleDetector {
-	return &SimpleDetector{
+func NewSimpleDetector(opts ...SimpleDetectorOption) *SimpleDetector {
+	detector := &SimpleDetector{
 		rules:      make(map[string]S),
 		vars:       NewInMemVars(),
-		geospatial: geospatial{},
+		geospatial: DefaultGeospatial(),
 	}
+	for _, f := range opts {
+		f(detector)
+	}
+	return detector
 }
 
 func WithSimpleDetectorVars(v Vars) SimpleDetectorOption {
@@ -79,7 +81,7 @@ func (d *SimpleDetector) AddRule(ctx context.Context, rule Rule) error {
 		return err
 	}
 
-	spec, err := Spec(rule.ID, rule.Name, rule.Spec)
+	spec, err := ParseSpec(rule.ID, rule.Name, rule.Spec)
 	if err != nil {
 		return err
 	}
@@ -96,11 +98,11 @@ func (d *SimpleDetector) AddRule(ctx context.Context, rule Rule) error {
 	if len(rule.Variables) > 0 {
 		vars := VarsFromSpec(spec)
 		for _, v := range rule.Variables {
-			_, found := vars[v.ID]
+			_, found := vars[v.Name]
 			if !found {
 				continue
 			}
-			if err := d.vars.Set(ctx, v.ID, v.Value); err != nil {
+			if err := d.vars.Set(ctx, v.Name, v.Object); err != nil {
 				if der := d.DeleteRule(ctx, rule.ID); der != nil {
 					return multierror.Append(err, der)
 				} else {
@@ -118,3 +120,5 @@ func (d *SimpleDetector) DeleteRule(_ context.Context, id string) error {
 	delete(d.rules, id)
 	return nil
 }
+
+var _ Detector = &SimpleDetector{}
