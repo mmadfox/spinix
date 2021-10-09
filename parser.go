@@ -1,4 +1,4 @@
-package georule
+package spinix
 
 import (
 	"fmt"
@@ -16,15 +16,15 @@ type Parser struct {
 	pos Pos
 }
 
-func New(r io.Reader) *Parser {
+func newParser(r io.Reader) *Parser {
 	p := &Parser{s: scanner.Scanner{}}
 	p.s.Mode = scanner.ScanIdents | scanner.ScanFloats | scanner.ScanStrings
 	p.s.Init(r)
 	return p
 }
 
-func ParseString(rule string) (Expr, error) {
-	return New(strings.NewReader(rule)).Parse()
+func ParseRule(spec string) (Expr, error) {
+	return newParser(strings.NewReader(spec)).Parse()
 }
 
 func (p *Parser) Parse() (Expr, error) {

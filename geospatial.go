@@ -1,4 +1,4 @@
-package georule
+package spinix
 
 import (
 	"github.com/tidwall/geojson"
@@ -15,32 +15,44 @@ type Geospatial interface {
 }
 
 func DefaultGeospatial() Geospatial {
-	return geospatial{}
+	return defaultGeospatial{}
 }
 
-type geospatial struct {
+func Rect(min, max geometry.Point) *geojson.Rect {
+	return geojson.NewRect(geometry.Rect{Min: min, Max: max})
 }
 
-func (geospatial) IntersectsPoly(device *Device, object *geojson.Polygon) bool {
+func Poly(exterior []geometry.Point, holes [][]geometry.Point) *geojson.Polygon {
+	return geojson.NewPolygon(geometry.NewPoly(exterior, holes, nil))
+}
+
+func Point(x, y float64) *geojson.Point {
+	return geojson.NewPoint(geometry.Point{X: x, Y: y})
+}
+
+type defaultGeospatial struct {
+}
+
+func (defaultGeospatial) IntersectsPoly(device *Device, object *geojson.Polygon) bool {
 	return object.IntersectsPoint(geometry.Point{X: device.Latitude, Y: device.Longitude})
 }
 
-func (geospatial) IntersectsMultiPoly(device *Device, object *geojson.MultiPolygon) bool {
+func (defaultGeospatial) IntersectsMultiPoly(device *Device, object *geojson.MultiPolygon) bool {
 	return object.IntersectsPoint(geometry.Point{X: device.Latitude, Y: device.Longitude})
 }
 
-func (geospatial) IntersectsLine(device *Device, object *geojson.LineString) bool {
+func (defaultGeospatial) IntersectsLine(device *Device, object *geojson.LineString) bool {
 	return object.IntersectsPoint(geometry.Point{X: device.Latitude, Y: device.Longitude})
 }
 
-func (geospatial) IntersectsMultiLine(device *Device, object *geojson.MultiLineString) bool {
+func (defaultGeospatial) IntersectsMultiLine(device *Device, object *geojson.MultiLineString) bool {
 	return object.IntersectsPoint(geometry.Point{X: device.Latitude, Y: device.Longitude})
 }
 
-func (geospatial) IntersectsRect(device *Device, object *geojson.Rect) bool {
+func (defaultGeospatial) IntersectsRect(device *Device, object *geojson.Rect) bool {
 	return object.IntersectsPoint(geometry.Point{X: device.Latitude, Y: device.Longitude})
 }
 
-func (geospatial) IntersectsPoint(device *Device, object *geojson.Point) bool {
+func (defaultGeospatial) IntersectsPoint(device *Device, object *geojson.Point) bool {
 	return object.IntersectsPoint(geometry.Point{X: device.Latitude, Y: device.Longitude})
 }

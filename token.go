@@ -1,4 +1,4 @@
-package georule
+package spinix
 
 import "strconv"
 
@@ -247,7 +247,7 @@ func (tok Token) IsKeyword() bool {
 	return keywordBegin < tok && tok < keywordEnd
 }
 
-func (tok Token) IsGeospatialKeyword() bool {
+func (tok Token) IsSpatialKeyword() bool {
 	if !tok.IsKeyword() {
 		return false
 	}

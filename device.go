@@ -1,4 +1,4 @@
-package georule
+package spinix
 
 import (
 	"sync"

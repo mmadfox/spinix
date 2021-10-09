@@ -1,4 +1,4 @@
-package georule
+package spinix
 
 type Visitor interface {
 	Visit(Expr) Visitor

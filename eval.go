@@ -1,4 +1,4 @@
-package georule
+package spinix
 
 import (
 	"context"
@@ -19,9 +19,9 @@ func eval(
 	device *Device,
 	state *State,
 	geospatial Geospatial,
-	vars Vars,
+	objects ObjectLookup,
 ) (Expr, error) {
-	if expr == nil || device == nil || state == nil || vars == nil || geospatial == nil {
+	if expr == nil || device == nil || state == nil || objects == nil || geospatial == nil {
 		return falseExpr, nil
 	}
 	var (
@@ -31,13 +31,13 @@ func eval(
 
 	switch n := expr.(type) {
 	case *ParenExpr:
-		return eval(ctx, n.Expr, device, state, geospatial, vars)
+		return eval(ctx, n.Expr, device, state, geospatial, objects)
 	case *BinaryExpr:
-		lv, err = eval(ctx, n.LHS, device, state, geospatial, vars)
+		lv, err = eval(ctx, n.LHS, device, state, geospatial, objects)
 		if err != nil {
 			return falseExpr, err
 		}
-		rv, err = eval(ctx, n.RHS, device, state, geospatial, vars)
+		rv, err = eval(ctx, n.RHS, device, state, geospatial, objects)
 		if err != nil {
 			return falseExpr, err
 		}
@@ -71,14 +71,14 @@ func eval(
 		}
 	case *CallExpr:
 		switch n.Fun {
-		case FUN_INTERSECTS_POLY, FUN_INTERSECTS_MULTIPOLY,
+		case FUN_INTERSECTS, FUN_INTERSECTS_POLY, FUN_INTERSECTS_MULTIPOLY,
 			FUN_INTERSECTS_LINE, FUN_INTERSECTS_MULTILINE, FUN_INTERSECTS_RECT,
 			FUN_INTERSECTS_POINT:
 			args := args2str(n.Args)
 			for _, id := range args {
-				object, err := vars.Lookup(ctx, id)
+				object, err := objects.Lookup(ctx, id)
 				if err != nil {
-					return falseExpr, err
+					return falseExpr, nil
 				}
 				switch typ := object.(type) {
 				case *geojson.Point:
@@ -106,7 +106,7 @@ func eval(
 						return falseExpr, nil
 					}
 				default:
-					return falseExpr, fmt.Errorf("georule/eval: %v unknown geospatial type", typ)
+					return falseExpr, fmt.Errorf("georule/eval: %v unknown geojson type", typ)
 				}
 			}
 			return &BooleanLit{Value: true}, nil

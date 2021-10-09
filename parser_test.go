@@ -1,4 +1,4 @@
-package georule
+package spinix
 
 import (
 	"fmt"
@@ -6,12 +6,6 @@ import (
 	"strings"
 	"testing"
 )
-
-// TODO
-// exitFrom(@id)
-// entranceIn(@id)
-// movingIn(@id)
-// durationIn(@id, duration)
 
 func TestParse(t *testing.T) {
 	testCases := []struct {
@@ -173,21 +167,21 @@ func TestParse(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			expr, err := ParseString(tc.rule)
+			expr, err := ParseRule(tc.rule)
 			if tc.isErr {
 				if err == nil {
-					t.Fatalf("ParseString(%s) => got nil, expected non nil error", tc.rule)
+					t.Fatalf("ParseRule(%s) => got nil, expected non nil error", tc.rule)
 				} else {
 					return
 				}
 			}
 			if expr == nil {
-				t.Fatalf("ParseString(%s) => got expr nil, expected non nil expr", tc.rule)
+				t.Fatalf("ParseRule(%s) => got expr nil, expected non nil expr", tc.rule)
 			} else {
 				have := reflect.TypeOf(expr).Elem().Name()
 				want := reflect.TypeOf(tc.typ).Elem().Name()
 				if have != want {
-					t.Fatalf("ParseString(%s) => got %s, expected %s", tc.rule, have, want)
+					t.Fatalf("ParseRule(%s) => got %s, expected %s", tc.rule, have, want)
 				}
 			}
 		})
