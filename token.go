@@ -26,6 +26,8 @@ const (
 	INSIDE     // INSIDE
 	OUTSIDE    // OUTSIDE
 	INTERSECTS // INTERSECTS
+	NEARBY     // NEARBY
+	ONDISTANCE // ON DISTANCE 400
 
 	ADD // +
 	SUB // -
@@ -113,6 +115,8 @@ var tokens = [...]string{
 	INSIDE:     "INSIDE",
 	OUTSIDE:    "OUTSIDE",
 	INTERSECTS: "INTERSECTS",
+	NEARBY:     "NEARBY",
+	ONDISTANCE: "ON DISTANCE",
 
 	EQL: "==",
 	LSS: "<",
@@ -193,8 +197,7 @@ func (tok Token) Precedence() int {
 		return 1
 	case AND:
 		return 2
-		// TODO:
-	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR:
+	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR, ONDISTANCE, NEARBY:
 		return 3
 	}
 	return 0

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/uber/h3-go"
-
 	"github.com/rs/xid"
 )
 
@@ -89,7 +87,6 @@ func (e *Engine) Rules() Rules {
 }
 
 func (e *Engine) Detect(ctx context.Context, device *Device) ([]Event, error) {
-	e.identify(device)
 	prevState, err := e.devices.Lookup(ctx, device.IMEI)
 	if err != nil {
 		err = nil
@@ -101,7 +98,7 @@ func (e *Engine) Detect(ctx context.Context, device *Device) ([]Event, error) {
 			if err != nil {
 				return err
 			}
-			expr, err := e.invokeRule(ctx, rule.expr, prevState, device)
+			expr, err := e.invokeSpec(ctx, rule.expr, prevState, device)
 			if err != nil {
 				return err
 			}
@@ -161,15 +158,11 @@ func (e *Engine) InsertRule(ctx context.Context, rule *Rule) error {
 	return nil
 }
 
-func (e *Engine) identify(device *Device) {
-	device.RegionLevel = largeLevel
-	device.RegionID = h3.FromGeo(h3.GeoCoord{
-		Latitude:  device.Latitude,
-		Longitude: device.Longitude,
-	}, device.RegionLevel)
+func (e *Engine) InvokeSpec(ctx context.Context, expr Expr, device *Device) (Expr, error) {
+	return e.invokeSpec(ctx, expr, device, device)
 }
 
-func (e *Engine) invokeRule(ctx context.Context, expr Expr, prevState, currentState *Device) (Expr, error) {
+func (e *Engine) invokeSpec(ctx context.Context, expr Expr, prevState, currentState *Device) (Expr, error) {
 	var (
 		err    error
 		lv, rv Expr
@@ -177,17 +170,17 @@ func (e *Engine) invokeRule(ctx context.Context, expr Expr, prevState, currentSt
 
 	switch n := expr.(type) {
 	case *ParenExpr:
-		return e.invokeRule(ctx, expr, prevState, currentState)
+		return e.invokeSpec(ctx, expr, prevState, currentState)
 	case *BinaryExpr:
-		lv, err = e.invokeRule(ctx, n.LHS, prevState, currentState)
+		lv, err = e.invokeSpec(ctx, n.LHS, prevState, currentState)
 		if err != nil {
 			return falseExpr, err
 		}
-		rv, err = e.invokeRule(ctx, n.RHS, prevState, currentState)
+		rv, err = e.invokeSpec(ctx, n.RHS, prevState, currentState)
 		if err != nil {
 			return falseExpr, err
 		}
-		return applyOperator(n.Op, lv, rv)
+		return e.applyOperator(ctx, n.Op, lv, rv, prevState, currentState)
 	case *VarLit:
 		switch n.Value {
 		case VAR_SPEED:
@@ -216,97 +209,7 @@ func (e *Engine) invokeRule(ctx context.Context, expr Expr, prevState, currentSt
 			return &IntLit{Value: currentState.Status}, nil
 		}
 	case *CallExpr:
-		switch n.Fun {
-		default:
-			return falseExpr, nil
-			//case FUN_WITHIN, FUN_WITHIN_RECT, FUN_WITHIN_POLY, FUN_WITHIN_POINT, FUN_WITHIN_LINE:
-			//	args := args2str(n.Args)
-			//	for _, id := range args {
-			//		object, err := e.objects.Lookup(ctx, id)
-			//		if err != nil {
-			//			return falseExpr, nil
-			//		}
-			//		switch typ := object.(type) {
-			//		case *geojson.Point:
-			//			if !e.geospatial.WithinPoint(currentState, typ) {
-			//				return falseExpr, nil
-			//			}
-			//			return trueExpr, nil
-			//		case *geojson.Rect:
-			//			if !e.geospatial.WithinRect(currentState, typ) {
-			//				return falseExpr, nil
-			//			}
-			//			return trueExpr, nil
-			//		case *geojson.LineString:
-			//			if !e.geospatial.WithinLine(currentState, typ) {
-			//				return falseExpr, nil
-			//			}
-			//			return trueExpr, nil
-			//		case *geojson.MultiLineString:
-			//			if !e.geospatial.WithinMultiLine(currentState, typ) {
-			//				return falseExpr, nil
-			//			}
-			//			return trueExpr, nil
-			//		case *geojson.Polygon:
-			//			if !e.geospatial.WithinPoly(currentState, typ) {
-			//				return falseExpr, nil
-			//			}
-			//			return trueExpr, nil
-			//		case *geojson.MultiPolygon:
-			//			if !e.geospatial.WithinMultiPoly(currentState, typ) {
-			//				return falseExpr, nil
-			//			}
-			//			return trueExpr, nil
-			//		default:
-			//			return falseExpr, fmt.Errorf("georule: %v unknown geojson type", typ)
-			//		}
-			//	}
-			//case FUN_INTERSECTS_POLY, FUN_INTERSECTS_MULTIPOLY,
-			//	FUN_INTERSECTS_LINE, FUN_INTERSECTS_MULTILINE, FUN_INTERSECTS_RECT,
-			//	FUN_INTERSECTS_POINT:
-			//	args := args2str(n.Args)
-			//	for _, id := range args {
-			//		object, err := e.objects.Lookup(ctx, id)
-			//		if err != nil {
-			//			return falseExpr, nil
-			//		}
-			//		switch typ := object.(type) {
-			//		case *geojson.Point:
-			//			if !e.geospatial.IntersectsPoint(currentState, typ) {
-			//				return falseExpr, nil
-			//			}
-			//			return trueExpr, nil
-			//		case *geojson.Rect:
-			//			if !e.geospatial.IntersectsRect(currentState, typ) {
-			//				return falseExpr, nil
-			//			}
-			//			return trueExpr, nil
-			//		case *geojson.LineString:
-			//			if !e.geospatial.IntersectsLine(currentState, typ) {
-			//				return falseExpr, nil
-			//			}
-			//			return trueExpr, nil
-			//		case *geojson.MultiLineString:
-			//			if !e.geospatial.IntersectsMultiLine(currentState, typ) {
-			//				return falseExpr, nil
-			//			}
-			//			return trueExpr, nil
-			//		case *geojson.Polygon:
-			//			if !e.geospatial.IntersectsPoly(currentState, typ) {
-			//				return falseExpr, nil
-			//			}
-			//			return trueExpr, nil
-			//		case *geojson.MultiPolygon:
-			//			if !e.geospatial.IntersectsMultiPoly(currentState, typ) {
-			//				return falseExpr, nil
-			//			}
-			//			return trueExpr, nil
-			//		default:
-			//			return falseExpr, fmt.Errorf("georule: %v unknown geojson type", typ)
-			//		}
-			//	}
-			// return &BooleanLit{Value: true}, nil
-		}
+		_ = n
 	}
 	return expr, nil
 }

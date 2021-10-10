@@ -3,6 +3,8 @@ package spinix
 import (
 	"fmt"
 	"strings"
+
+	"github.com/tidwall/geojson"
 )
 
 type Expr interface {
@@ -77,7 +79,22 @@ type (
 	BooleanLit struct {
 		Value bool
 	}
+
+	ObjectOnDistanceLit struct {
+		Objects []Object
+		Meters  float64
+	}
+
+	DeviceOnDistanceLit struct {
+		DeviceIDs map[string]struct{}
+		Meters    float64
+	}
 )
+
+type Object struct {
+	ID   string
+	Data geojson.Object
+}
 
 func (e *ParenExpr) String() string {
 	return fmt.Sprintf("(%s)", e.Expr.String())
@@ -138,6 +155,14 @@ func (e *ListLit) String() string {
 	return sb.String()
 }
 
+func (e *ObjectOnDistanceLit) String() string {
+	return "todo"
+}
+
+func (e *DeviceOnDistanceLit) String() string {
+	return "todo"
+}
+
 func (e *BooleanLit) String() string {
 	if e.Value {
 		return "true"
@@ -146,12 +171,14 @@ func (e *BooleanLit) String() string {
 	}
 }
 
-func (_ *ParenExpr) expr()  {}
-func (_ *BinaryExpr) expr() {}
-func (_ *CallExpr) expr()   {}
-func (_ *StringLit) expr()  {}
-func (_ *IntLit) expr()     {}
-func (_ *FloatLit) expr()   {}
-func (_ *VarLit) expr()     {}
-func (_ *ListLit) expr()    {}
-func (_ *BooleanLit) expr() {}
+func (_ *ParenExpr) expr()           {}
+func (_ *BinaryExpr) expr()          {}
+func (_ *CallExpr) expr()            {}
+func (_ *StringLit) expr()           {}
+func (_ *IntLit) expr()              {}
+func (_ *FloatLit) expr()            {}
+func (_ *VarLit) expr()              {}
+func (_ *ListLit) expr()             {}
+func (_ *BooleanLit) expr()          {}
+func (_ *ObjectOnDistanceLit) expr() {}
+func (_ *DeviceOnDistanceLit) expr() {}

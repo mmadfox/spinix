@@ -62,6 +62,8 @@ func (d *devices) Lookup(_ context.Context, deviceID string) (*Device, error) {
 }
 
 func (d *devices) InsertOrReplace(_ context.Context, device *Device) error {
+	d.identify(device)
+
 	prevState, err := d.index.get(device.IMEI)
 	if prevState != nil && err == nil {
 		dist := geo.DistanceTo(
@@ -165,6 +167,14 @@ func (d *devices) Nearby(
 		}
 	}
 	return
+}
+
+func (d *devices) identify(device *Device) {
+	device.RegionLevel = largeLevel
+	device.RegionID = h3.FromGeo(h3.GeoCoord{
+		Latitude:  device.Latitude,
+		Longitude: device.Longitude,
+	}, device.RegionLevel)
 }
 
 type deviceRegion struct {

@@ -23,7 +23,7 @@ func newParser(r io.Reader) *Parser {
 	return p
 }
 
-func ParseRule(spec string) (Expr, error) {
+func ParseSpec(spec string) (Expr, error) {
 	return newParser(strings.NewReader(spec)).Parse()
 }
 
@@ -86,10 +86,6 @@ func (p *Parser) parseExprOrKeyword() (Expr, error) {
 		return p.parseFloatExpr(lit)
 	case STRING:
 		return p.parseStringExpr(lit)
-	//case FUN_BATTERY_CHARGE, FUN_SPEED, FUN_TEMPERATURE, FUN_HUMIDITY,
-	//	FUN_DURATION, FUN_DURATION_SECONDS, FUN_DURATION_MINUTES, FUN_DURATION_HOURS,
-	//	FUN_LUMONOSITY, FUN_PRESSURE, FUN_FUELLEVEL:
-	//	return p.parseCallExprWithRangeArgs(tok)
 	case FUN_DEVICE:
 		return p.parseCallExprWithArgs(tok)
 	case FUN_POLY, FUN_MULTI_POLY, FUN_POINT, FUN_LINE, FUN_MULTI_LINE, FUN_MULTI_POINT,
@@ -474,6 +470,14 @@ func (p *Parser) next() (tok Token, lit string) {
 			tok = keyword
 		} else {
 			switch strings.ToUpper(sl) {
+			case "ON":
+				st, sl = p.scan()
+				if sl == "distance" {
+					tok = ONDISTANCE
+				} else {
+					tok = ILLEGAL
+					p.reset()
+				}
 			case "IN":
 				tok = IN
 			case "INSIDE":
@@ -482,42 +486,14 @@ func (p *Parser) next() (tok Token, lit string) {
 				tok = OUTSIDE
 			case "INTERSECTS":
 				tok = INTERSECTS
+			case "NEARBY":
+				tok = NEARBY
 			case "AND":
 				tok = AND
 			case "OR":
 				tok = OR
 			case "NOT":
-
-				//_, not := p.scan()
-				//switch not {
-				//case "in", "IN":
-				//	tok = NOTIN
-				//case "contains":
-				//	tok = FUN_NOTCONTAINS
-				//case "within":
-				//	tok = FUN_NOTWITHIN
-				//case "withinLine":
-				//	tok = FUN_NOTWITHIN_LINE
-				//case "withinPoint":
-				//	tok = FUN_NOTWITHIN_POINT
-				//case "withinPoly":
-				//	tok = FUN_NOTWITHIN_POLY
-				//case "withinRect":
-				//	tok = FUN_NOTWITHIN_RECT
-				//case "intersects":
-				//	tok = FUN_NOTINTERSECTS
-				//case "intersectsLine":
-				//	tok = FUN_NOTINTERSECTS_LINE
-				//case "intersectsPoint":
-				//	tok = FUN_NOTINTERSECTS_POINT
-				//case "intersectsPoly":
-				//	tok = FUN_NOTINTERSECTS_POLY
-				//case "intersectsRect":
-				//	tok = FUN_NOTINTERSECTS_RECT
-				//default:
-				//	p.reset()
-				//	tok = ILLEGAL
-				//}
+				// TODO:
 			default:
 				tok = ILLEGAL
 			}
