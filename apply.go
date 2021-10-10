@@ -1,119 +1,14 @@
 package spinix
 
 import (
-	"context"
 	"fmt"
 	"math"
-
-	"github.com/tidwall/geojson"
 )
 
 var (
 	falseExpr = &BooleanLit{}
 	epsilon   = 1e-6
 )
-
-func eval(
-	ctx context.Context,
-	expr Expr,
-	device *Device,
-	state *State,
-	geospatial Geospatial,
-	objects ObjectLookup,
-) (Expr, error) {
-	if expr == nil || device == nil || state == nil || objects == nil || geospatial == nil {
-		return falseExpr, nil
-	}
-	var (
-		err    error
-		lv, rv Expr
-	)
-
-	switch n := expr.(type) {
-	case *ParenExpr:
-		return eval(ctx, n.Expr, device, state, geospatial, objects)
-	case *BinaryExpr:
-		lv, err = eval(ctx, n.LHS, device, state, geospatial, objects)
-		if err != nil {
-			return falseExpr, err
-		}
-		rv, err = eval(ctx, n.RHS, device, state, geospatial, objects)
-		if err != nil {
-			return falseExpr, err
-		}
-		return applyOperator(n.Op, lv, rv)
-	case *VarLit:
-		switch n.Value {
-		case VAR_SPEED:
-			return &FloatLit{Value: device.Speed}, nil
-		case VAR_BATTERY:
-			return &FloatLit{Value: device.BatteryCharge}, nil
-		case VAR_TEMPERATURE:
-			return &FloatLit{Value: device.Temperature}, nil
-		case VAR_HUMIDITY:
-			return &FloatLit{Value: device.Humidity}, nil
-		case VAR_LUMONOSITY:
-			return &FloatLit{Value: device.Luminosity}, nil
-		case VAR_PRESSURE:
-			return &FloatLit{Value: device.Pressure}, nil
-		case VAR_FUELLEVEL:
-			return &FloatLit{Value: device.FuelLevel}, nil
-		case VAR_MODEL:
-			return &StringLit{Value: device.Model}, nil
-		case VAR_BRAND:
-			return &StringLit{Value: device.Brand}, nil
-		case VAR_OWNER:
-			return &StringLit{Value: device.Owner}, nil
-		case VAR_EMEI:
-			return &StringLit{Value: device.IMEI}, nil
-		case VAR_STATUS:
-			return &IntLit{Value: device.Status}, nil
-		}
-	case *CallExpr:
-		switch n.Fun {
-		case FUN_INTERSECTS, FUN_INTERSECTS_POLY, FUN_INTERSECTS_MULTIPOLY,
-			FUN_INTERSECTS_LINE, FUN_INTERSECTS_MULTILINE, FUN_INTERSECTS_RECT,
-			FUN_INTERSECTS_POINT:
-			args := args2str(n.Args)
-			for _, id := range args {
-				object, err := objects.Lookup(ctx, id)
-				if err != nil {
-					return falseExpr, nil
-				}
-				switch typ := object.(type) {
-				case *geojson.Point:
-					if !geospatial.IntersectsPoint(device, typ) {
-						return falseExpr, nil
-					}
-				case *geojson.Rect:
-					if !geospatial.IntersectsRect(device, typ) {
-						return falseExpr, nil
-					}
-				case *geojson.LineString:
-					if !geospatial.IntersectsLine(device, typ) {
-						return falseExpr, nil
-					}
-				case *geojson.MultiLineString:
-					if !geospatial.IntersectsMultiLine(device, typ) {
-						return falseExpr, nil
-					}
-				case *geojson.Polygon:
-					if !geospatial.IntersectsPoly(device, typ) {
-						return falseExpr, nil
-					}
-				case *geojson.MultiPolygon:
-					if !geospatial.IntersectsMultiPoly(device, typ) {
-						return falseExpr, nil
-					}
-				default:
-					return falseExpr, fmt.Errorf("georule/eval: %v unknown geojson type", typ)
-				}
-			}
-			return &BooleanLit{Value: true}, nil
-		}
-	}
-	return expr, nil
-}
 
 func applyOperator(op Token, l, r Expr) (*BooleanLit, error) {
 	switch op {

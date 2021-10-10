@@ -106,8 +106,10 @@ func NewRule(
 		return nil, err
 	}
 
-	circle, bbox := newCircle(centerLat, centerLon, radiusInMeters)
-	regionIDs, regionLevel := cover(radiusInMeters, circle)
+	steps := getSteps(radiusInMeters)
+	regionLevel := getLevel(radiusInMeters)
+	circle, bbox := newCircle(centerLat, centerLon, radiusInMeters, steps)
+	regionIDs := cover(radiusInMeters, regionLevel, circle)
 
 	return &Rule{
 		ruleID:      xid.New().String(),
@@ -256,11 +258,11 @@ type rules struct {
 }
 
 type largeRegionIndex struct {
-	index map[h3.H3Index]*largeRegion
+	index map[h3.H3Index]*ruleLargeRegion
 	mu    sync.RWMutex
 }
 
-func (i *largeRegionIndex) find(id h3.H3Index) (*largeRegion, bool) {
+func (i *largeRegionIndex) find(id h3.H3Index) (*ruleLargeRegion, bool) {
 	i.mu.RLock()
 	defer i.mu.RUnlock()
 	region, ok := i.index[id]
@@ -276,14 +278,14 @@ func (i *largeRegionIndex) delete(id h3.H3Index) {
 	delete(i.index, id)
 }
 
-func (i *largeRegionIndex) findOrCreate(id h3.H3Index) *largeRegion {
+func (i *largeRegionIndex) findOrCreate(id h3.H3Index) *ruleLargeRegion {
 	i.mu.RLock()
 	region, found := i.index[id]
 	i.mu.RUnlock()
 	if found {
 		return region
 	}
-	region = newLargeRegion(id)
+	region = newRuleLargeRegion(id)
 	i.mu.Lock()
 	i.index[id] = region
 	i.mu.Unlock()
@@ -292,16 +294,16 @@ func (i *largeRegionIndex) findOrCreate(id h3.H3Index) *largeRegion {
 
 func newLargeRegionIndex() *largeRegionIndex {
 	return &largeRegionIndex{
-		index: make(map[h3.H3Index]*largeRegion),
+		index: make(map[h3.H3Index]*ruleLargeRegion),
 	}
 }
 
 type smallRegionIndex struct {
-	index map[h3.H3Index]*smallRegion
+	index map[h3.H3Index]*ruleSmallRegion
 	mu    sync.RWMutex
 }
 
-func (i *smallRegionIndex) find(id h3.H3Index) (*smallRegion, bool) {
+func (i *smallRegionIndex) find(id h3.H3Index) (*ruleSmallRegion, bool) {
 	i.mu.RLock()
 	defer i.mu.RUnlock()
 	region, ok := i.index[id]
@@ -317,14 +319,14 @@ func (i *smallRegionIndex) delete(id h3.H3Index) {
 	delete(i.index, id)
 }
 
-func (i *smallRegionIndex) findOrCreate(id h3.H3Index) *smallRegion {
+func (i *smallRegionIndex) findOrCreate(id h3.H3Index) *ruleSmallRegion {
 	i.mu.RLock()
 	region, found := i.index[id]
 	i.mu.RUnlock()
 	if found {
 		return region
 	}
-	region = newSmallRegion(id)
+	region = newRuleSmallRegion(id)
 	i.mu.Lock()
 	i.index[id] = region
 	i.mu.Unlock()
@@ -333,7 +335,7 @@ func (i *smallRegionIndex) findOrCreate(id h3.H3Index) *smallRegion {
 
 func newSmallRegionIndex() *smallRegionIndex {
 	return &smallRegionIndex{
-		index: make(map[h3.H3Index]*smallRegion),
+		index: make(map[h3.H3Index]*ruleSmallRegion),
 	}
 }
 
@@ -397,27 +399,27 @@ func fnv32(key string) uint32 {
 	return hash
 }
 
-type smallRegion struct {
+type ruleSmallRegion struct {
 	id      h3.H3Index
 	mu      sync.RWMutex
 	index   *rtree.RTree
 	counter uint64
 }
 
-func newSmallRegion(id h3.H3Index) *smallRegion {
-	return &smallRegion{
+func newRuleSmallRegion(id h3.H3Index) *ruleSmallRegion {
+	return &ruleSmallRegion{
 		id:    id,
 		index: &rtree.RTree{},
 	}
 }
 
-func (r *smallRegion) isEmpty() bool {
+func (r *ruleSmallRegion) isEmpty() bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.counter == 0
 }
 
-func (r *smallRegion) delete(rule *Rule) {
+func (r *ruleSmallRegion) delete(rule *Rule) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.counter > 0 {
@@ -430,7 +432,7 @@ func (r *smallRegion) delete(rule *Rule) {
 	)
 }
 
-func (r *smallRegion) insertRule(rule *Rule) {
+func (r *ruleSmallRegion) insertRule(rule *Rule) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	bbox := rule.Bounds()
@@ -441,7 +443,7 @@ func (r *smallRegion) insertRule(rule *Rule) {
 		rule)
 }
 
-func (r *smallRegion) walk(ctx context.Context, device *Device, fn WalkRuleFunc) (err error) {
+func (r *ruleSmallRegion) walk(ctx context.Context, device *Device, fn WalkRuleFunc) (err error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	r.index.Search(
@@ -460,32 +462,32 @@ func (r *smallRegion) walk(ctx context.Context, device *Device, fn WalkRuleFunc)
 	return
 }
 
-type largeRegion struct {
+type ruleLargeRegion struct {
 	id    h3.H3Index
 	mu    sync.RWMutex
 	index map[string]*Rule
 }
 
-func newLargeRegion(id h3.H3Index) *largeRegion {
-	return &largeRegion{
+func newRuleLargeRegion(id h3.H3Index) *ruleLargeRegion {
+	return &ruleLargeRegion{
 		id:    id,
 		index: make(map[string]*Rule),
 	}
 }
 
-func (r *largeRegion) isEmpty() bool {
+func (r *ruleLargeRegion) isEmpty() bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return len(r.index) == 0
 }
 
-func (r *largeRegion) delete(rule *Rule) {
+func (r *ruleLargeRegion) delete(rule *Rule) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.index, rule.ruleID)
 }
 
-func (r *largeRegion) walk(ctx context.Context, _ *Device, fn WalkRuleFunc) error {
+func (r *ruleLargeRegion) walk(ctx context.Context, _ *Device, fn WalkRuleFunc) error {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for _, rule := range r.index {
@@ -496,13 +498,13 @@ func (r *largeRegion) walk(ctx context.Context, _ *Device, fn WalkRuleFunc) erro
 	return nil
 }
 
-func (r *largeRegion) insertRule(rule *Rule) {
+func (r *ruleLargeRegion) insertRule(rule *Rule) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.index[rule.ruleID] = rule
 }
 
-func (r *largeRegion) removeRule(ruleID string) {
+func (r *ruleLargeRegion) removeRule(ruleID string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.index, ruleID)
@@ -528,11 +530,10 @@ func getLevel(meters float64) (level int) {
 	return
 }
 
-func cover(meters float64, points []geometry.Point) ([]h3.H3Index, int) {
+func cover(meters float64, level int, points []geometry.Point) []h3.H3Index {
 	smallSearchRadius := isSmallRadius(meters)
 	steps := getSteps(meters)
 	visits := make(map[h3.H3Index]struct{})
-	level := getLevel(meters)
 	res := make([]h3.H3Index, 0, 4)
 	half := steps / 2
 	for i, p := range points {
@@ -561,11 +562,10 @@ func cover(meters float64, points []geometry.Point) ([]h3.H3Index, int) {
 			}
 		}
 	}
-	return res, level
+	return res
 }
 
-func newCircle(lat, lng float64, meters float64) (points []geometry.Point, bbox geometry.Rect) {
-	steps := getSteps(meters)
+func newCircle(lat, lng float64, meters float64, steps int) (points []geometry.Point, bbox geometry.Rect) {
 	meters = geo.NormalizeDistance(meters)
 	points = make([]geometry.Point, 0, steps+1)
 	for i := 0; i < steps; i++ {

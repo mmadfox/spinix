@@ -85,8 +85,9 @@ func TestRulesWalk(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		circle, bbox := newCircle(tc.lat, tc.lon, tc.radius)
-		regionIDs, regionLevel := cover(tc.radius, circle)
+		circle, bbox := newCircle(tc.lat, tc.lon, tc.radius, getSteps(tc.radius))
+		regionLevel := getLevel(tc.radius)
+		regionIDs := cover(tc.radius, regionLevel, circle)
 		if err := rules.Insert(ctx, &Rule{
 			ruleID:      xid.New().String(),
 			boundingBox: bbox,
