@@ -46,7 +46,7 @@ type Rule struct {
 	expr         Expr
 	spec         string
 	meters       float64
-	boundingBox  geometry.Rect
+	bbox         geometry.Rect
 	referenceIDs []string
 	regionIDs    []h3.H3Index
 	regionLevel  int
@@ -118,7 +118,7 @@ func NewRule(
 		spec:        spec,
 		center:      geometry.Point{X: centerLat, Y: centerLon},
 		meters:      radiusInMeters,
-		boundingBox: bbox,
+		bbox:        bbox,
 		regionIDs:   regionIDs,
 		regionLevel: regionLevel,
 	}, nil
@@ -161,7 +161,7 @@ func (r Rule) Expr() Expr {
 }
 
 func (r Rule) Bounds() geometry.Rect {
-	return r.boundingBox
+	return r.bbox
 }
 
 func (r Rule) Less(b btree.Item) bool {
@@ -454,8 +454,8 @@ func (r *ruleSmallRegion) delete(rule *Rule) {
 		r.counter--
 	}
 	r.index.Delete(
-		[2]float64{rule.boundingBox.Min.X, rule.boundingBox.Min.Y},
-		[2]float64{rule.boundingBox.Max.X, rule.boundingBox.Max.Y},
+		[2]float64{rule.bbox.Min.X, rule.bbox.Min.Y},
+		[2]float64{rule.bbox.Max.X, rule.bbox.Max.Y},
 		rule,
 	)
 }

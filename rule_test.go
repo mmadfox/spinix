@@ -90,7 +90,7 @@ func TestRulesWalk(t *testing.T) {
 		regionIDs := cover(tc.radius, regionLevel, circle)
 		if err := rules.Insert(ctx, &Rule{
 			ruleID:      xid.New().String(),
-			boundingBox: bbox,
+			bbox:        bbox,
 			name:        tc.name,
 			center:      geometry.Point{X: tc.lat, Y: tc.lon},
 			meters:      tc.radius,

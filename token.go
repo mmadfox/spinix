@@ -19,10 +19,13 @@ const (
 	literalEnd
 
 	operatorBegin
-	AND   //  AND
-	OR    //  OR
-	IN    // IN
-	NOTIN // NOT IN
+	AND        //  AND
+	OR         //  OR
+	IN         // IN
+	NOTIN      // NOT IN
+	INSIDE     // INSIDE
+	OUTSIDE    // OUTSIDE
+	INTERSECTS // INTERSECTS
 
 	ADD // +
 	SUB // -
@@ -51,8 +54,7 @@ const (
 	operatorEnd
 
 	keywordBegin
-	VAR_IDENT // @ident
-
+	VAR_IDENT       // @ident
 	VAR_SPEED       // {device.speed}
 	VAR_STATUS      // {device.status}
 	VAR_EMEI        // {device.emei}
@@ -66,56 +68,21 @@ const (
 	VAR_TEMPERATURE // {device.temperature}
 	VAR_BATTERY     // {device.battery}
 
-	FUN_SPEED       // speed(min, max), speed(max)
-	FUN_TEMPERATURE // temperature(0, 30)
-	FUN_HUMIDITY    // humidity(0, 30)
-	FUN_LUMONOSITY  // luminosity(0, 30)
-	FUN_PRESSURE    // pressure(0, 30)
-	FUN_FUELLEVEL   // fuellevel(0, 30)
-
-	FUN_DURATION         // duration(300)
-	FUN_DURATION_SECONDS // durationSeconds(300)
-	FUN_DURATION_MINUTES // durationMinutes(30)
-	FUN_DURATION_HOURS   // durationHours(30)
-
-	FUN_WITHIN
-	FUN_WITHIN_RECT
-	FUN_WITHIN_POINT
-	FUN_WITHIN_POLY
-	FUN_WITHIN_LINE
-
-	FUN_NOTWITHIN
-	FUN_NOTWITHIN_RECT
-	FUN_NOTWITHIN_POINT
-	FUN_NOTWITHIN_POLY
-	FUN_NOTWITHIN_LINE
-
-	FUN_CONTAINS
-	FUN_NOTCONTAINS
+	FUN_DEVICE // device(@), device(one, two, "Three")
 
 	keywordGeospatialBegin
-	FUN_INTERSECTS
-	FUN_INTERSECTS_RECT
-	FUN_INTERSECTS_POINT
-	FUN_INTERSECTS_LINE
-	FUN_INTERSECTS_MULTILINE
-	FUN_INTERSECTS_POLY
-	FUN_INTERSECTS_MULTIPOLY
-
-	FUN_NOTINTERSECTS
-	FUN_NOTINTERSECTS_RECT
-	FUN_NOTINTERSECTS_POINT
-	FUN_NOTINTERSECTS_LINE
-	FUN_NOTINTERSECTS_POLY
-
-	FUN_DISTANCE
-	FUN_DISTANCE_RECT
-	FUN_DISTANCE_POINT
-	FUN_DISTANCE_LINE
-	FUN_DISTANCE_POLY
+	FUN_POLY            // polygon(@id1, @id2, @id3), poly(@id)
+	FUN_MULTI_POLY      // multiPolygon(@id1, @id2)
+	FUN_LINE            // line(@id1, @id2)
+	FUN_MULTI_LINE      // multiLine(@id1, @id2)
+	FUN_POINT           // point(@id)
+	FUN_MULTI_POINT     // multiPoint(@id)
+	FUN_RECT            // rect(@id)
+	FUN_CIRCLE          // circle(@id)
+	FUN_GEOM_COLLECTION // collection(@id)
+	FUN_FUT_COLLECTION  // featureCollection(@id1, @id2, @id3)
 	keywordGeospatialEnd
 
-	FUN_BATTERY_CHARGE
 	keywordEnd
 
 	RPAREN // )
@@ -138,11 +105,14 @@ var tokens = [...]string{
 	QUO: "/",
 	REM: "%",
 
-	AND:   "AND",
-	OR:    "OR",
-	NOT:   "NOT",
-	IN:    "IN",
-	NOTIN: "NOT IN",
+	AND:        "AND",
+	OR:         "OR",
+	NOT:        "NOT",
+	IN:         "IN",
+	NOTIN:      "NOT IN",
+	INSIDE:     "INSIDE",
+	OUTSIDE:    "OUTSIDE",
+	INTERSECTS: "INTERSECTS",
 
 	EQL: "==",
 	LSS: "<",
@@ -162,8 +132,7 @@ var tokens = [...]string{
 	RBRACE: "}",
 	COLON:  ":",
 
-	VAR_IDENT: "@",
-
+	VAR_IDENT:       "@",
 	VAR_SPEED:       "device.speed",
 	VAR_STATUS:      "device.status",
 	VAR_EMEI:        "device.emei",
@@ -177,53 +146,17 @@ var tokens = [...]string{
 	VAR_TEMPERATURE: "device.temperature",
 	VAR_BATTERY:     "device.battery",
 
-	FUN_SPEED:          "speed",
-	FUN_BATTERY_CHARGE: "batteryCharge",
-	FUN_TEMPERATURE:    "temperature",
-	FUN_HUMIDITY:       "humidity",
-	FUN_LUMONOSITY:     "luminosity",
-	FUN_PRESSURE:       "pressure",
-	FUN_FUELLEVEL:      "fuellevel",
-
-	FUN_CONTAINS:    "contains",
-	FUN_NOTCONTAINS: "not contains",
-
-	FUN_DURATION:         "duration",
-	FUN_DURATION_SECONDS: "durationSeconds",
-	FUN_DURATION_MINUTES: "durationMinutes",
-	FUN_DURATION_HOURS:   "durationHours",
-
-	FUN_WITHIN:       "within",
-	FUN_WITHIN_LINE:  "withinLine",
-	FUN_WITHIN_POINT: "withinPoint",
-	FUN_WITHIN_POLY:  "withinPoly",
-	FUN_WITHIN_RECT:  "withinRect",
-
-	FUN_NOTWITHIN:       "not within",
-	FUN_NOTWITHIN_LINE:  "not withinLine",
-	FUN_NOTWITHIN_POINT: "not withinPoint",
-	FUN_NOTWITHIN_POLY:  "not withinPoly",
-	FUN_NOTWITHIN_RECT:  "not withinRect",
-
-	FUN_INTERSECTS:           "intersects",
-	FUN_INTERSECTS_LINE:      "intersectsLine",
-	FUN_INTERSECTS_MULTILINE: "intersectsMultiLine",
-	FUN_INTERSECTS_POINT:     "intersectsPoint",
-	FUN_INTERSECTS_POLY:      "intersectsPoly",
-	FUN_INTERSECTS_MULTIPOLY: "intersectsMultiPoly",
-	FUN_INTERSECTS_RECT:      "intersectsRect",
-
-	FUN_NOTINTERSECTS:       "not intersects",
-	FUN_NOTINTERSECTS_LINE:  "not intersectsLine",
-	FUN_NOTINTERSECTS_POINT: "not intersectsPoint",
-	FUN_NOTINTERSECTS_POLY:  "not intersectsPoly",
-	FUN_NOTINTERSECTS_RECT:  "not intersectsRect",
-
-	FUN_DISTANCE:       "distance",
-	FUN_DISTANCE_LINE:  "distanceLine",
-	FUN_DISTANCE_POINT: "distancePoint",
-	FUN_DISTANCE_POLY:  "distancePoly",
-	FUN_DISTANCE_RECT:  "distanceRect",
+	FUN_DEVICE:          "device",
+	FUN_POLY:            "polygon",
+	FUN_MULTI_POLY:      "multiPolygon",
+	FUN_LINE:            "line",
+	FUN_MULTI_LINE:      "multiLine",
+	FUN_POINT:           "point",
+	FUN_MULTI_POINT:     "multiPoint",
+	FUN_RECT:            "rect",
+	FUN_CIRCLE:          "circle",
+	FUN_GEOM_COLLECTION: "collection",
+	FUN_FUT_COLLECTION:  "featureCollection",
 }
 
 var keywords map[string]Token
@@ -260,7 +193,8 @@ func (tok Token) Precedence() int {
 		return 1
 	case AND:
 		return 2
-	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR, FUN_INTERSECTS_POLY:
+		// TODO:
+	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR:
 		return 3
 	}
 	return 0

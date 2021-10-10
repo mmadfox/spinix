@@ -43,8 +43,9 @@ type (
 
 	// A CallExpr expr represents an expression followed by an argument list.
 	CallExpr struct {
-		Fun  Token  // keyword
-		Args []Expr // function arguments; or nil
+		Fun    Token  // keyword
+		UseCtx bool   // @
+		Args   []Expr // function arguments; or nil
 	}
 
 	// A ListLit represents a list of int or float type.
@@ -91,8 +92,14 @@ func (e *CallExpr) String() string {
 	li := len(e.Args) - 1
 	sb.WriteString(e.Fun.String())
 	sb.WriteString(LPAREN.String())
+	if e.UseCtx {
+		sb.WriteString(VAR_IDENT.String())
+	}
+	if len(e.Args) > 0 && e.UseCtx {
+		sb.WriteString(COMMA.String())
+	}
 	for i, arg := range e.Args {
-		sb.WriteString(arg.String())
+		sb.WriteString("@" + arg.String())
 		if i != li {
 			sb.WriteString(COMMA.String())
 		}

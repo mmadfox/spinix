@@ -8,7 +8,6 @@ import (
 	"github.com/uber/h3-go"
 
 	"github.com/rs/xid"
-	"github.com/tidwall/geojson"
 )
 
 type Detector interface {
@@ -151,7 +150,7 @@ func (e *Engine) InsertRule(ctx context.Context, rule *Rule) error {
 		if err != nil {
 			return err
 		}
-		if !rule.boundingBox.ContainsRect(object.Rect()) {
+		if !rule.bbox.ContainsRect(object.Rect()) {
 			return fmt.Errorf("georule: the radius of the rule %.2f does not cover the object %s",
 				rule.meters, rid)
 		}
@@ -220,93 +219,93 @@ func (e *Engine) invokeRule(ctx context.Context, expr Expr, prevState, currentSt
 		switch n.Fun {
 		default:
 			return falseExpr, nil
-		case FUN_WITHIN, FUN_WITHIN_RECT, FUN_WITHIN_POLY, FUN_WITHIN_POINT, FUN_WITHIN_LINE:
-			args := args2str(n.Args)
-			for _, id := range args {
-				object, err := e.objects.Lookup(ctx, id)
-				if err != nil {
-					return falseExpr, nil
-				}
-				switch typ := object.(type) {
-				case *geojson.Point:
-					if !e.geospatial.WithinPoint(currentState, typ) {
-						return falseExpr, nil
-					}
-					return trueExpr, nil
-				case *geojson.Rect:
-					if !e.geospatial.WithinRect(currentState, typ) {
-						return falseExpr, nil
-					}
-					return trueExpr, nil
-				case *geojson.LineString:
-					if !e.geospatial.WithinLine(currentState, typ) {
-						return falseExpr, nil
-					}
-					return trueExpr, nil
-				case *geojson.MultiLineString:
-					if !e.geospatial.WithinMultiLine(currentState, typ) {
-						return falseExpr, nil
-					}
-					return trueExpr, nil
-				case *geojson.Polygon:
-					if !e.geospatial.WithinPoly(currentState, typ) {
-						return falseExpr, nil
-					}
-					return trueExpr, nil
-				case *geojson.MultiPolygon:
-					if !e.geospatial.WithinMultiPoly(currentState, typ) {
-						return falseExpr, nil
-					}
-					return trueExpr, nil
-				default:
-					return falseExpr, fmt.Errorf("georule: %v unknown geojson type", typ)
-				}
-			}
-		case FUN_INTERSECTS, FUN_INTERSECTS_POLY, FUN_INTERSECTS_MULTIPOLY,
-			FUN_INTERSECTS_LINE, FUN_INTERSECTS_MULTILINE, FUN_INTERSECTS_RECT,
-			FUN_INTERSECTS_POINT:
-			args := args2str(n.Args)
-			for _, id := range args {
-				object, err := e.objects.Lookup(ctx, id)
-				if err != nil {
-					return falseExpr, nil
-				}
-				switch typ := object.(type) {
-				case *geojson.Point:
-					if !e.geospatial.IntersectsPoint(currentState, typ) {
-						return falseExpr, nil
-					}
-					return trueExpr, nil
-				case *geojson.Rect:
-					if !e.geospatial.IntersectsRect(currentState, typ) {
-						return falseExpr, nil
-					}
-					return trueExpr, nil
-				case *geojson.LineString:
-					if !e.geospatial.IntersectsLine(currentState, typ) {
-						return falseExpr, nil
-					}
-					return trueExpr, nil
-				case *geojson.MultiLineString:
-					if !e.geospatial.IntersectsMultiLine(currentState, typ) {
-						return falseExpr, nil
-					}
-					return trueExpr, nil
-				case *geojson.Polygon:
-					if !e.geospatial.IntersectsPoly(currentState, typ) {
-						return falseExpr, nil
-					}
-					return trueExpr, nil
-				case *geojson.MultiPolygon:
-					if !e.geospatial.IntersectsMultiPoly(currentState, typ) {
-						return falseExpr, nil
-					}
-					return trueExpr, nil
-				default:
-					return falseExpr, fmt.Errorf("georule: %v unknown geojson type", typ)
-				}
-			}
-			return &BooleanLit{Value: true}, nil
+			//case FUN_WITHIN, FUN_WITHIN_RECT, FUN_WITHIN_POLY, FUN_WITHIN_POINT, FUN_WITHIN_LINE:
+			//	args := args2str(n.Args)
+			//	for _, id := range args {
+			//		object, err := e.objects.Lookup(ctx, id)
+			//		if err != nil {
+			//			return falseExpr, nil
+			//		}
+			//		switch typ := object.(type) {
+			//		case *geojson.Point:
+			//			if !e.geospatial.WithinPoint(currentState, typ) {
+			//				return falseExpr, nil
+			//			}
+			//			return trueExpr, nil
+			//		case *geojson.Rect:
+			//			if !e.geospatial.WithinRect(currentState, typ) {
+			//				return falseExpr, nil
+			//			}
+			//			return trueExpr, nil
+			//		case *geojson.LineString:
+			//			if !e.geospatial.WithinLine(currentState, typ) {
+			//				return falseExpr, nil
+			//			}
+			//			return trueExpr, nil
+			//		case *geojson.MultiLineString:
+			//			if !e.geospatial.WithinMultiLine(currentState, typ) {
+			//				return falseExpr, nil
+			//			}
+			//			return trueExpr, nil
+			//		case *geojson.Polygon:
+			//			if !e.geospatial.WithinPoly(currentState, typ) {
+			//				return falseExpr, nil
+			//			}
+			//			return trueExpr, nil
+			//		case *geojson.MultiPolygon:
+			//			if !e.geospatial.WithinMultiPoly(currentState, typ) {
+			//				return falseExpr, nil
+			//			}
+			//			return trueExpr, nil
+			//		default:
+			//			return falseExpr, fmt.Errorf("georule: %v unknown geojson type", typ)
+			//		}
+			//	}
+			//case FUN_INTERSECTS_POLY, FUN_INTERSECTS_MULTIPOLY,
+			//	FUN_INTERSECTS_LINE, FUN_INTERSECTS_MULTILINE, FUN_INTERSECTS_RECT,
+			//	FUN_INTERSECTS_POINT:
+			//	args := args2str(n.Args)
+			//	for _, id := range args {
+			//		object, err := e.objects.Lookup(ctx, id)
+			//		if err != nil {
+			//			return falseExpr, nil
+			//		}
+			//		switch typ := object.(type) {
+			//		case *geojson.Point:
+			//			if !e.geospatial.IntersectsPoint(currentState, typ) {
+			//				return falseExpr, nil
+			//			}
+			//			return trueExpr, nil
+			//		case *geojson.Rect:
+			//			if !e.geospatial.IntersectsRect(currentState, typ) {
+			//				return falseExpr, nil
+			//			}
+			//			return trueExpr, nil
+			//		case *geojson.LineString:
+			//			if !e.geospatial.IntersectsLine(currentState, typ) {
+			//				return falseExpr, nil
+			//			}
+			//			return trueExpr, nil
+			//		case *geojson.MultiLineString:
+			//			if !e.geospatial.IntersectsMultiLine(currentState, typ) {
+			//				return falseExpr, nil
+			//			}
+			//			return trueExpr, nil
+			//		case *geojson.Polygon:
+			//			if !e.geospatial.IntersectsPoly(currentState, typ) {
+			//				return falseExpr, nil
+			//			}
+			//			return trueExpr, nil
+			//		case *geojson.MultiPolygon:
+			//			if !e.geospatial.IntersectsMultiPoly(currentState, typ) {
+			//				return falseExpr, nil
+			//			}
+			//			return trueExpr, nil
+			//		default:
+			//			return falseExpr, fmt.Errorf("georule: %v unknown geojson type", typ)
+			//		}
+			//	}
+			// return &BooleanLit{Value: true}, nil
 		}
 	}
 	return expr, nil

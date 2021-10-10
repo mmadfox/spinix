@@ -14,6 +14,8 @@ import (
 	"github.com/uber/h3-go"
 )
 
+const minDistMeters = 50
+
 type Devices interface {
 	Lookup(ctx context.Context, deviceID string) (*Device, error)
 	InsertOrReplace(ctx context.Context, device *Device) error
@@ -68,7 +70,7 @@ func (d *devices) InsertOrReplace(_ context.Context, device *Device) error {
 			device.Latitude,
 			device.Longitude,
 		)
-		if dist <= 300 {
+		if dist <= minDistMeters {
 			d.index.set(device)
 			return nil
 		}
