@@ -221,17 +221,17 @@ func (e *Engine) applyONDISTANCE(ctx context.Context, l, r Expr) (Expr, error) {
 			}
 		case FUN_LINE, FUN_MULTI_LINE, FUN_CIRCLE, FUN_POINT, FUN_MULTI_POINT,
 			FUN_POLY, FUN_MULTI_POLY, FUN_FUT_COLLECTION, FUN_GEOM_COLLECTION, FUN_RECT:
-			objectIDs := args2str(typ.Args)
 			onDistanceObject = &ObjectOnDistanceLit{
-				Objects: make([]Object, len(objectIDs)),
+				Objects: make([]Object, len(typ.Args)),
 			}
-			for i, objectID := range objectIDs {
-				object, err := e.objects.Lookup(ctx, objectID)
+			for i, objectID := range typ.Args {
+				id := objectID.String()
+				object, err := e.objects.Lookup(ctx, id)
 				if err != nil {
 					return falseExpr, nil
 				}
 				onDistanceObject.Objects[i] = Object{
-					ID:   objectID,
+					ID:   id,
 					Data: object,
 				}
 			}
@@ -276,9 +276,8 @@ func (e *Engine) applyNEARBY(ctx context.Context, l, r Expr, _, currentState *De
 			if typ.UseCtx {
 				deviceCoords = append(deviceCoords, [2]float64{currentState.Latitude, currentState.Longitude})
 			}
-			deviceIDs := args2str(typ.Args)
-			for _, deviceID := range deviceIDs {
-				device, err := e.devices.Lookup(ctx, deviceID)
+			for _, deviceID := range typ.Args {
+				device, err := e.devices.Lookup(ctx, deviceID.String())
 				if err != nil {
 					continue
 				}
@@ -367,12 +366,4 @@ func float64Equal(a float64, b float64) bool {
 		return diff < epsilon*math.SmallestNonzeroFloat32
 	}
 	return diff/math.Min(absA+absB, math.MaxFloat64) < epsilon
-}
-
-func args2str(args []Expr) []string {
-	ids := make([]string, len(args))
-	for i, expr := range args {
-		ids[i] = expr.String()
-	}
-	return ids
 }

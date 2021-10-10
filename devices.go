@@ -129,11 +129,8 @@ func (d *devices) Nearby(
 	ctx context.Context,
 	lat, lon, meters float64,
 	fn func(ctx context.Context, d *Device) error) (err error) {
-	points, bbox := newCircle(lat, lon, meters, 16)
-	circle := geometry.NewPoly(points, nil, &geometry.IndexOptions{
-		Kind: geometry.None,
-	})
-	regionIDs := cover(meters, largeLevel, points)
+	points, bbox := newCircle(lat, lon, meters, 6)
+	regionIDs := cover(meters, smallLevel, points)
 	next := true
 	for _, regionID := range regionIDs {
 		d.mu.RLock()
@@ -152,7 +149,7 @@ func (d *devices) Nearby(
 					X: device.Latitude,
 					Y: device.Longitude,
 				}
-				if circle.ContainsPoint(point) {
+				if contains(point, points) {
 					if err = fn(ctx, device); err != nil {
 						next = false
 						return false
@@ -170,7 +167,7 @@ func (d *devices) Nearby(
 }
 
 func (d *devices) identify(device *Device) {
-	device.RegionLevel = largeLevel
+	device.RegionLevel = smallLevel
 	device.RegionID = h3.FromGeo(h3.GeoCoord{
 		Latitude:  device.Latitude,
 		Longitude: device.Longitude,
@@ -264,4 +261,21 @@ func (i deviceIndex) get(deviceID string) (*Device, error) {
 		return nil, fmt.Errorf("georule: device %s not found", deviceID)
 	}
 	return device, nil
+}
+
+func contains(p geometry.Point, points []geometry.Point) bool {
+	for i := 0; i < len(points); i++ {
+		var seg geometry.Segment
+		seg.A = points[i]
+		if i == len(points)-1 {
+			seg.B = points[0]
+		} else {
+			seg.B = points[i+1]
+		}
+		res := seg.Raycast(p)
+		if res.In {
+			return true
+		}
+	}
+	return false
 }

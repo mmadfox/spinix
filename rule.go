@@ -562,7 +562,7 @@ func cover(meters float64, level int, points []geometry.Point) []h3.H3Index {
 	smallSearchRadius := isSmallRadius(meters)
 	steps := getSteps(meters)
 	visits := make(map[h3.H3Index]struct{})
-	res := make([]h3.H3Index, 0, 4)
+	res := make([]h3.H3Index, 0, 2)
 	half := steps / 2
 	for i, p := range points {
 		idx := h3.FromGeo(h3.GeoCoord{Latitude: p.X, Longitude: p.Y}, level)
