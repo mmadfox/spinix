@@ -204,7 +204,7 @@ const deviceBucketCount = 32
 
 func newDeviceIndex() deviceIndex {
 	buckets := make([]*deviceBucket, deviceBucketCount)
-	for i := 0; i < ruleBucketCount; i++ {
+	for i := 0; i < deviceBucketCount; i++ {
 		buckets[i] = &deviceBucket{
 			index: make(map[string]*Device),
 		}
@@ -213,7 +213,7 @@ func newDeviceIndex() deviceIndex {
 }
 
 func (i deviceIndex) bucket(deviceID string) *deviceBucket {
-	return i[uint(fnv32(deviceID))%uint(ruleBucketCount)]
+	return i[uint(fnv32(deviceID))%uint(deviceBucketCount)]
 }
 
 func (i deviceIndex) set(device *Device) {

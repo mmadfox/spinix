@@ -28,7 +28,7 @@ func New(opts ...Option) *Engine {
 	e := &Engine{
 		rules:      NewRules(),
 		devices:    NewDevices(),
-		objects:    nil,
+		objects:    NewObjects(),
 		geospatial: DefaultGeospatial(),
 	}
 	for _, f := range opts {
@@ -79,6 +79,14 @@ func MakeEvent(d *Device, r *Rule) Event {
 
 func (e *Engine) Map() Objects {
 	return e.objects
+}
+
+func (e *Engine) Devices() Devices {
+	return e.devices
+}
+
+func (e *Engine) Rules() Rules {
+	return e.rules
 }
 
 func (e *Engine) Detect(ctx context.Context, device *Device) ([]Event, error) {
