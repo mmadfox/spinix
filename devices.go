@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/tidwall/geojson/geo"
+
 	"github.com/tidwall/geojson/geometry"
 
 	"github.com/tidwall/rtree"
@@ -59,6 +61,19 @@ func (d *devices) Lookup(_ context.Context, deviceID string) (*Device, error) {
 
 func (d *devices) InsertOrReplace(_ context.Context, device *Device) error {
 	prevState, err := d.index.get(device.IMEI)
+	if prevState != nil && err == nil {
+		dist := geo.DistanceTo(
+			prevState.Latitude,
+			prevState.Longitude,
+			device.Latitude,
+			device.Longitude,
+		)
+		if dist <= 300 {
+			d.index.set(device)
+			return nil
+		}
+	}
+
 	if err == nil {
 		d.mu.RLock()
 		region, ok := d.regions[prevState.RegionID]
@@ -72,9 +87,7 @@ func (d *devices) InsertOrReplace(_ context.Context, device *Device) error {
 			}
 		}
 	}
-
 	d.index.set(device)
-
 	d.mu.RLock()
 	region, ok := d.regions[device.RegionID]
 	d.mu.RUnlock()

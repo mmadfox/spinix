@@ -6,7 +6,8 @@ import (
 )
 
 var (
-	falseExpr = &BooleanLit{}
+	falseExpr = &BooleanLit{Value: false}
+	trueExpr  = &BooleanLit{Value: true}
 	epsilon   = 1e-6
 )
 

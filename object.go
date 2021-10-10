@@ -10,7 +10,7 @@ import (
 
 type Objects interface {
 	Lookup(ctx context.Context, objectID string) (geojson.Object, error)
-	Set(ctx context.Context, objectID string, o geojson.Object) error
+	Add(ctx context.Context, objectID string, o geojson.Object) error
 	Delete(ctx context.Context, objectID string) error
 }
 
@@ -28,7 +28,7 @@ func (o *objects) Lookup(_ context.Context, objectID string) (geojson.Object, er
 	return o.index.get(objectID)
 }
 
-func (o *objects) Set(_ context.Context, objectID string, obj geojson.Object) error {
+func (o *objects) Add(_ context.Context, objectID string, obj geojson.Object) error {
 	o.index.set(objectID, obj)
 	return nil
 }

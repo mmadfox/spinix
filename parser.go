@@ -373,7 +373,7 @@ func (p *Parser) parseCallExprWithVarsArgs(keyword Token) (Expr, error) {
 			}
 			unique[lit] = struct{}{}
 			list = append(list, &StringLit{
-				Value: fmt.Sprintf("%s%s", VAR_IDENT, lit),
+				Value: lit,
 			})
 		}
 	}

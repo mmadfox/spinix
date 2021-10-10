@@ -12,22 +12,17 @@ type Geospatial interface {
 	IntersectsMultiLine(device *Device, object *geojson.MultiLineString) bool
 	IntersectsRect(device *Device, object *geojson.Rect) bool
 	IntersectsPoint(device *Device, object *geojson.Point) bool
+
+	WithinPoint(device *Device, object *geojson.Point) bool
+	WithinLine(device *Device, object *geojson.LineString) bool
+	WithinMultiLine(device *Device, object *geojson.MultiLineString) bool
+	WithinPoly(device *Device, object *geojson.Polygon) bool
+	WithinRect(device *Device, object *geojson.Rect) bool
+	WithinMultiPoly(device *Device, object *geojson.MultiPolygon) bool
 }
 
 func DefaultGeospatial() Geospatial {
 	return defaultGeospatial{}
-}
-
-func Rect(min, max geometry.Point) *geojson.Rect {
-	return geojson.NewRect(geometry.Rect{Min: min, Max: max})
-}
-
-func Poly(exterior []geometry.Point, holes [][]geometry.Point) *geojson.Polygon {
-	return geojson.NewPolygon(geometry.NewPoly(exterior, holes, nil))
-}
-
-func Point(x, y float64) *geojson.Point {
-	return geojson.NewPoint(geometry.Point{X: x, Y: y})
 }
 
 type defaultGeospatial struct {
@@ -55,4 +50,30 @@ func (defaultGeospatial) IntersectsRect(device *Device, object *geojson.Rect) bo
 
 func (defaultGeospatial) IntersectsPoint(device *Device, object *geojson.Point) bool {
 	return object.IntersectsPoint(geometry.Point{X: device.Latitude, Y: device.Longitude})
+}
+
+func (defaultGeospatial) WithinPoint(device *Device, object *geojson.Point) bool {
+	return object.WithinPoint(geometry.Point{X: device.Latitude, Y: device.Longitude})
+}
+
+func (defaultGeospatial) WithinLine(device *Device, object *geojson.LineString) bool {
+	return object.WithinPoint(geometry.Point{X: device.Latitude, Y: device.Longitude})
+}
+
+func (defaultGeospatial) WithinMultiLine(device *Device, object *geojson.MultiLineString) bool {
+	return object.WithinPoint(geometry.Point{X: device.Latitude, Y: device.Longitude})
+}
+
+func (defaultGeospatial) WithinPoly(device *Device, object *geojson.Polygon) bool {
+	point := geojson.NewPoint(geometry.Point{X: device.Latitude, Y: device.Longitude})
+	return point.WithinPoly(object.Base())
+}
+
+func (defaultGeospatial) WithinMultiPoly(device *Device, object *geojson.MultiPolygon) bool {
+	point := geojson.NewPoint(geometry.Point{X: device.Latitude, Y: device.Longitude})
+	return point.Within(object)
+}
+
+func (defaultGeospatial) WithinRect(device *Device, object *geojson.Rect) bool {
+	return object.WithinPoint(geometry.Point{X: device.Latitude, Y: device.Longitude})
 }
