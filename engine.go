@@ -62,13 +62,19 @@ func WithGeospatial(g Geospatial) Option {
 }
 
 type Event struct {
-	ID       string `json:"id"`
-	Device   Device `json:"device"`
-	DateTime int64  `json:"dateTime"`
-	Rule     struct {
-		ID   string `json:"ruleId"`
-		Spec string `json:"spec"`
-	} `json:"rule"`
+	ID       string       `json:"id"`
+	Device   Device       `json:"device"`
+	DateTime int64        `json:"dateTime"`
+	Rule     RuleSnapshot `json:"rule"`
+}
+
+func MakeEvent(d *Device, r *Rule) Event {
+	return Event{
+		ID:       xid.New().String(),
+		Device:   *d,
+		Rule:     TakeRuleSnapshot(r),
+		DateTime: time.Now().Unix(),
+	}
 }
 
 func (e *Engine) Map() Objects {
@@ -96,14 +102,7 @@ func (e *Engine) Detect(ctx context.Context, device *Device) ([]Event, error) {
 				if !n.Value {
 					return nil
 				}
-				event := Event{
-					ID:       xid.New().String(),
-					Device:   *device,
-					DateTime: time.Now().Unix(),
-				}
-				event.Rule.ID = rule.ruleID
-				event.Rule.Spec = rule.spec
-				events = append(events, event)
+				events = append(events, MakeEvent(device, rule))
 			default:
 				return fmt.Errorf("georule: unexpected result of the root expression: %#v", expr)
 			}

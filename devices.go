@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/tidwall/geojson/geometry"
 
@@ -21,24 +20,24 @@ type Devices interface {
 }
 
 type Device struct {
-	IMEI          string
-	Owner         string
-	Brand         string
-	Model         string
-	Latitude      float64
-	Longitude     float64
-	Altitude      float64
-	Speed         float64
-	DateTime      time.Time
-	Status        int
-	BatteryCharge float64
-	Temperature   float64
-	Humidity      float64
-	Luminosity    float64
-	Pressure      float64
-	FuelLevel     float64
-	RegionID      h3.H3Index
-	RegionLevel   int
+	IMEI          string     `json:"emei"`
+	Owner         string     `json:"owner"`
+	Brand         string     `json:"brand"`
+	Model         string     `json:"model"`
+	Latitude      float64    `json:"lat"`
+	Longitude     float64    `json:"lon"`
+	Altitude      float64    `json:"alt"`
+	Speed         float64    `json:"speed"`
+	DateTime      int64      `json:"dateTime"`
+	Status        int        `json:"status"`
+	BatteryCharge float64    `json:"batteryCharge"`
+	Temperature   float64    `json:"temperature"`
+	Humidity      float64    `json:"humidity"`
+	Luminosity    float64    `json:"luminosity"`
+	Pressure      float64    `json:"pressure"`
+	FuelLevel     float64    `json:"fuelLevel"`
+	RegionID      h3.H3Index `json:"regionID"`
+	RegionLevel   int        `json:"regionLevel"`
 }
 
 type devices struct {

@@ -124,6 +124,34 @@ func NewRule(
 	}, nil
 }
 
+type RuleSnapshot struct {
+	RuleID       string   `json:"ruleID"`
+	Name         string   `json:"name"`
+	Spec         string   `json:"spec"`
+	Latitude     float64  `json:"lat"`
+	Longitude    float64  `json:"lon"`
+	RadiusMeters float64  `json:"radiusMeters"`
+	RegionIDs    []uint64 `json:"regionIDs"`
+	RegionLevel  int      `json:"regionLevel"`
+}
+
+func TakeRuleSnapshot(r *Rule) RuleSnapshot {
+	snapshot := RuleSnapshot{
+		RuleID:       r.ruleID,
+		Name:         r.name,
+		Spec:         r.spec,
+		Latitude:     r.center.X,
+		Longitude:    r.center.Y,
+		RadiusMeters: r.meters,
+		RegionLevel:  r.regionLevel,
+		RegionIDs:    make([]uint64, len(r.regionIDs)),
+	}
+	for i := 0; i < len(r.regionIDs); i++ {
+		snapshot.RegionIDs[i] = uint64(r.regionIDs[i])
+	}
+	return snapshot
+}
+
 func (r Rule) ID() string {
 	return r.ruleID
 }
