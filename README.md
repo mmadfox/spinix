@@ -21,13 +21,14 @@ Work in progress ...
     * [{device.pressure}](#devicepressure)
     * [{device.fuellevel}](#devicefuellevel)
 - [Functions](#functions)
-   
+
 ## Operators
 - ```AND```, ```OR```, ```NOT```, ```IN```
-- ```==```, ```<```, ```>```,
-- ```!=```, ```<=```, ```>=```, 
-- ```INSIDE```, ```OUTSIDE```, ```INTERSECTS```
+- ```==```, ```<```, ```>```
+- ```!=```, ```<=```, ```>=```
+- ```INTERSECTS```, ```NEARBY ... ON DISTANCE```, ```DISTANCE TO```
 - ```+```, ```-```, ```*```, ```/```, ```%```
+- ```RANGE [1-100]```
 
 ## Variables
 #### {device.speed} 

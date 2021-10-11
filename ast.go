@@ -2,6 +2,7 @@ package spinix
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/tidwall/geojson"
@@ -53,6 +54,18 @@ type (
 	// A ListLit represents a list of int or float type.
 	ListLit struct {
 		Items []Expr
+	}
+
+	// A RangeFloatLit represents a float range type.
+	RangeFloatLit struct {
+		Start float64
+		End   float64
+	}
+
+	// A RangeIntLit represents an int range type.
+	RangeIntLit struct {
+		Start int
+		End   int
 	}
 
 	// A StringLit expr represents a literal of string type.
@@ -171,14 +184,38 @@ func (e *BooleanLit) String() string {
 	}
 }
 
-func (_ *ParenExpr) expr()           {}
-func (_ *BinaryExpr) expr()          {}
-func (_ *CallExpr) expr()            {}
-func (_ *StringLit) expr()           {}
-func (_ *IntLit) expr()              {}
-func (_ *FloatLit) expr()            {}
-func (_ *VarLit) expr()              {}
-func (_ *ListLit) expr()             {}
-func (_ *BooleanLit) expr()          {}
+func (e *RangeFloatLit) String() string {
+	var sb strings.Builder
+	sb.WriteString("[")
+	sb.WriteString(fmt.Sprintf("%.2f", e.Start))
+	sb.WriteString("-")
+	sb.WriteString(fmt.Sprintf("%.2f", e.End))
+	sb.WriteString("]")
+	return sb.String()
+}
+
+func (e *RangeIntLit) String() string {
+	var sb strings.Builder
+	sb.WriteString("[")
+	sb.WriteString(strconv.Itoa(e.Start))
+	sb.WriteString("-")
+	sb.WriteString(strconv.Itoa(e.End))
+	sb.WriteString("]")
+	return sb.String()
+}
+
+func (_ *ParenExpr) expr()     {}
+func (_ *BinaryExpr) expr()    {}
+func (_ *CallExpr) expr()      {}
+func (_ *StringLit) expr()     {}
+func (_ *IntLit) expr()        {}
+func (_ *FloatLit) expr()      {}
+func (_ *VarLit) expr()        {}
+func (_ *ListLit) expr()       {}
+func (_ *BooleanLit) expr()    {}
+func (_ *RangeFloatLit) expr() {}
+func (_ *RangeIntLit) expr()   {}
+
+// TODO: refactor
 func (_ *ObjectOnDistanceLit) expr() {}
 func (_ *DeviceOnDistanceLit) expr() {}

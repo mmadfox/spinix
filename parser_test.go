@@ -1,5 +1,15 @@
 package spinix
 
+import (
+	"log"
+	"testing"
+)
+
+func TestTest(t *testing.T) {
+	expr, err := ParseSpec(`device(@) duration in circle(@id1, @id2) range [1-2]`)
+	log.Println(expr, err)
+}
+
 //func TestParseAllRules(t *testing.T) {
 //	testCases := []string{
 //		`(device(@) outside polygon(@poly1) OR device(@) intersects line(@line1))`,

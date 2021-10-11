@@ -19,15 +19,17 @@ const (
 	literalEnd
 
 	operatorBegin
-	AND        //  AND
-	OR         //  OR
-	IN         // IN
-	NOTIN      // NOT IN
-	INSIDE     // INSIDE
-	OUTSIDE    // OUTSIDE
-	INTERSECTS // INTERSECTS
-	NEARBY     // NEARBY
-	ONDISTANCE // ON DISTANCE 400
+	AND           //  AND
+	OR            //  OR
+	IN            // IN
+	NOTIN         // NOT IN
+	INTERSECTS    // INTERSECTS
+	NEARBY        // NEARBY
+	ONDISTANCE    // ON DISTANCE 400
+	DISTANCETO    // DISTANCE TO
+	DURATIONIN    // DURATION IN
+	DURATIONNOTIN // DURATION NOT IN
+	RANGE         // RANGE
 
 	ADD // +
 	SUB // -
@@ -73,6 +75,7 @@ const (
 	FUN_DEVICE // device(@), device(one, two, "Three")
 
 	keywordGeospatialBegin
+	FUN_OBJECT          // object(@id, @id1)
 	FUN_POLY            // polygon(@id1, @id2, @id3), poly(@id)
 	FUN_MULTI_POLY      // multiPolygon(@id1, @id2)
 	FUN_LINE            // line(@id1, @id2)
@@ -107,16 +110,18 @@ var tokens = [...]string{
 	QUO: "/",
 	REM: "%",
 
-	AND:        "AND",
-	OR:         "OR",
-	NOT:        "NOT",
-	IN:         "IN",
-	NOTIN:      "NOT IN",
-	INSIDE:     "INSIDE",
-	OUTSIDE:    "OUTSIDE",
-	INTERSECTS: "INTERSECTS",
-	NEARBY:     "NEARBY",
-	ONDISTANCE: "ON DISTANCE",
+	AND:           "AND",
+	OR:            "OR",
+	NOT:           "NOT",
+	IN:            "IN",
+	NOTIN:         "NOT IN",
+	INTERSECTS:    "INTERSECTS",
+	NEARBY:        "NEARBY",
+	ONDISTANCE:    "ON DISTANCE",
+	DISTANCETO:    "DISTANCE TO",
+	DURATIONIN:    "DURATION IN",
+	DURATIONNOTIN: "DURATION NOT IN",
+	RANGE:         "RANGE",
 
 	EQL: "==",
 	LSS: "<",
@@ -150,7 +155,9 @@ var tokens = [...]string{
 	VAR_TEMPERATURE: "device.temperature",
 	VAR_BATTERY:     "device.battery",
 
-	FUN_DEVICE:          "device",
+	FUN_DEVICE: "device",
+
+	FUN_OBJECT:          "object",
 	FUN_POLY:            "polygon",
 	FUN_MULTI_POLY:      "multiPolygon",
 	FUN_LINE:            "line",
@@ -197,7 +204,7 @@ func (tok Token) Precedence() int {
 		return 1
 	case AND:
 		return 2
-	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR, ONDISTANCE, NEARBY:
+	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR, ONDISTANCE, NEARBY, DISTANCETO:
 		return 3
 	}
 	return 0

@@ -77,7 +77,7 @@ func (p *Parser) parseExprOrKeyword() (Expr, error) {
 	tok, lit := p.next()
 	switch tok {
 	case LBRACK:
-		return p.parseArrayExpr()
+		return p.parseArrayOrRangeExpr()
 	case LBRACE:
 		return p.parseVarExpr()
 	case INT:
@@ -89,7 +89,7 @@ func (p *Parser) parseExprOrKeyword() (Expr, error) {
 	case FUN_DEVICE:
 		return p.parseCallExprWithArgs(tok)
 	case FUN_POLY, FUN_MULTI_POLY, FUN_POINT, FUN_LINE, FUN_MULTI_LINE, FUN_MULTI_POINT,
-		FUN_RECT, FUN_CIRCLE, FUN_GEOM_COLLECTION, FUN_FUT_COLLECTION:
+		FUN_RECT, FUN_CIRCLE, FUN_GEOM_COLLECTION, FUN_FUT_COLLECTION, FUN_OBJECT:
 		return p.parseCallExprWithVarsArgs(tok)
 	case LPAREN:
 		return p.parseParenExpr()
@@ -115,17 +115,68 @@ func (p *Parser) parseIntExpr(lit string) (Expr, error) {
 	return &IntLit{Value: v}, nil
 }
 
-func (p *Parser) parseArrayExpr() (Expr, error) {
+func (p *Parser) parseArrayOrRangeExpr() (Expr, error) {
 	list := &ListLit{}
+	var (
+		isRange  bool
+		rangeVal int
+	)
 	for i := 0; i < math.MaxInt16; i++ {
 		tok, lit := p.next()
+		if isRange && i > 3 {
+			return nil, fmt.Errorf("georule/parser: range parsing error: tok=%v, lit=%v", tok, lit)
+		}
+
 		if tok == EOF || tok == RBRACK {
 			if len(list.Items) == 0 {
 				return nil, fmt.Errorf("georule/parser: parsing error: tok=%v, lit=%v", tok, lit)
 			}
-			return list, nil
+
+			// list literal
+			if !isRange {
+				return list, nil
+			}
+
+			// range literal
+			if rangeVal != 2 || len(list.Items) != 2 {
+				return nil, fmt.Errorf("georule/parser: range parsing error: tok=%v, lit=%v", tok, lit)
+			}
+
+			var (
+				rangeFloat *RangeFloatLit
+				rangeInt   *RangeIntLit
+			)
+
+			// start
+			switch typ := list.Items[0].(type) {
+			case *IntLit:
+				rangeInt = &RangeIntLit{Start: typ.Value}
+			case *FloatLit:
+				rangeFloat = &RangeFloatLit{Start: typ.Value}
+			}
+
+			// end
+			switch typ := list.Items[1].(type) {
+			default:
+				return nil, fmt.Errorf("georule/parser: range parsing error: tok=%v, lit=%v", tok, lit)
+			case *IntLit:
+				if rangeInt == nil {
+					return nil, fmt.Errorf("georule/parser: range parsing error: tok=%v, lit=%v", tok, lit)
+				}
+				rangeInt.End = typ.Value
+				return rangeInt, nil
+			case *FloatLit:
+				if rangeFloat == nil {
+					return nil, fmt.Errorf("georule/parser: range parsing error: tok=%v, lit=%v", tok, lit)
+				}
+				rangeFloat.End = typ.Value
+				return rangeFloat, nil
+			}
 		}
+
 		switch tok {
+		case SUB:
+			isRange = true
 		case STRING, ILLEGAL:
 			expr, err := p.parseStringExpr(lit)
 			if err != nil {
@@ -133,12 +184,14 @@ func (p *Parser) parseArrayExpr() (Expr, error) {
 			}
 			list.Items = append(list.Items, expr)
 		case INT:
+			rangeVal++
 			expr, err := p.parseIntExpr(lit)
 			if err != nil {
 				return nil, err
 			}
 			list.Items = append(list.Items, expr)
 		case FLOAT:
+			rangeVal++
 			expr, err := p.parseFloatExpr(lit)
 			if err != nil {
 				return nil, err
@@ -146,7 +199,7 @@ func (p *Parser) parseArrayExpr() (Expr, error) {
 			list.Items = append(list.Items, expr)
 		case COMMA:
 		default:
-			return nil, fmt.Errorf("georule/parser: parseArrayExpr() parsing error: tok=%v, lit=%v", tok, lit)
+			return nil, fmt.Errorf("georule/parser: parseArrayOrRangeExpr() parsing error: tok=%v, lit=%v", tok, lit)
 		}
 	}
 	return nil, nil
@@ -470,6 +523,32 @@ func (p *Parser) next() (tok Token, lit string) {
 			tok = keyword
 		} else {
 			switch strings.ToUpper(sl) {
+			case "RANGE":
+				tok = RANGE
+			case "DURATION":
+				st, sl = p.scan()
+				if sl == "in" {
+					tok = DURATIONIN
+				} else if sl == "not" {
+					st, sl = p.scan()
+					if sl == "in" {
+						tok = DURATIONNOTIN
+					} else {
+						tok = ILLEGAL
+						p.reset()
+					}
+				} else {
+					tok = ILLEGAL
+					p.reset()
+				}
+			case "DISTANCE":
+				st, sl = p.scan()
+				if sl == "to" {
+					tok = DISTANCETO
+				} else {
+					tok = ILLEGAL
+					p.reset()
+				}
 			case "ON":
 				st, sl = p.scan()
 				if sl == "distance" {
@@ -480,10 +559,6 @@ func (p *Parser) next() (tok Token, lit string) {
 				}
 			case "IN":
 				tok = IN
-			case "INSIDE":
-				tok = INSIDE
-			case "OUTSIDE":
-				tok = OUTSIDE
 			case "INTERSECTS":
 				tok = INTERSECTS
 			case "NEARBY":
