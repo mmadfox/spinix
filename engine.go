@@ -219,7 +219,7 @@ func getRefVars(expr Expr) []string {
 	WalkFunc(expr, func(expr Expr) {
 		switch typ := expr.(type) {
 		case *CallExpr:
-			if typ.Fun.IsSpatialKeyword() {
+			if typ.Fun.IsGeospatial() {
 				for _, arg := range typ.Args {
 					lit, ok := arg.(*StringLit)
 					if !ok {

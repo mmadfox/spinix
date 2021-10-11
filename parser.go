@@ -24,6 +24,9 @@ func newParser(r io.Reader) *Parser {
 }
 
 func ParseSpec(spec string) (Expr, error) {
+	if len(spec) == 0 {
+		return nil, fmt.Errorf("georule/parser: specification not defined")
+	}
 	return newParser(strings.NewReader(spec)).Parse()
 }
 
@@ -56,6 +59,11 @@ func (p *Parser) parse() (Expr, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		if err := p.validate(operator, expr, rhs); err != nil {
+			return nil, err
+		}
+
 		lhs, ok := expr.(*BinaryExpr)
 		if ok && lhs.Op.Precedence() <= operator.Precedence() {
 			expr = &BinaryExpr{
@@ -73,9 +81,163 @@ func (p *Parser) parse() (Expr, error) {
 	}
 }
 
+func (p *Parser) validate(op Token, lhs, rhs Expr) error {
+	invalidErr := fmt.Errorf("georule/parser: invalid specification %s", op)
+	if lhs == nil || rhs == nil {
+		return invalidErr
+	}
+	switch op {
+	case EQL, LSS, GTR, NEQ, LEQ, GEQ:
+		lhsBinaryExpr, ok := lhs.(*BinaryExpr)
+		if !ok {
+			return nil
+		}
+		switch lhsBinaryExpr.Op {
+		case DISTANCETO:
+			if valid := p.validateDistanceToOperator(
+				lhsBinaryExpr.Op,
+				lhsBinaryExpr.LHS,
+				lhsBinaryExpr.RHS,
+			); valid {
+				if !p.validatePositiveNumber(rhs) {
+					return invalidErr
+				}
+			} else {
+				return invalidErr
+			}
+		}
+	case DISTANCETO:
+		if valid := p.validateDistanceToOperator(op, lhs, rhs); !valid {
+			return invalidErr
+		}
+	case INTERSECTS:
+		if valid := p.validateIntersectsOperator(op, lhs, rhs); !valid {
+			return invalidErr
+		}
+	case ONDISTANCE:
+		lhsBinaryExpr, ok := lhs.(*BinaryExpr)
+		if !ok {
+			return invalidErr
+		}
+
+		switch lhsBinaryExpr.Op {
+		case INTERSECTS:
+			if valid := p.validateIntersectsOperator(
+				lhsBinaryExpr.Op,
+				lhsBinaryExpr.LHS,
+				lhsBinaryExpr.RHS,
+			); valid {
+				if !p.validatePositiveNumber(rhs) {
+					return invalidErr
+				}
+			} else {
+				return invalidErr
+			}
+		case NEARBY:
+			if valid := p.validateNearbyOperator(
+				lhsBinaryExpr.Op,
+				lhsBinaryExpr.LHS,
+				lhsBinaryExpr.RHS,
+			); valid {
+				if !p.validatePositiveNumber(rhs) {
+					return invalidErr
+				}
+			} else {
+				return invalidErr
+			}
+		default:
+			return invalidErr
+		}
+	case NEARBY:
+		if valid := p.validateNearbyOperator(op, lhs, rhs); !valid {
+			return invalidErr
+		}
+	}
+	return nil
+}
+
+func (p *Parser) validatePositiveNumber(expr Expr) bool {
+	switch typ := expr.(type) {
+	case *FloatLit:
+		if typ.Value > 0 {
+			return true
+		}
+	case *IntLit:
+		if typ.Value > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *Parser) validateNearbyOperator(op Token, lhs, rhs Expr) bool {
+	if op != NEARBY {
+		return false
+	}
+	// LHS
+	_, ok := lhs.(*DeviceLit)
+	if !ok {
+		return false
+	}
+
+	// RHS
+	rhsCallExpr, ok := rhs.(*CallExpr)
+	if !ok {
+		return false
+	}
+	if rhsCallExpr.Fun != FUN_DEVICES && !rhsCallExpr.Fun.IsGeospatial() {
+		return false
+	}
+	return true
+}
+
+func (p *Parser) validateIntersectsOperator(op Token, lhs, rhs Expr) bool {
+	if op != INTERSECTS {
+		return false
+	}
+	// LHS
+	_, ok := lhs.(*DeviceLit)
+	if !ok {
+		return false
+	}
+
+	// RHS
+	rhsCallExpr, ok := rhs.(*CallExpr)
+	if !ok {
+		return false
+	}
+	if rhsCallExpr.Fun != FUN_DEVICES && !rhsCallExpr.Fun.IsGeospatial() {
+		return false
+	}
+	return true
+}
+
+func (p *Parser) validateDistanceToOperator(op Token, lhs, rhs Expr) bool {
+	if op != DISTANCETO {
+		return false
+	}
+	// LHS
+	_, ok := lhs.(*DeviceLit)
+	if !ok {
+		return false
+	}
+
+	// RHS
+	rhsCallExpr, ok := rhs.(*CallExpr)
+	if !ok {
+		return false
+	}
+	if rhsCallExpr.Fun != FUN_DEVICES && !rhsCallExpr.Fun.IsGeospatial() {
+		return false
+	}
+	return true
+}
+
 func (p *Parser) parseExprOrKeyword() (Expr, error) {
 	tok, lit := p.next()
 	switch tok {
+	case DEVICE:
+		return &DeviceLit{}, nil
 	case LBRACK:
 		return p.parseArrayOrRangeExpr()
 	case LBRACE:
@@ -86,10 +248,8 @@ func (p *Parser) parseExprOrKeyword() (Expr, error) {
 		return p.parseFloatExpr(lit)
 	case STRING:
 		return p.parseStringExpr(lit)
-	case FUN_DEVICE:
-		return p.parseCallExprWithArgs(tok)
 	case FUN_POLY, FUN_MULTI_POLY, FUN_POINT, FUN_LINE, FUN_MULTI_LINE, FUN_MULTI_POINT,
-		FUN_RECT, FUN_CIRCLE, FUN_GEOM_COLLECTION, FUN_FUT_COLLECTION, FUN_OBJECT:
+		FUN_RECT, FUN_CIRCLE, FUN_GEOM_COLLECTION, FUN_FUT_COLLECTION, FUN_OBJECT, FUN_DEVICES:
 		return p.parseCallExprWithVarsArgs(tok)
 	case LPAREN:
 		return p.parseParenExpr()

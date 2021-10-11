@@ -56,6 +56,9 @@ type (
 		Items []Expr
 	}
 
+	// A DeviceLit represents a current device.
+	DeviceLit struct{}
+
 	// A RangeFloatLit represents a float range type.
 	RangeFloatLit struct {
 		Start float64
@@ -204,6 +207,10 @@ func (e *RangeIntLit) String() string {
 	return sb.String()
 }
 
+func (e *DeviceLit) String() string {
+	return "device"
+}
+
 func (_ *ParenExpr) expr()     {}
 func (_ *BinaryExpr) expr()    {}
 func (_ *CallExpr) expr()      {}
@@ -215,6 +222,7 @@ func (_ *ListLit) expr()       {}
 func (_ *BooleanLit) expr()    {}
 func (_ *RangeFloatLit) expr() {}
 func (_ *RangeIntLit) expr()   {}
+func (_ *DeviceLit) expr()     {}
 
 // TODO: refactor
 func (_ *ObjectOnDistanceLit) expr() {}

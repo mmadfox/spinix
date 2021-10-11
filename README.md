@@ -28,7 +28,7 @@ Work in progress ...
 - ```!=```, ```<=```, ```>=```
 - ```INTERSECTS```, ```NEARBY ... ON DISTANCE```, ```DISTANCE TO```
 - ```+```, ```-```, ```*```, ```/```, ```%```
-- ```RANGE [1-100]```
+- ```DURATION IN```, ```DURATION NOT IN```,```RANGE [1-100]```
 
 ## Variables
 #### {device.speed} 

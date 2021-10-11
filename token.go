@@ -72,7 +72,8 @@ const (
 	VAR_TEMPERATURE // {device.temperature}
 	VAR_BATTERY     // {device.battery}
 
-	FUN_DEVICE // device(@), device(one, two, "Three")
+	DEVICE      // device
+	FUN_DEVICES // devices
 
 	keywordGeospatialBegin
 	FUN_OBJECT          // object(@id, @id1)
@@ -141,6 +142,8 @@ var tokens = [...]string{
 	RBRACE: "}",
 	COLON:  ":",
 
+	DEVICE: "device",
+
 	VAR_IDENT:       "@",
 	VAR_SPEED:       "device.speed",
 	VAR_STATUS:      "device.status",
@@ -155,7 +158,7 @@ var tokens = [...]string{
 	VAR_TEMPERATURE: "device.temperature",
 	VAR_BATTERY:     "device.battery",
 
-	FUN_DEVICE: "device",
+	FUN_DEVICES: "devices",
 
 	FUN_OBJECT:          "object",
 	FUN_POLY:            "polygon",
@@ -191,10 +194,7 @@ func (tok Token) IsKeyword() bool {
 	return keywordBegin < tok && tok < keywordEnd
 }
 
-func (tok Token) IsSpatialKeyword() bool {
-	if !tok.IsKeyword() {
-		return false
-	}
+func (tok Token) IsGeospatial() bool {
 	return keywordGeospatialBegin < tok && tok < keywordGeospatialEnd
 }
 
@@ -204,7 +204,8 @@ func (tok Token) Precedence() int {
 		return 1
 	case AND:
 		return 2
-	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR, ONDISTANCE, NEARBY, DISTANCETO:
+	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR, ONDISTANCE, NEARBY, DISTANCETO,
+		DURATIONNOTIN, DURATIONIN:
 		return 3
 	}
 	return 0

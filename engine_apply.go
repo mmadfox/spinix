@@ -212,7 +212,7 @@ func (e *Engine) applyONDISTANCE(ctx context.Context, l, r Expr) (Expr, error) {
 		switch typ.Fun {
 		default:
 			return falseExpr, nil
-		case FUN_DEVICE:
+		case FUN_DEVICES:
 			onDistanceDevice = &DeviceOnDistanceLit{
 				DeviceIDs: make(map[string]struct{}),
 			}
@@ -271,7 +271,7 @@ func (e *Engine) applyNEARBY(ctx context.Context, l, r Expr, _, currentState *De
 		switch typ.Fun {
 		default:
 			deviceCoords = [][2]float64{{currentState.Latitude, currentState.Longitude}}
-		case FUN_DEVICE:
+		case FUN_DEVICES:
 			deviceCoords = make([][2]float64, 0, 2)
 			if typ.UseCtx {
 				deviceCoords = append(deviceCoords, [2]float64{currentState.Latitude, currentState.Longitude})
