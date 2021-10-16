@@ -2,65 +2,55 @@ package spinix
 
 import (
 	"fmt"
-	"io"
 	"math"
 	"strconv"
 	"strings"
-	"text/scanner"
+	"time"
 )
 
 type Parser struct {
-	s   scanner.Scanner
-	tok rune
-	lit string
-	pos Pos
+	s  *Scanner
+	op Token
 }
 
-func newParser(r io.Reader) *Parser {
-	p := &Parser{s: scanner.Scanner{}}
-	p.s.Mode = scanner.ScanIdents | scanner.ScanFloats | scanner.ScanStrings
-	p.s.Init(r)
-	return p
+func newParser(spec string) *Parser {
+	return &Parser{
+		s: NewScanner(strings.NewReader(spec)),
+	}
 }
 
 func ParseSpec(spec string) (Expr, error) {
 	if len(spec) == 0 {
-		return nil, fmt.Errorf("georule/parser: specification not defined")
+		return nil, fmt.Errorf("spinix/parser: specification not defined")
 	}
-	return newParser(strings.NewReader(spec)).Parse()
+	return newParser(spec).Parse()
 }
 
 func (p *Parser) Parse() (Expr, error) {
 	return p.parse()
 }
 
-func (p *Parser) reset() {
-	p.pos = 1
-}
-
 func (p *Parser) parse() (Expr, error) {
-	expr, err := p.parseExprOrKeyword()
+	expr, err := p.parseExpr()
 	if err != nil {
 		return nil, err
 	}
 
 	for {
-		operator, literal := p.next()
+		operator, literal := p.s.Next()
 		if operator == ILLEGAL {
-			return nil, fmt.Errorf("georule/parser: ILLEGAL %s", literal)
+			return nil, fmt.Errorf("spinix/parser: ILLEGAL %s", literal)
 		}
 
 		if (!operator.IsOperator() && !operator.IsKeyword()) || operator == EOF {
-			p.reset()
+			p.s.Reset()
 			return expr, nil
 		}
 
-		rhs, err := p.parseExprOrKeyword()
-		if err != nil {
-			return nil, err
-		}
+		p.op = operator
 
-		if err := p.validate(operator, expr, rhs); err != nil {
+		rhs, err := p.parseExpr()
+		if err != nil {
 			return nil, err
 		}
 
@@ -81,441 +71,185 @@ func (p *Parser) parse() (Expr, error) {
 	}
 }
 
-func (p *Parser) validate(op Token, lhs, rhs Expr) error {
-	invalidErr := fmt.Errorf("georule/parser: invalid specification %s", op)
-	if lhs == nil || rhs == nil {
-		return invalidErr
-	}
-	switch op {
-	case EQL, LSS, GTR, NEQ, LEQ, GEQ:
-		lhsBinaryExpr, ok := lhs.(*BinaryExpr)
-		if !ok {
-			return nil
-		}
-		switch lhsBinaryExpr.Op {
-		case DISTANCETO:
-			if valid := p.validateDistanceToOperator(
-				lhsBinaryExpr.Op,
-				lhsBinaryExpr.LHS,
-				lhsBinaryExpr.RHS,
-			); valid {
-				if !p.validatePositiveNumber(rhs) {
-					return invalidErr
-				}
-			} else {
-				return invalidErr
-			}
-		}
-	case DISTANCETO:
-		if valid := p.validateDistanceToOperator(op, lhs, rhs); !valid {
-			return invalidErr
-		}
-	case INTERSECTS:
-		if valid := p.validateIntersectsOperator(op, lhs, rhs); !valid {
-			return invalidErr
-		}
-	case ONDISTANCE:
-		lhsBinaryExpr, ok := lhs.(*BinaryExpr)
-		if !ok {
-			return invalidErr
-		}
-
-		switch lhsBinaryExpr.Op {
-		case INTERSECTS:
-			if valid := p.validateIntersectsOperator(
-				lhsBinaryExpr.Op,
-				lhsBinaryExpr.LHS,
-				lhsBinaryExpr.RHS,
-			); valid {
-				if !p.validatePositiveNumber(rhs) {
-					return invalidErr
-				}
-			} else {
-				return invalidErr
-			}
-		case NEARBY:
-			if valid := p.validateNearbyOperator(
-				lhsBinaryExpr.Op,
-				lhsBinaryExpr.LHS,
-				lhsBinaryExpr.RHS,
-			); valid {
-				if !p.validatePositiveNumber(rhs) {
-					return invalidErr
-				}
-			} else {
-				return invalidErr
-			}
-		default:
-			return invalidErr
-		}
-	case NEARBY:
-		if valid := p.validateNearbyOperator(op, lhs, rhs); !valid {
-			return invalidErr
-		}
-	}
-	return nil
-}
-
-func (p *Parser) validatePositiveNumber(expr Expr) bool {
-	switch typ := expr.(type) {
-	case *FloatLit:
-		if typ.Value > 0 {
-			return true
-		}
-	case *IntLit:
-		if typ.Value > 0 {
-			return true
-		}
-	}
-	return false
-}
-
-func (p *Parser) validateNearbyOperator(op Token, lhs, rhs Expr) bool {
-	if op != NEARBY {
-		return false
-	}
-	// LHS
-	_, ok := lhs.(*DeviceLit)
-	if !ok {
-		return false
-	}
-
-	// RHS
-	rhsCallExpr, ok := rhs.(*CallExpr)
-	if !ok {
-		return false
-	}
-	if rhsCallExpr.Fun != FUN_DEVICES && !rhsCallExpr.Fun.IsGeospatial() {
-		return false
-	}
-	return true
-}
-
-func (p *Parser) validateIntersectsOperator(op Token, lhs, rhs Expr) bool {
-	if op != INTERSECTS {
-		return false
-	}
-	// LHS
-	_, ok := lhs.(*DeviceLit)
-	if !ok {
-		return false
-	}
-
-	// RHS
-	rhsCallExpr, ok := rhs.(*CallExpr)
-	if !ok {
-		return false
-	}
-	if rhsCallExpr.Fun != FUN_DEVICES && !rhsCallExpr.Fun.IsGeospatial() {
-		return false
-	}
-	return true
-}
-
-func (p *Parser) validateDistanceToOperator(op Token, lhs, rhs Expr) bool {
-	if op != DISTANCETO {
-		return false
-	}
-	// LHS
-	_, ok := lhs.(*DeviceLit)
-	if !ok {
-		return false
-	}
-
-	// RHS
-	rhsCallExpr, ok := rhs.(*CallExpr)
-	if !ok {
-		return false
-	}
-	if rhsCallExpr.Fun != FUN_DEVICES && !rhsCallExpr.Fun.IsGeospatial() {
-		return false
-	}
-	return true
-}
-
-func (p *Parser) parseExprOrKeyword() (Expr, error) {
-	tok, lit := p.next()
+func (p *Parser) parseExpr() (Expr, error) {
+	tok, lit := p.s.Next()
 	switch tok {
-	case DEVICE:
-		return &DeviceLit{}, nil
-	case LBRACK:
-		return p.parseArrayOrRangeExpr()
-	case LBRACE:
-		return p.parseVarExpr()
 	case INT:
-		return p.parseIntExpr(lit)
+		return p.parseIntLit(lit)
 	case FLOAT:
-		return p.parseFloatExpr(lit)
+		return p.parseFloatLit(lit)
 	case STRING:
-		return p.parseStringExpr(lit)
-	case FUN_POLY, FUN_MULTI_POLY, FUN_POINT, FUN_LINE, FUN_MULTI_LINE, FUN_MULTI_POINT,
-		FUN_RECT, FUN_CIRCLE, FUN_GEOM_COLLECTION, FUN_FUT_COLLECTION, FUN_OBJECT, FUN_DEVICES:
-		return p.parseCallExprWithVarsArgs(tok)
-	case LPAREN:
-		return p.parseParenExpr()
+		return &StringLit{Value: lit}, nil
+	case LBRACK:
+		return p.parseListOrRangeLit()
+	case DEVICE:
+		return p.parseDeviceLit()
+	case DEVICES:
+		return p.parseDevicesLit()
+	case OBJECTS, POLY, MULTI_POLY, LINE, MULTI_LINE,
+		POINT, MULTI_POINT, RECT, CIRCLE, COLLECTION, FUT_COLLECTION:
+		return p.parseObjectLit(tok)
+	case FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE, BATTERY_CHARGE,
+		STATUS, SPEED, MODEL, BRAND, OWNER, IMEI, YEAR, MONTH, WEEK, DAY:
+		return &IdentLit{Name: lit, Pos: p.s.Offset(), Kind: tok}, nil
 	default:
-		return nil, fmt.Errorf("georule/parser: parsing error: tok=%v, lit=%v", tok, lit)
+		return nil, p.error(tok, lit, "")
 	}
 }
 
-func (p *Parser) scan() (rune, string) {
-	if p.pos != 0 {
-		p.pos = 0
-	} else {
-		p.tok, p.lit = p.s.Scan(), p.s.TokenText()
-	}
-	return p.tok, p.lit
-}
-
-func (p *Parser) parseIntExpr(lit string) (Expr, error) {
-	v, err := strconv.Atoi(lit)
-	if err != nil {
-		return nil, fmt.Errorf("georule/parser: parseIntExpr(%s) => %v", lit, err)
-	}
-	return &IntLit{Value: v}, nil
-}
-
-func (p *Parser) parseArrayOrRangeExpr() (Expr, error) {
-	list := &ListLit{}
-	var (
-		isRange  bool
-		rangeVal int
-	)
-	for i := 0; i < math.MaxInt16; i++ {
-		tok, lit := p.next()
-		if isRange && i > 3 {
-			return nil, fmt.Errorf("georule/parser: range parsing error: tok=%v, lit=%v", tok, lit)
-		}
-
-		if tok == EOF || tok == RBRACK {
-			if len(list.Items) == 0 {
-				return nil, fmt.Errorf("georule/parser: parsing error: tok=%v, lit=%v", tok, lit)
-			}
-
-			// list literal
-			if !isRange {
-				return list, nil
-			}
-
-			// range literal
-			if rangeVal != 2 || len(list.Items) != 2 {
-				return nil, fmt.Errorf("georule/parser: range parsing error: tok=%v, lit=%v", tok, lit)
-			}
-
-			var (
-				rangeFloat *RangeFloatLit
-				rangeInt   *RangeIntLit
-			)
-
-			// start
-			switch typ := list.Items[0].(type) {
-			case *IntLit:
-				rangeInt = &RangeIntLit{Start: typ.Value}
-			case *FloatLit:
-				rangeFloat = &RangeFloatLit{Start: typ.Value}
-			}
-
-			// end
-			switch typ := list.Items[1].(type) {
-			default:
-				return nil, fmt.Errorf("georule/parser: range parsing error: tok=%v, lit=%v", tok, lit)
-			case *IntLit:
-				if rangeInt == nil {
-					return nil, fmt.Errorf("georule/parser: range parsing error: tok=%v, lit=%v", tok, lit)
-				}
-				rangeInt.End = typ.Value
-				return rangeInt, nil
-			case *FloatLit:
-				if rangeFloat == nil {
-					return nil, fmt.Errorf("georule/parser: range parsing error: tok=%v, lit=%v", tok, lit)
-				}
-				rangeFloat.End = typ.Value
-				return rangeFloat, nil
-			}
-		}
-
-		switch tok {
-		case SUB:
-			isRange = true
-		case STRING, ILLEGAL:
-			expr, err := p.parseStringExpr(lit)
-			if err != nil {
-				return nil, err
-			}
-			list.Items = append(list.Items, expr)
-		case INT:
-			rangeVal++
-			expr, err := p.parseIntExpr(lit)
-			if err != nil {
-				return nil, err
-			}
-			list.Items = append(list.Items, expr)
-		case FLOAT:
-			rangeVal++
-			expr, err := p.parseFloatExpr(lit)
-			if err != nil {
-				return nil, err
-			}
-			list.Items = append(list.Items, expr)
-		case COMMA:
-		default:
-			return nil, fmt.Errorf("georule/parser: parseArrayOrRangeExpr() parsing error: tok=%v, lit=%v", tok, lit)
-		}
-	}
-	return nil, nil
-}
-
-func (p *Parser) parseVarExpr() (Expr, error) {
-	tok, lit := p.next()
-	if lit != "device" {
-		return nil, fmt.Errorf("georule/parser: parsing error: tok=%v, lit=%v", tok, lit)
-	}
-	p.next()
-	_, lit = p.next()
-	switch strings.ToLower(lit) {
-	case "speed":
-		tok = VAR_SPEED
-	case "status":
-		tok = VAR_STATUS
-	case "emei":
-		tok = VAR_EMEI
-	case "owner":
-		tok = VAR_OWNER
-	case "brand":
-		tok = VAR_BRAND
-	case "model":
-		tok = VAR_MODEL
-	case "fuellevel":
-		tok = VAR_FUELLEVEL
-	case "pressure":
-		tok = VAR_PRESSURE
-	case "luminosity":
-		tok = VAR_LUMONOSITY
-	case "humidity":
-		tok = VAR_HUMIDITY
-	case "temperature":
-		tok = VAR_TEMPERATURE
-	case "battery":
-		tok = VAR_BATTERY
-	default:
-		return nil, fmt.Errorf("georule/parser: parsing error: tok=%v, lit=%v", tok, lit)
-	}
-	rbrace, _ := p.next()
-	if rbrace != RBRACE {
-		return nil, fmt.Errorf("georule/parser: missing }")
-	}
-	return &VarLit{Value: tok}, nil
-}
-
-func (p *Parser) parseFloatExpr(lit string) (Expr, error) {
-	v, err := strconv.ParseFloat(lit, 64)
-	if err != nil {
-		return nil, fmt.Errorf("georule/parser: parseFloatExpr(%s) => %v", lit, err)
-	}
-	return &FloatLit{Value: v}, nil
-}
-
-func (p *Parser) parseStringExpr(lit string) (Expr, error) {
-	return &StringLit{Value: lit}, nil
-}
-
-func (p *Parser) parseParenExpr() (Expr, error) {
-	expr, err := p.parse()
+func (p *Parser) parseDevicesLit() (Expr, error) {
+	expr, err := p.parseObjectLit(DEVICES)
 	if err != nil {
 		return nil, err
 	}
-	if tok, _ := p.next(); tok != RPAREN {
-		return nil, fmt.Errorf("georule/parser: missing )")
+	object := expr.(*ObjectLit)
+	devices := &DevicesLit{}
+	devices.Ref = make([]string, len(object.Ref))
+	copy(devices.Ref, object.Ref)
+	tok := p.s.NextTok()
+	switch tok {
+	case BBOX:
+		devices.Kind = BBOX
+	case RADIUS, DISTANCE:
+		devices.Kind = RADIUS
+	default:
+		devices.Pos = p.s.Offset()
+		p.s.Reset()
+		return devices, nil
 	}
-	return &ParenExpr{Expr: expr}, nil
+	devices.Unit, devices.Value, err = p.parseDistanceUnit()
+	if err != nil {
+		return nil, err
+	}
+	devices.Pos = p.s.Offset()
+	return devices, nil
 }
 
-func (p *Parser) parseCallExprWithRangeArgs(keyword Token) (Expr, error) {
-	lparen, _ := p.next()
-	if lparen != LPAREN {
-		return nil, fmt.Errorf("georule/parser: %s missed (", keyword)
-	}
-	var list []Expr
-	for {
-		tok, lit := p.next()
-		if tok == ILLEGAL {
-			tok = IDENT
+func (p *Parser) parseListOrRangeLit() (Expr, error) {
+	list := &ListLit{Items: make([]Expr, 0, 2)}
+	for i := 0; i < math.MaxInt16; i++ {
+		tok, lit := p.s.Next()
+		// ]
+		if tok == RBRACK {
+			// list
+			if len(list.Items) == 0 {
+				return nil, p.error(ILLEGAL, "[]", "expected one or more value")
+			}
+			// range
+			if list.Kind == RANGE && len(list.Items) != 2 {
+				return nil, p.error(list.Kind, lit, "missing start or end value")
+			}
+			list.Pos = p.s.Offset()
+			return list, nil
 		}
-		if tok == EOF ||
-			(tok != RPAREN && tok != COMMA && tok != INT && tok != FLOAT) {
-			return nil, fmt.Errorf("georule/parser: %s args error tok=%s, lit=%s",
-				keyword, tok, lit)
+		// [1..
+		if tok == PERIOD && (i <= 0 || i > 2) {
+			return nil, p.error(list.Kind, "...", "expected [start .. end] ")
 		}
-		if tok == INT {
-			v, err := strconv.Atoi(lit)
+		switch tok {
+		case INT:
+			if list.Typ == 0 {
+				list.Typ = INT
+			} else if list.Typ != INT {
+				return nil, p.error(tok, lit, fmt.Sprintf("expected %v literal", list.Typ))
+			}
+			intLit, err := p.parseIntLit(lit)
 			if err != nil {
-				return nil, fmt.Errorf("georule/parser: %s args error tok=%s, lit=%s",
-					keyword, tok, lit)
+				return nil, err
 			}
-			list = append(list, &IntLit{Value: v})
-		}
-		if tok == FLOAT {
-			v, err := strconv.ParseFloat(lit, 64)
+			list.Items = append(list.Items, intLit)
+		case FLOAT:
+			if list.Typ == 0 {
+				list.Typ = FLOAT
+			} else if list.Typ != FLOAT {
+				return nil, p.error(tok, lit, fmt.Sprintf("expected %v literal", list.Typ))
+			}
+			floatLit, err := p.parseFloatLit(lit)
 			if err != nil {
-				return nil, fmt.Errorf("georule/parser: %s args error tok=%s, lit=%s",
-					keyword, tok, lit)
+				return nil, err
 			}
-			list = append(list, &FloatLit{Value: v})
-		}
-		if tok == RPAREN {
-			if len(list) == 0 {
-				return nil, fmt.Errorf("georule/parser: %s arguments not found", keyword)
+			list.Items = append(list.Items, floatLit)
+		case STRING, ILLEGAL:
+			if list.Typ == 0 {
+				list.Typ = STRING
+			} else if list.Typ != STRING {
+				return nil, p.error(tok, lit, fmt.Sprintf("expected %v literal", list.Typ))
 			}
-			if len(list) > 2 {
-				return nil, fmt.Errorf("georule/parser: %s exceeds the number of arguments", keyword)
-			}
-			return &CallExpr{
-				Fun:  keyword,
-				Args: list,
-			}, nil
+			list.Items = append(list.Items, &StringLit{Value: lit})
+		case COMMA:
+		case PERIOD:
+			list.Kind = RANGE
 		}
 	}
+	return list, nil
 }
 
-func (p *Parser) parseCallExprWithArgs(keyword Token) (Expr, error) {
-	lparen, _ := p.next()
+func (p *Parser) parseObjectLit(kind Token) (expr Expr, err error) {
+	lparen, _ := p.s.Next()
 	if lparen != LPAREN {
-		return nil, fmt.Errorf("georule/parser: %s missed (", keyword)
+		return nil, p.error(kind, "", "missing (")
 	}
 
 	var (
-		prev   Token
-		list   []Expr
-		unique map[string]struct{}
+		lastTok Token
+		unique  map[string]struct{}
 	)
-	var useContext bool
+
+	obj := &ObjectLit{
+		Kind: kind,
+		Ref:  make([]string, 0, 2),
+	}
+
+	badToken := func(tok Token) bool {
+		return tok == EOF ||
+			(tok != RPAREN && tok != VAR_IDENT &&
+				tok != COMMA && tok != IDENT && tok != INT && tok != FLOAT && tok != STRING)
+	}
+
 	for {
-		tok, lit := p.next()
+		tok, lit := p.s.Next()
 		if tok == ILLEGAL {
 			tok = IDENT
 		}
-		if tok == EOF || (tok != VAR_IDENT && tok != RPAREN && tok != COMMA && tok != IDENT && tok != STRING) {
-			return nil, fmt.Errorf("georule/parser: %s args error tok=%s, lit=%s",
-				keyword, tok, lit)
+		if badToken(tok) {
+			return nil, p.error(tok, lit, "args error")
 		}
-		if tok == IDENT && prev != COMMA && prev != ILLEGAL {
-			return nil, fmt.Errorf("georule/parser: %s args error missed %s token",
-				keyword, COMMA)
+		isAllowToken := tok == IDENT || tok == STRING || tok == INT || tok == FLOAT
+		if isAllowToken && lastTok != VAR_IDENT {
+			return nil, p.error(tok, lit, "missing token")
 		}
+		// )
 		if tok == RPAREN {
-			if len(list) == 0 && !useContext {
-				return nil, fmt.Errorf("georule/parser: %s arguments not found", keyword)
+			if len(obj.Ref) == 0 {
+				return nil, p.error(tok, lit, "arguments not found")
 			}
-			return &CallExpr{
-				Fun:    keyword,
-				UseCtx: useContext,
-				Args:   list,
-			}, nil
-		}
-		prev = tok
-		if tok == IDENT || tok == STRING || tok == VAR_IDENT {
-			if err := p.validateLen(lit); err != nil {
+
+			tok = p.s.NextTok()
+			if tok != COLON {
+				obj.Pos = p.s.Offset()
+				p.s.Reset()
+				return obj, nil
+			}
+
+			// time duration
+			tok = p.s.NextTok()
+			if tok != TIME {
+				obj.Pos = p.s.Offset()
+				p.s.Reset()
+				return obj, nil
+			}
+			obj.DurTyp, obj.DurVal, err = p.parseTimeDur()
+			if err != nil {
 				return nil, err
+			}
+			obj.Pos = p.s.Offset()
+			return obj, nil
+		}
+		// ident
+		lastTok = tok
+		if tok == IDENT || tok == INT || tok == FLOAT || tok == STRING {
+			if len(lit) > 64 {
+				return nil, p.error(tok, lit, "id too long")
 			}
 			if unique == nil {
 				unique = make(map[string]struct{})
@@ -525,214 +259,131 @@ func (p *Parser) parseCallExprWithArgs(keyword Token) (Expr, error) {
 				continue
 			}
 			unique[lit] = struct{}{}
-			if tok == VAR_IDENT {
-				useContext = true
-				continue
-			}
-			list = append(list, &StringLit{
-				Value: lit,
-			})
+			obj.Ref = append(obj.Ref, lit)
 		}
 	}
 }
 
-func (p *Parser) parseCallExprWithVarsArgs(keyword Token) (Expr, error) {
-	lparen, _ := p.next()
-	if lparen != LPAREN {
-		return nil, fmt.Errorf("georule/parser: %s missed (", keyword)
+func (p *Parser) parseDeviceLit() (expr Expr, err error) {
+	device := &DeviceLit{}
+
+	tok := p.s.NextTok()
+	if tok != COLON {
+		device.Pos = p.s.Offset()
+		expr = device
+		p.s.Reset()
+		return device, err
 	}
 
-	var (
-		prev   Token
-		list   []Expr
-		unique map[string]struct{}
-	)
+	switch p.s.NextTok() {
+	case BBOX:
+		device.Kind = BBOX
+	case RADIUS, DISTANCE:
+		device.Kind = RADIUS
+	default:
+		return nil, p.error(DEVICE, ":", "missing radius literal")
+	}
+	device.Unit, device.Value, err = p.parseDistanceUnit()
+	if err != nil {
+		return
+	}
+	device.Pos = p.s.Offset()
+	return device, err
+}
 
+func (p *Parser) parseTimeDur() (k Token, dur time.Duration, err error) {
+	tok, lit := p.s.Next()
+	switch tok {
+	case DURATION:
+		k = DURATION
+	case AFTER:
+		k = AFTER
+	default:
+		err = p.error(tok, lit, "missing duration literal")
+		return
+	}
+	var str string
+exit:
 	for {
-		tok, lit := p.next()
-		if tok == ILLEGAL {
-			tok = IDENT
+		tok, lit := p.s.Next()
+		if tok == EOF {
+			break exit
 		}
-		if tok == EOF ||
-			(tok != RPAREN && tok != VAR_IDENT && tok != COMMA && tok != IDENT) {
-			return nil, fmt.Errorf("georule/parser: %s args error tok=%s, lit=%s",
-				keyword, tok, lit)
-		}
-		if tok == IDENT && prev != VAR_IDENT {
-			return nil, fmt.Errorf("georule/parser: %s args error missed %s token",
-				keyword, VAR_IDENT)
-		}
-		if tok == RPAREN {
-			if len(list) == 0 {
-				return nil, fmt.Errorf("georule/parser: %s arguments not found", keyword)
-			}
-			return &CallExpr{
-				Fun:  keyword,
-				Args: list,
-			}, nil
-		}
-		prev = tok
-		if tok == IDENT {
-			if err := p.validateLen(lit); err != nil {
-				return nil, err
-			}
-			if unique == nil {
-				unique = make(map[string]struct{})
-			}
-			_, found := unique[lit]
-			if found {
-				continue
-			}
-			unique[lit] = struct{}{}
-			list = append(list, &StringLit{
-				Value: lit,
-			})
+		switch tok {
+		case ILLEGAL:
+			str += lit
+			break exit
+		case INT:
+			str += lit
 		}
 	}
+	dur, err = time.ParseDuration(str)
+	return
 }
 
-func (p *Parser) validateLen(lit string) (err error) {
-	if len(lit) > 256 {
-		err = fmt.Errorf("georule/parser: identificator %s too long", lit)
+func (p *Parser) parseDistanceUnit() (u DistanceUnit, r float64, err error) {
+	tok, lit := p.s.Next()
+	switch tok {
+	case FLOAT:
+		r, err = strconv.ParseFloat(lit, 64)
+	case INT:
+		v, err := strconv.Atoi(lit)
+		if err != nil {
+			return u, r, err
+		}
+		r = float64(v)
+	}
+	if err != nil {
+		return u, r, err
+	}
+	if r < 0 {
+		return u, r, p.error(tok, lit, "negative distance")
+	}
+	lit = p.s.NextLit()
+	switch strings.ToLower(lit) {
+	case "m":
+		u = DistanceMeters
+	case "km":
+		u = DistanceKilometers
+	default:
+		return u, r, p.error(tok, lit, "missing distance unit")
 	}
 	return
 }
 
-func (p *Parser) next() (tok Token, lit string) {
-	st, sl := p.scan()
-	switch st {
-	case scanner.EOF:
-		tok = EOF
-	case '@':
-		tok = VAR_IDENT
-	case '(':
-		tok = LPAREN
-	case ')':
-		tok = RPAREN
-	case ',':
-		tok = COMMA
-	case '[':
-		tok = LBRACK
-	case ']':
-		tok = RBRACK
-	case '{':
-		tok = LBRACE
-	case '}':
-		tok = RBRACE
-	case '+':
-		tok = ADD
-	case '-':
-		tok = SUB
-	case '/':
-		tok = QUO
-	case '*':
-		tok = MUL
-	case '%':
-		tok = REM
-	case '>':
-		st, sl = p.scan()
-		if st == '=' {
-			tok = GEQ
-			sl = ">="
-		} else {
-			tok = GTR
-			sl = ">"
-			p.reset()
-		}
-	case '<':
-		st, sl = p.scan()
-		if st == '=' {
-			tok = LEQ
-			sl = "<="
-		} else {
-			tok = LSS
-			sl = "<"
-			p.reset()
-		}
-	case '!':
-		st, sl = p.scan()
-		if st == '=' {
-			tok = NEQ
-			sl = "!="
-		} else if st == '~' {
-			tok = NEREG
-			sl = "!~"
-		} else {
-			tok = ILLEGAL
-		}
-	case '=':
-		st, sl = p.scan()
-		if st == '=' {
-			tok = EQL
-			sl = "=="
-		} else if st == '~' {
-			tok = EREG
-			sl = "=~"
-		} else {
-			tok = ILLEGAL
-		}
-	case scanner.Float:
-		tok = FLOAT
-	case scanner.Int:
-		tok = INT
-	case scanner.String:
-		tok = STRING
-	case scanner.Ident:
-		keyword, found := LookupKeyword(sl)
-		if found {
-			tok = keyword
-		} else {
-			switch strings.ToUpper(sl) {
-			case "RANGE":
-				tok = RANGE
-			case "DURATION":
-				st, sl = p.scan()
-				if sl == "in" {
-					tok = DURATIONIN
-				} else if sl == "not" {
-					st, sl = p.scan()
-					if sl == "in" {
-						tok = DURATIONNOTIN
-					} else {
-						tok = ILLEGAL
-						p.reset()
-					}
-				} else {
-					tok = ILLEGAL
-					p.reset()
-				}
-			case "DISTANCE":
-				st, sl = p.scan()
-				if sl == "to" {
-					tok = DISTANCETO
-				} else {
-					tok = ILLEGAL
-					p.reset()
-				}
-			case "ON":
-				st, sl = p.scan()
-				if sl == "distance" {
-					tok = ONDISTANCE
-				} else {
-					tok = ILLEGAL
-					p.reset()
-				}
-			case "IN":
-				tok = IN
-			case "INTERSECTS":
-				tok = INTERSECTS
-			case "NEARBY":
-				tok = NEARBY
-			case "AND":
-				tok = AND
-			case "OR":
-				tok = OR
-			case "NOT":
-				// TODO:
-			default:
-				tok = ILLEGAL
-			}
-		}
+func (p *Parser) parseIntLit(val string) (Expr, error) {
+	v, err := strconv.Atoi(val)
+	if err != nil {
+		return nil, p.error(INT, val, err.Error())
 	}
-	return tok, sl
+	return &IntLit{Value: v}, nil
+}
+
+func (p *Parser) parseFloatLit(val string) (Expr, error) {
+	v, err := strconv.ParseFloat(val, 64)
+	if err != nil {
+		return nil, p.error(FLOAT, val, err.Error())
+	}
+	return &FloatLit{Value: v}, nil
+}
+
+func (p *Parser) error(tok Token, lit string, msg string) error {
+	return &ParserError{
+		Pos: p.s.Offset(),
+		Lit: lit,
+		Tok: tok,
+		Msg: msg,
+	}
+}
+
+type ParserError struct {
+	Tok Token
+	Lit string
+	Pos Pos
+	Msg string
+}
+
+func (e *ParserError) Error() string {
+	return fmt.Sprintf("spinix/parser: parsing error got=%v, lit=%v, pos=%d %s",
+		e.Tok, e.Lit, e.Pos, e.Msg)
 }

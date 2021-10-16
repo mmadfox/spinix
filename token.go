@@ -12,30 +12,70 @@ const (
 	EOF
 
 	literalBegin
-	IDENT  // FUN_SPEED
-	INT    // 12345
-	FLOAT  // 123.45
-	STRING // "abc"
+	IDENT          // operation
+	INT            // 12345
+	FLOAT          // 123.45
+	STRING         // "abc"
+	DEVICE         // device
+	RADIUS         // radius
+	DISTANCE       // distance
+	BBOX           // bbox
+	TIME           // time
+	DURATION       // duration
+	AFTER          // after
+	FUELLEVEL      // fuellevel
+	PRESSURE       // pressure
+	LUMINOSITY     // luminosity
+	HUMIDITY       // humidity
+	TEMPERATURE    // temperature
+	BATTERY_CHARGE // batteryCharge
+	STATUS         // status
+	SPEED          // speed
+	MODEL          // model
+	BRAND          // brand
+	OWNER          // owner
+	IMEI           // imei
+	VAR_IDENT      // @
+	YEAR           // year
+	MONTH          // month
+	WEEK           // week
+	DAY            // day
+	HOUR           // hour
+	DATE           // date
+	DATETIME       // dateTime
 	literalEnd
 
 	operatorBegin
-	AND           //  AND
-	OR            //  OR
-	IN            // IN
-	NOTIN         // NOT IN
+	AND //  AND
+	OR  //  OR
+	IN  // IN
+
+	WITHIN        // WITHIN
+	CONTAINS      // CONTAINS
+	INTERSECTSBOX // INTERSECTSBOX
 	INTERSECTS    // INTERSECTS
-	NEARBY        // NEARBY
-	ONDISTANCE    // ON DISTANCE 400
+
+	// <---
 	DISTANCETO    // DISTANCE TO
 	DURATIONIN    // DURATION IN
 	DURATIONNOTIN // DURATION NOT IN
-	RANGE         // RANGE
+	ONDISTANCE    // ON DISTANCE
+	// -->
 
-	ADD // +
-	SUB // -
-	MUL // *
-	QUO // /
-	REM // %
+	NOTIN            // NOT IN
+	NEAR             // NEAR
+	NOTNEAR          // NOT NEAR
+	NOTWITHIN        // NOT WITHIN
+	NOTINTERSECTS    // NOT INTERSECTS
+	NOTINTERSECTSBOX // NOT INTERSECTSBOX
+	NOTCONTAINES     // NOT CONTAINS
+
+	RANGE // range
+	ADD   // +
+	SUB   // -
+	MUL   // *
+	QUO   // /
+	REM   // %
 
 	EQL   // ==
 	LSS   // <
@@ -58,37 +98,22 @@ const (
 	operatorEnd
 
 	keywordBegin
-	VAR_IDENT       // @ident
-	VAR_SPEED       // {device.speed}
-	VAR_STATUS      // {device.status}
-	VAR_EMEI        // {device.emei}
-	VAR_OWNER       // {device.owner}
-	VAR_BRAND       // {device.brand}
-	VAR_MODEL       // {device.model}
-	VAR_FUELLEVEL   // {device.fuellevel}
-	VAR_PRESSURE    // {device.pressure}
-	VAR_LUMONOSITY  // {device.luminosity}
-	VAR_HUMIDITY    // {device.humidity}
-	VAR_TEMPERATURE // {device.temperature}
-	VAR_BATTERY     // {device.battery}
 
-	DEVICE      // device
-	FUN_DEVICES // devices
-
+	// GEOSPATIAL
 	keywordGeospatialBegin
-	FUN_OBJECT          // object(@id, @id1)
-	FUN_POLY            // polygon(@id1, @id2, @id3), poly(@id)
-	FUN_MULTI_POLY      // multiPolygon(@id1, @id2)
-	FUN_LINE            // line(@id1, @id2)
-	FUN_MULTI_LINE      // multiLine(@id1, @id2)
-	FUN_POINT           // point(@id)
-	FUN_MULTI_POINT     // multiPoint(@id)
-	FUN_RECT            // rect(@id)
-	FUN_CIRCLE          // circle(@id)
-	FUN_GEOM_COLLECTION // collection(@id)
-	FUN_FUT_COLLECTION  // featureCollection(@id1, @id2, @id3)
+	DEVICES        // devices(@id)
+	OBJECTS        // object(@id, @id1)
+	POLY           // polygon(@id1, @id2, @id3), poly(@id)
+	MULTI_POLY     // multiPolygon(@id1, @id2)
+	LINE           // line(@id1, @id2)
+	MULTI_LINE     // multiLine(@id1, @id2)
+	POINT          // point(@id)
+	MULTI_POINT    // multiPoint(@id)
+	RECT           // rect(@id)
+	CIRCLE         // circle(@id)
+	COLLECTION     // collection(@id)
+	FUT_COLLECTION // featureCollection(@id1, @id2, @id3)
 	keywordGeospatialEnd
-
 	keywordEnd
 
 	RPAREN // )
@@ -111,18 +136,40 @@ var tokens = [...]string{
 	QUO: "/",
 	REM: "%",
 
-	AND:           "AND",
-	OR:            "OR",
-	NOT:           "NOT",
-	IN:            "IN",
-	NOTIN:         "NOT IN",
+	AND:              "AND",
+	OR:               "OR",
+	NOT:              "NOT",
+	IN:               "IN",
+	NOTIN:            "NOT IN",
+	NOTNEAR:          "NOT NEAR",
+	NOTWITHIN:        "NOT WITHIN",
+	NOTINTERSECTS:    "NOT INTERSECTS",
+	NOTINTERSECTSBOX: "NOT INTERSECTSBOX",
+	NOTCONTAINES:     "NOT CONTAINS",
+
+	FUELLEVEL:      "fuelLevel",
+	PRESSURE:       "pressure",
+	LUMINOSITY:     "luminosity",
+	HUMIDITY:       "humidity",
+	TEMPERATURE:    "temperature",
+	BATTERY_CHARGE: "battery",
+	STATUS:         "status",
+	SPEED:          "speed",
+	MODEL:          "model",
+	BRAND:          "brand",
+	OWNER:          "owner",
+	IMEI:           "imei",
+
+	WITHIN:        "WITHIN",
+	CONTAINS:      "CONTAINS",
 	INTERSECTS:    "INTERSECTS",
-	NEARBY:        "NEARBY",
-	ONDISTANCE:    "ON DISTANCE",
+	INTERSECTSBOX: "INTERSECTSBOX",
+	NEAR:          "NEAR",
 	DISTANCETO:    "DISTANCE TO",
 	DURATIONIN:    "DURATION IN",
 	DURATIONNOTIN: "DURATION NOT IN",
 	RANGE:         "RANGE",
+	ONDISTANCE:    "ON DISTANCE",
 
 	EQL: "==",
 	LSS: "<",
@@ -142,35 +189,28 @@ var tokens = [...]string{
 	RBRACE: "}",
 	COLON:  ":",
 
-	DEVICE: "device",
+	DEVICE:         "device",
+	VAR_IDENT:      "@",
+	DEVICES:        "devices",
+	OBJECTS:        "objects",
+	POLY:           "polygon",
+	MULTI_POLY:     "multiPolygon",
+	LINE:           "line",
+	MULTI_LINE:     "multiLine",
+	POINT:          "point",
+	MULTI_POINT:    "multiPoint",
+	RECT:           "rect",
+	CIRCLE:         "circle",
+	COLLECTION:     "collection",
+	FUT_COLLECTION: "featureCollection",
 
-	VAR_IDENT:       "@",
-	VAR_SPEED:       "device.speed",
-	VAR_STATUS:      "device.status",
-	VAR_EMEI:        "device.emei",
-	VAR_OWNER:       "device.owner",
-	VAR_BRAND:       "device.brand",
-	VAR_MODEL:       "device.model",
-	VAR_FUELLEVEL:   "device.fuellevel",
-	VAR_PRESSURE:    "device.pressure",
-	VAR_LUMONOSITY:  "device.luminosity",
-	VAR_HUMIDITY:    "device.humidity",
-	VAR_TEMPERATURE: "device.temperature",
-	VAR_BATTERY:     "device.battery",
-
-	FUN_DEVICES: "devices",
-
-	FUN_OBJECT:          "object",
-	FUN_POLY:            "polygon",
-	FUN_MULTI_POLY:      "multiPolygon",
-	FUN_LINE:            "line",
-	FUN_MULTI_LINE:      "multiLine",
-	FUN_POINT:           "point",
-	FUN_MULTI_POINT:     "multiPoint",
-	FUN_RECT:            "rect",
-	FUN_CIRCLE:          "circle",
-	FUN_GEOM_COLLECTION: "collection",
-	FUN_FUT_COLLECTION:  "featureCollection",
+	YEAR:     "year",
+	MONTH:    "month",
+	WEEK:     "week",
+	DAY:      "day",
+	HOUR:     "hour",
+	DATE:     "date",
+	DATETIME: "dateTime",
 }
 
 var keywords map[string]Token
@@ -204,9 +244,12 @@ func (tok Token) Precedence() int {
 		return 1
 	case AND:
 		return 2
-	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR, ONDISTANCE, NEARBY, DISTANCETO,
-		DURATIONNOTIN, DURATIONIN:
+	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR:
 		return 3
+	case ADD, SUB, NEAR, DISTANCETO, INTERSECTS, INTERSECTSBOX:
+		return 4
+	case MUL, QUO, REM:
+		return 5
 	}
 	return 0
 }

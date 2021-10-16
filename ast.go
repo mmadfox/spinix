@@ -2,8 +2,8 @@ package spinix
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tidwall/geojson"
 )
@@ -14,10 +14,31 @@ type Expr interface {
 	expr()
 }
 
+type DistanceUnit int
+
+const (
+	DistanceUndefined  DistanceUnit = 0
+	DistanceMeters     DistanceUnit = 1
+	DistanceKilometers DistanceUnit = 2
+)
+
+func (u DistanceUnit) String() string {
+	switch u {
+	case DistanceMeters:
+		return "m"
+	case DistanceKilometers:
+		return "km"
+	default:
+		return "#?"
+	}
+}
+
 type (
-	// An Ident expr represents an identifier.
-	Ident struct {
+	// An IdentLit expr represents an identifier.
+	IdentLit struct {
 		Name string
+		Pos  Pos
+		Kind Token
 	}
 
 	// A UnaryExpr expr represents a unary expression.
@@ -44,32 +65,46 @@ type (
 		Index Expr // index expression
 	}
 
-	// A CallExpr expr represents an expression followed by an argument list.
-	CallExpr struct {
-		Fun    Token  // keyword
-		UseCtx bool   // @
-		Args   []Expr // function arguments; or nil
+	DeviceLit struct {
+		Unit  DistanceUnit
+		Kind  Token
+		Value float64
+		Pos   Pos
 	}
 
-	// A ListLit represents a list of int or float type.
+	DevicesLit struct {
+		Unit  DistanceUnit
+		Kind  Token
+		Value float64
+		Pos   Pos
+		Ref   []string
+	}
+
+	ObjectLit struct {
+		Kind   Token
+		Ref    []string
+		DurVal time.Duration
+		DurTyp Token
+		Pos    Pos
+	}
+
+	// A ListLit represents a list of int or float or string type.
 	ListLit struct {
 		Items []Expr
+		Pos   Pos
+		Kind  Token
+		Typ   Token
 	}
 
-	// A DeviceLit represents a current device.
-	DeviceLit struct{}
-
-	// A RangeFloatLit represents a float range type.
-	RangeFloatLit struct {
-		Start float64
-		End   float64
+	// A DistanceUnitLit represents a distance unit type.
+	DistanceUnitLit struct {
+		Value float64
+		Op    Token
+		Unit  DistanceUnit
 	}
 
-	// A RangeIntLit represents an int range type.
-	RangeIntLit struct {
-		Start int
-		End   int
-	}
+	// A ContextLit represents a current device.
+	ContextLit struct{}
 
 	// A StringLit expr represents a literal of string type.
 	StringLit struct {
@@ -95,16 +130,6 @@ type (
 	BooleanLit struct {
 		Value bool
 	}
-
-	ObjectOnDistanceLit struct {
-		Objects []Object
-		Meters  float64
-	}
-
-	DeviceOnDistanceLit struct {
-		DeviceIDs map[string]struct{}
-		Meters    float64
-	}
 )
 
 type Object struct {
@@ -118,27 +143,6 @@ func (e *ParenExpr) String() string {
 
 func (e *BinaryExpr) String() string {
 	return fmt.Sprintf("%s %s %s", e.LHS.String(), e.Op, e.RHS.String())
-}
-
-func (e *CallExpr) String() string {
-	var sb strings.Builder
-	li := len(e.Args) - 1
-	sb.WriteString(e.Fun.String())
-	sb.WriteString(LPAREN.String())
-	if e.UseCtx {
-		sb.WriteString(VAR_IDENT.String())
-	}
-	if len(e.Args) > 0 && e.UseCtx {
-		sb.WriteString(COMMA.String())
-	}
-	for i, arg := range e.Args {
-		sb.WriteString("@" + arg.String())
-		if i != li {
-			sb.WriteString(COMMA.String())
-		}
-	}
-	sb.WriteString(RPAREN.String())
-	return sb.String()
 }
 
 func (e *StringLit) String() string {
@@ -164,19 +168,15 @@ func (e *ListLit) String() string {
 	for i, expr := range e.Items {
 		sb.WriteString(expr.String())
 		if i != li {
-			sb.WriteString(COMMA.String())
+			if e.Kind == RANGE {
+				sb.WriteString(" .. ")
+			} else {
+				sb.WriteString(COMMA.String())
+			}
 		}
 	}
 	sb.WriteString("]")
 	return sb.String()
-}
-
-func (e *ObjectOnDistanceLit) String() string {
-	return "todo"
-}
-
-func (e *DeviceOnDistanceLit) String() string {
-	return "todo"
 }
 
 func (e *BooleanLit) String() string {
@@ -187,43 +187,106 @@ func (e *BooleanLit) String() string {
 	}
 }
 
-func (e *RangeFloatLit) String() string {
-	var sb strings.Builder
-	sb.WriteString("[")
-	sb.WriteString(fmt.Sprintf("%.2f", e.Start))
-	sb.WriteString("-")
-	sb.WriteString(fmt.Sprintf("%.2f", e.End))
-	sb.WriteString("]")
-	return sb.String()
-}
-
-func (e *RangeIntLit) String() string {
-	var sb strings.Builder
-	sb.WriteString("[")
-	sb.WriteString(strconv.Itoa(e.Start))
-	sb.WriteString("-")
-	sb.WriteString(strconv.Itoa(e.End))
-	sb.WriteString("]")
-	return sb.String()
-}
-
-func (e *DeviceLit) String() string {
+func (e *ContextLit) String() string {
 	return "device"
 }
 
-func (_ *ParenExpr) expr()     {}
-func (_ *BinaryExpr) expr()    {}
-func (_ *CallExpr) expr()      {}
-func (_ *StringLit) expr()     {}
-func (_ *IntLit) expr()        {}
-func (_ *FloatLit) expr()      {}
-func (_ *VarLit) expr()        {}
-func (_ *ListLit) expr()       {}
-func (_ *BooleanLit) expr()    {}
-func (_ *RangeFloatLit) expr() {}
-func (_ *RangeIntLit) expr()   {}
-func (_ *DeviceLit) expr()     {}
+func (e *DistanceUnitLit) String() string {
+	return fmt.Sprintf("%.1f%s", e.Value, e.Unit)
+}
 
-// TODO: refactor
-func (_ *ObjectOnDistanceLit) expr() {}
-func (_ *DeviceOnDistanceLit) expr() {}
+func (e *DeviceLit) String() string {
+	var sb strings.Builder
+	sb.WriteString("device")
+	writeProps := func(name string) {
+		sb.WriteString(" :")
+		sb.WriteString(name)
+		sb.WriteString(" ")
+		sb.WriteString(fmt.Sprintf("%.1f", e.Value))
+		sb.WriteString(e.Unit.String())
+	}
+	switch e.Kind {
+	case BBOX:
+		writeProps("bbox")
+	case RADIUS:
+		writeProps("radius")
+	}
+	return sb.String()
+}
+
+func (e *ObjectLit) String() string {
+	var sb strings.Builder
+	sb.WriteString(e.Kind.String())
+	sb.WriteString("(")
+	last := len(e.Ref) - 1
+	for i, ref := range e.Ref {
+		sb.WriteString("@" + ref)
+		if i != last {
+			sb.WriteString(",")
+		}
+	}
+	writeProps := func(name string) {
+		sb.WriteString(" :time ")
+		sb.WriteString(name)
+		sb.WriteString(" ")
+		sb.WriteString(e.DurVal.String())
+	}
+	sb.WriteString(")")
+	switch e.DurTyp {
+	case DURATION:
+		writeProps("duration")
+	case AFTER:
+		writeProps("after")
+	}
+	return sb.String()
+}
+
+func (e *IdentLit) String() string {
+	return e.Kind.String()
+}
+
+func (e *DevicesLit) String() string {
+	var sb strings.Builder
+	sb.WriteString("devices")
+	sb.WriteString("(")
+	last := len(e.Ref) - 1
+	for i, ref := range e.Ref {
+		sb.WriteString("@" + ref)
+		if i != last {
+			sb.WriteString(",")
+		}
+	}
+	sb.WriteString(")")
+	writeProps := func(name string) {
+		sb.WriteString(" :")
+		sb.WriteString(name)
+		sb.WriteString(" ")
+		sb.WriteString(fmt.Sprintf("%.1f", e.Value))
+		sb.WriteString(e.Unit.String())
+	}
+	switch e.Kind {
+	case BBOX:
+		writeProps("bbox")
+	case RADIUS:
+		writeProps("radius")
+	}
+	return sb.String()
+}
+
+func (_ *ParenExpr) expr()  {}
+func (_ *BinaryExpr) expr() {}
+func (_ *StringLit) expr()  {}
+func (_ *IntLit) expr()     {}
+func (_ *FloatLit) expr()   {}
+func (_ *VarLit) expr()     {}
+func (_ *BooleanLit) expr() {}
+
+func (_ *ContextLit) expr()      {} // deprecated
+func (_ *DistanceUnitLit) expr() {} // deprecated
+
+//
+func (_ *DeviceLit) expr()  {}
+func (_ *ObjectLit) expr()  {}
+func (_ *IdentLit) expr()   {}
+func (_ *ListLit) expr()    {}
+func (_ *DevicesLit) expr() {}

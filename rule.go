@@ -3,7 +3,6 @@ package spinix
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/tidwall/geojson/geo"
@@ -101,7 +100,7 @@ func NewRule(
 		radiusInMeters = 100000000
 	}
 
-	expr, err := newParser(strings.NewReader(spec)).Parse()
+	expr, err := ParseSpec(spec)
 	if err != nil {
 		return nil, err
 	}
