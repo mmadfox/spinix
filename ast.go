@@ -2,6 +2,7 @@ package spinix
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,6 +34,27 @@ func (u DistanceUnit) String() string {
 	}
 }
 
+type RepeatMode int
+
+const (
+	RepeatOnce  RepeatMode = 1
+	RepeatEvery RepeatMode = 2
+	RepeatTimes RepeatMode = 3
+)
+
+func (rm RepeatMode) String() string {
+	switch rm {
+	case RepeatEvery:
+		return "every"
+	case RepeatOnce:
+		return "once"
+	case RepeatTimes:
+		return "times"
+	default:
+		return "#?"
+	}
+}
+
 type (
 	// An IdentLit expr represents an identifier.
 	IdentLit struct {
@@ -59,10 +81,9 @@ type (
 		Expr Expr // parenthesized expression
 	}
 
-	// An IndexExpr expr represnts an expression followed by an index.
-	IndexExpr struct {
-		Expr  Expr // expression
-		Index Expr // index expression
+	SpecExpr struct {
+		Expr    Expr // expression
+		Trigger Expr // index expression
 	}
 
 	DeviceLit struct {
@@ -88,6 +109,14 @@ type (
 		Pos    Pos
 	}
 
+	// A TriggerLit represents a repeat mode type.
+	TriggerLit struct {
+		Repeat   RepeatMode
+		Interval time.Duration
+		Value    time.Duration
+		Times    int
+	}
+
 	// A ListLit represents a list of int or float or string type.
 	ListLit struct {
 		Items []Expr
@@ -103,9 +132,6 @@ type (
 		Unit  DistanceUnit
 	}
 
-	// A ContextLit represents a current device.
-	ContextLit struct{}
-
 	// A StringLit expr represents a literal of string type.
 	StringLit struct {
 		Value string
@@ -119,6 +145,12 @@ type (
 	// A FloatLit expr represents a literal of float type.
 	FloatLit struct {
 		Value float64
+	}
+
+	// A TimeLit expr represents a literal of time type.
+	TimeLit struct {
+		Hour   int
+		Minute int
 	}
 
 	// A VarLit represents a variable literal.
@@ -187,10 +219,6 @@ func (e *BooleanLit) String() string {
 	}
 }
 
-func (e *ContextLit) String() string {
-	return "device"
-}
-
 func (e *DistanceUnitLit) String() string {
 	return fmt.Sprintf("%.1f%s", e.Value, e.Unit)
 }
@@ -245,6 +273,24 @@ func (e *IdentLit) String() string {
 	return e.Kind.String()
 }
 
+func (e *TimeLit) String() string {
+	var str string
+	h := strconv.Itoa(e.Hour)
+	m := strconv.Itoa(e.Minute)
+	if e.Hour < 10 {
+		str += "0" + h
+	} else {
+		str += h
+	}
+	str += ":"
+	if e.Minute < 10 {
+		str += "0" + m
+	} else {
+		str += m
+	}
+	return str
+}
+
 func (e *DevicesLit) String() string {
 	var sb strings.Builder
 	sb.WriteString("devices")
@@ -273,6 +319,23 @@ func (e *DevicesLit) String() string {
 	return sb.String()
 }
 
+func (e *TriggerLit) String() string {
+	switch e.Repeat {
+	case RepeatTimes:
+		return fmt.Sprintf("%d times internval %s", e.Times, e.Interval)
+	case RepeatEvery:
+		return fmt.Sprintf("every %s", e.Value)
+	case RepeatOnce:
+		return "once"
+	default:
+		return "once"
+	}
+}
+
+func (e *SpecExpr) String() string {
+	return e.Expr.String() + " :trigger " + e.Trigger.String()
+}
+
 func (_ *ParenExpr) expr()  {}
 func (_ *BinaryExpr) expr() {}
 func (_ *StringLit) expr()  {}
@@ -281,7 +344,6 @@ func (_ *FloatLit) expr()   {}
 func (_ *VarLit) expr()     {}
 func (_ *BooleanLit) expr() {}
 
-func (_ *ContextLit) expr()      {} // deprecated
 func (_ *DistanceUnitLit) expr() {} // deprecated
 
 //
@@ -290,3 +352,6 @@ func (_ *ObjectLit) expr()  {}
 func (_ *IdentLit) expr()   {}
 func (_ *ListLit) expr()    {}
 func (_ *DevicesLit) expr() {}
+func (_ *TimeLit) expr()    {}
+func (_ *TriggerLit) expr() {}
+func (_ *SpecExpr) expr()   {}

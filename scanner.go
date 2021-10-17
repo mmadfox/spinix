@@ -82,6 +82,12 @@ func (s *Scanner) Next() (tok Token, lit string) {
 		tok = REM
 	case ':':
 		tok = COLON
+		st, sl = s.Scan()
+		if strings.ToLower(sl) == "trigger" {
+			tok = TRIGGER
+		} else {
+			s.Reset()
+		}
 	case '>':
 		st, sl = s.Scan()
 		if st == '=' {
@@ -136,6 +142,12 @@ func (s *Scanner) Next() (tok Token, lit string) {
 			tok = keyword
 		} else {
 			switch strings.ToLower(sl) {
+			case "trigger":
+				tok = TRIGGER
+			case "date":
+				tok = DATE
+			case "datetime":
+				tok = DATETIME
 			case "year":
 				tok = YEAR
 			case "month":

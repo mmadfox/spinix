@@ -43,6 +43,7 @@ const (
 	HOUR           // hour
 	DATE           // date
 	DATETIME       // dateTime
+	TRIGGER        // trigger
 	literalEnd
 
 	operatorBegin
@@ -190,6 +191,7 @@ var tokens = [...]string{
 	COLON:  ":",
 
 	DEVICE:         "device",
+	TRIGGER:        ":trigger",
 	VAR_IDENT:      "@",
 	DEVICES:        "devices",
 	OBJECTS:        "objects",
@@ -210,7 +212,8 @@ var tokens = [...]string{
 	DAY:      "day",
 	HOUR:     "hour",
 	DATE:     "date",
-	DATETIME: "dateTime",
+	DATETIME: "datetime",
+	TIME:     "time",
 }
 
 var keywords map[string]Token

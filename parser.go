@@ -42,6 +42,18 @@ func (p *Parser) parse() (Expr, error) {
 			return nil, fmt.Errorf("spinix/parser: ILLEGAL %s", literal)
 		}
 
+		if operator == TRIGGER {
+			p.s.Reset()
+			rhs, err := p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+			return &SpecExpr{
+				Expr:    expr,
+				Trigger: rhs,
+			}, nil
+		}
+
 		if (!operator.IsOperator() && !operator.IsKeyword()) || operator == EOF {
 			p.s.Reset()
 			return expr, nil
@@ -74,8 +86,10 @@ func (p *Parser) parse() (Expr, error) {
 func (p *Parser) parseExpr() (Expr, error) {
 	tok, lit := p.s.Next()
 	switch tok {
+	case TRIGGER:
+		return p.parseTriggerLit()
 	case INT:
-		return p.parseIntLit(lit)
+		return p.parseIntOrTimeLit(lit)
 	case FLOAT:
 		return p.parseFloatLit(lit)
 	case STRING:
@@ -90,10 +104,52 @@ func (p *Parser) parseExpr() (Expr, error) {
 		POINT, MULTI_POINT, RECT, CIRCLE, COLLECTION, FUT_COLLECTION:
 		return p.parseObjectLit(tok)
 	case FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE, BATTERY_CHARGE,
-		STATUS, SPEED, MODEL, BRAND, OWNER, IMEI, YEAR, MONTH, WEEK, DAY:
+		STATUS, SPEED, MODEL, BRAND, OWNER, IMEI, YEAR, MONTH, WEEK, DAY, HOUR, TIME, DATETIME, DATE:
 		return &IdentLit{Name: lit, Pos: p.s.Offset(), Kind: tok}, nil
 	default:
 		return nil, p.error(tok, lit, "")
+	}
+}
+
+func (p *Parser) parseTriggerLit() (Expr, error) {
+	tok, lit := p.s.Next()
+	lowlit := strings.ToLower(lit)
+	if tok == ILLEGAL && lowlit == "every" {
+		dur, err := p.parseDur()
+		if err != nil {
+			return nil, p.error(TRIGGER, "every", err.Error())
+		}
+		eof := p.s.NextTok()
+		if eof != EOF {
+			return nil, p.error(TRIGGER, "eof", "literal must be at the end of the spec")
+		}
+		return &TriggerLit{Repeat: RepeatEvery, Value: dur}, nil
+	} else if tok == ILLEGAL && lowlit == "once" {
+		return &TriggerLit{Repeat: RepeatOnce}, nil
+	} else if tok == INT {
+		v, err := strconv.Atoi(lit)
+		if err != nil {
+			return nil, p.error(TRIGGER, lit, err.Error())
+		}
+		times := strings.ToLower(p.s.NextLit())
+		if times != "times" {
+			return nil, p.error(TRIGGER, "times", "missing times literal")
+		}
+		interval := strings.ToLower(p.s.NextLit())
+		if interval != "interval" {
+			return nil, p.error(TRIGGER, "interval", "missing interval literal")
+		}
+		dur, err := p.parseDur()
+		if err != nil {
+			return nil, p.error(TRIGGER, "times", err.Error())
+		}
+		eof := p.s.NextTok()
+		if eof != EOF {
+			return nil, p.error(TRIGGER, "eof", "literal must be at the end of the spec")
+		}
+		return &TriggerLit{Repeat: RepeatTimes, Times: v, Interval: dur}, nil
+	} else {
+		return nil, p.error(TRIGGER, lit, "missing trigger literal")
 	}
 }
 
@@ -148,16 +204,42 @@ func (p *Parser) parseListOrRangeLit() (Expr, error) {
 		}
 		switch tok {
 		case INT:
+			// int
 			if list.Typ == 0 {
 				list.Typ = INT
-			} else if list.Typ != INT {
+			} else if list.Typ != INT && list.Typ != TIME {
 				return nil, p.error(tok, lit, fmt.Sprintf("expected %v literal", list.Typ))
 			}
-			intLit, err := p.parseIntLit(lit)
+
+			intLit, err := p.parseIntOrTimeLit(lit)
 			if err != nil {
 				return nil, err
 			}
-			list.Items = append(list.Items, intLit)
+
+			// time
+			tok := p.s.NextTok()
+			if tok != COLON {
+				if list.Typ == TIME {
+					return nil, p.error(TIME, "", "missing time literal")
+				}
+				list.Items = append(list.Items, intLit)
+				p.s.Reset()
+				continue
+			}
+
+			lit = p.s.NextLit()
+			intLit2, err := p.parseIntOrTimeLit(lit)
+			if err != nil {
+				return nil, err
+			}
+			if len(list.Items) == 1 && list.Typ == INT {
+				return nil, p.error(TIME, "", "ILLEGAL type")
+			}
+			list.Items = append(list.Items, &TimeLit{
+				Hour:   intLit.(*IntLit).Value,
+				Minute: intLit2.(*IntLit).Value,
+			})
+			list.Typ = TIME
 		case FLOAT:
 			if list.Typ == 0 {
 				list.Typ = FLOAT
@@ -291,6 +373,25 @@ func (p *Parser) parseDeviceLit() (expr Expr, err error) {
 	return device, err
 }
 
+func (p *Parser) parseDur() (time.Duration, error) {
+	var str string
+exit:
+	for {
+		tok, lit := p.s.Next()
+		if tok == EOF {
+			break exit
+		}
+		switch tok {
+		case ILLEGAL:
+			str += lit
+			break exit
+		case INT:
+			str += lit
+		}
+	}
+	return time.ParseDuration(str)
+}
+
 func (p *Parser) parseTimeDur() (k Token, dur time.Duration, err error) {
 	tok, lit := p.s.Next()
 	switch tok {
@@ -351,12 +452,28 @@ func (p *Parser) parseDistanceUnit() (u DistanceUnit, r float64, err error) {
 	return
 }
 
-func (p *Parser) parseIntLit(val string) (Expr, error) {
+func (p *Parser) parseIntOrTimeLit(val string) (Expr, error) {
 	v, err := strconv.Atoi(val)
 	if err != nil {
 		return nil, p.error(INT, val, err.Error())
 	}
-	return &IntLit{Value: v}, nil
+	tok := p.s.NextTok()
+	if tok != COLON {
+		p.s.Reset()
+		return &IntLit{Value: v}, nil
+	}
+	tok, lit := p.s.Next()
+	if tok != INT {
+		return nil, p.error(tok, lit, "missing INT literal")
+	}
+	m, err := strconv.Atoi(lit)
+	if err != nil {
+		return nil, p.error(INT, val, err.Error())
+	}
+	return &TimeLit{
+		Hour:   v,
+		Minute: m,
+	}, nil
 }
 
 func (p *Parser) parseFloatLit(val string) (Expr, error) {

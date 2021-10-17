@@ -36,8 +36,22 @@ func TestParser(t *testing.T) {
 		{spec: `month range [1 .. 12]`},
 		{spec: `week in [48, 49, 50] and week range [40 .. 52]`},
 		{spec: `day range [1 .. 12]`},
-
+		{spec: `time range [12:00 .. 23:00]`},
+		{spec: `time > 12:00 and time < 15:00`},
+		{spec: `time == 19:21`},
+		{spec: `datetime range ["2012-11-01T22:08:41+00:00" .. "2012-11-01T22:08:41+00:00"]`},
+		{spec: `datetime >= "2012-11-01T22:08:41+00:00" and datetime < "2012-11-01T22:08:41+00:00"`},
+		{spec: `datetime in ["2012-11-01T22:08:41+00:00", "2012-11-01T22:08:41+00:00"]`},
 		{spec: `device :radius 300m intersects line(@id) and speed range [30 .. 120]`},
+		{spec: `
+             device :radius 300m intersects line(@id) 
+             and speed range [30 .. 120] :trigger 25 times interval 10s`},
+		{spec: `
+             device :radius 300m intersects line(@id) 
+             and speed range [30 .. 120] :trigger every 10s`},
+		{spec: `
+             device :radius 300m intersects line(@id) 
+             and speed range [30 .. 120] :trigger once`},
 
 		// failure
 		{spec: "", isErr: true},
@@ -63,6 +77,35 @@ func TestParser(t *testing.T) {
 		{spec: `owner in [1.1, "one", 1]`, isErr: true},
 		{spec: `owner in ["one", 1.1, 1]`, isErr: true},
 		{spec: `owner in [1.1, 1]`, isErr: true},
+		{spec: `time > 12: and time < 15:00`, isErr: true},
+		{spec: `datetime >= 2012-11-01T22:08:41+00:00 and datetime < 2012-11-01T22:08:41+00:00`, isErr: true},
+		{spec: `
+             :trigger once and device :radius 300m intersects line(@id) 
+             and speed range [30 .. 120]`, isErr: true},
+		{spec: `
+             device :radius 300m intersects line(@id) 
+             and speed range [30 .. 120] :trigger`, isErr: true},
+		{spec: `
+             device :radius 300m intersects line(@id) 
+             and speed range [30 .. 120] :trigger every hhh`, isErr: true},
+		{spec: `
+             device :radius 300m intersects line(@id) 
+             and speed range [30 .. 120] :trigger every 300s somelit`, isErr: true},
+		{spec: `
+             device :radius 300m intersects line(@id) 
+             and speed range [30 .. 120] :trigger 0x0 times`, isErr: true},
+		{spec: `
+             device :radius 300m intersects line(@id) 
+             and speed range [30 .. 120] :trigger 4 somelit`, isErr: true},
+		{spec: `
+             device :radius 300m intersects line(@id) 
+             and speed range [30 .. 120] :trigger 4 times some`, isErr: true},
+		{spec: `
+             device :radius 300m intersects line(@id) 
+             and speed range [30 .. 120] :trigger 4 times interval h4`, isErr: true},
+		{spec: `
+             device :radius 300m intersects line(@id) 
+             and speed range [30 .. 120] :trigger 4 times interval 300s somelit`, isErr: true},
 	}
 	for _, tc := range testCases {
 		expr, err := ParseSpec(tc.spec)
