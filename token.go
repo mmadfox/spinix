@@ -49,20 +49,19 @@ const (
 	operatorBegin
 	AND //  AND
 	OR  //  OR
-	IN  // IN
 
+	precedenceBegin
+	IN            // IN
 	WITHIN        // WITHIN
 	CONTAINS      // CONTAINS
 	INTERSECTSBOX // INTERSECTSBOX
 	INTERSECTS    // INTERSECTS
-
 	// <---
 	DISTANCETO    // DISTANCE TO
 	DURATIONIN    // DURATION IN
 	DURATIONNOTIN // DURATION NOT IN
 	ONDISTANCE    // ON DISTANCE
 	// -->
-
 	NOTIN            // NOT IN
 	NEAR             // NEAR
 	NOTNEAR          // NOT NEAR
@@ -70,23 +69,22 @@ const (
 	NOTINTERSECTS    // NOT INTERSECTS
 	NOTINTERSECTSBOX // NOT INTERSECTSBOX
 	NOTCONTAINES     // NOT CONTAINS
-
-	RANGE // range
-	ADD   // +
-	SUB   // -
-	MUL   // *
-	QUO   // /
-	REM   // %
-
-	EQL   // ==
-	LSS   // <
-	GTR   // >
-	NOT   // !
-	NEQ   // !=
-	LEQ   // <=
-	GEQ   // >=
-	EREG  // =~
-	NEREG // !~
+	RANGE            // range
+	ADD              // +
+	SUB              // -
+	MUL              // *
+	QUO              // /
+	REM              // %
+	EQL              // ==
+	LSS              // <
+	GTR              // >
+	NOT              // !
+	NEQ              // !=
+	LEQ              // <=
+	GEQ              // >=
+	EREG             // =~
+	NEREG            // !~
+	precedenceEnd
 
 	LBRACK // [
 	LBRACE // {
@@ -171,13 +169,12 @@ var tokens = [...]string{
 	DURATIONNOTIN: "DURATION NOT IN",
 	RANGE:         "RANGE",
 	ONDISTANCE:    "ON DISTANCE",
-
-	EQL: "==",
-	LSS: "<",
-	GTR: ">",
-	NEQ: "!=",
-	LEQ: "<=",
-	GEQ: ">=",
+	EQL:           "==",
+	LSS:           "<",
+	GTR:           ">",
+	NEQ:           "!=",
+	LEQ:           "<=",
+	GEQ:           ">=",
 
 	LPAREN: "(",
 	LBRACK: "[",
@@ -242,17 +239,14 @@ func (tok Token) IsGeospatial() bool {
 }
 
 func (tok Token) Precedence() int {
-	switch tok {
-	case OR:
+	if tok == OR {
 		return 1
-	case AND:
+	}
+	if tok == AND {
 		return 2
-	case NEQ, LEQ, GEQ, EREG, NEREG, EQL, LSS, GTR:
+	}
+	if precedenceBegin < tok && tok < precedenceEnd {
 		return 3
-	case ADD, SUB, NEAR, DISTANCETO, INTERSECTS, INTERSECTSBOX:
-		return 4
-	case MUL, QUO, REM:
-		return 5
 	}
 	return 0
 }

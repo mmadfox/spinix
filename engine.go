@@ -98,18 +98,18 @@ package spinix
 //			if err != nil {
 //				return err
 //			}
-//			expr, err := e.invokeSpec(ctx, rule.expr, prevState, device)
+//			nodes, err := e.invokeSpec(ctx, rule.nodes, prevState, device)
 //			if err != nil {
 //				return err
 //			}
-//			switch n := expr.(type) {
+//			switch n := nodes.(type) {
 //			case *BooleanLit:
 //				if !n.Value {
 //					return nil
 //				}
 //				events = append(events, MakeEvent(device, rule))
 //			default:
-//				return fmt.Errorf("georule: unexpected result of the root expression: %#v", expr)
+//				return fmt.Errorf("georule: unexpected result of the root expression: %#v", nodes)
 //			}
 //			return nil
 //		}); err != nil {
@@ -141,7 +141,7 @@ package spinix
 //	if err := rule.validate(); err != nil {
 //		return err
 //	}
-//	refIDs := getRefVars(rule.expr)
+//	refIDs := getRefVars(rule.nodes)
 //	for _, rid := range refIDs {
 //		object, err := e.objects.Lookup(ctx, rid)
 //		if err != nil {
@@ -158,19 +158,19 @@ package spinix
 //	return nil
 //}
 //
-//func (e *Engine) InvokeSpec(ctx context.Context, expr Expr, device *Device) (Expr, error) {
-//	return e.invokeSpec(ctx, expr, device, device)
+//func (e *Engine) InvokeSpec(ctx context.Context, nodes Expr, device *Device) (Expr, error) {
+//	return e.invokeSpec(ctx, nodes, device, device)
 //}
 //
-//func (e *Engine) invokeSpec(ctx context.Context, expr Expr, prevState, currentState *Device) (Expr, error) {
+//func (e *Engine) invokeSpec(ctx context.Context, nodes Expr, prevState, currentState *Device) (Expr, error) {
 //	var (
 //		err    error
 //		lv, rv Expr
 //	)
 //
-//	switch n := expr.(type) {
+//	switch n := nodes.(type) {
 //	case *ParenExpr:
-//		return e.invokeSpec(ctx, expr, prevState, currentState)
+//		return e.invokeSpec(ctx, nodes, prevState, currentState)
 //	case *BinaryExpr:
 //		lv, err = e.invokeSpec(ctx, n.LHS, prevState, currentState)
 //		if err != nil {
@@ -213,13 +213,13 @@ package spinix
 //	default:
 //		_ = n
 //	}
-//	return expr, nil
+//	return nodes, nil
 //}
 //
-//func getRefVars(expr Expr) []string {
+//func getRefVars(nodes Expr) []string {
 //	vars := make([]string, 0, 2)
-//	WalkFunc(expr, func(expr Expr) {
-//		switch typ := expr.(type) {
+//	WalkFunc(nodes, func(nodes Expr) {
+//		switch typ := nodes.(type) {
 //		case *CallExpr:
 //			if typ.Fun.IsGeospatial() {
 //				for _, arg := range typ.Args {

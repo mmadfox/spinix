@@ -86,6 +86,8 @@ func (p *Parser) parse() (Expr, error) {
 func (p *Parser) parseExpr() (Expr, error) {
 	tok, lit := p.s.Next()
 	switch tok {
+	case LPAREN:
+		return p.parseParenExpr()
 	case TRIGGER:
 		return p.parseTriggerLit()
 	case INT:
@@ -93,7 +95,7 @@ func (p *Parser) parseExpr() (Expr, error) {
 	case FLOAT:
 		return p.parseFloatLit(lit)
 	case STRING:
-		return &StringLit{Value: lit}, nil
+		return &StringLit{Value: lit, Pos: p.s.Offset()}, nil
 	case LBRACK:
 		return p.parseListOrRangeLit()
 	case DEVICE:
@@ -107,8 +109,19 @@ func (p *Parser) parseExpr() (Expr, error) {
 		STATUS, SPEED, MODEL, BRAND, OWNER, IMEI, YEAR, MONTH, WEEK, DAY, HOUR, TIME, DATETIME, DATE:
 		return &IdentLit{Name: lit, Pos: p.s.Offset(), Kind: tok}, nil
 	default:
-		return nil, p.error(tok, lit, "")
+		return nil, p.error(tok, lit, "ILLEGAL")
 	}
+}
+
+func (p *Parser) parseParenExpr() (Expr, error) {
+	expr, err := p.parse()
+	if err != nil {
+		return nil, err
+	}
+	if tok, _ := p.s.Next(); tok != RPAREN {
+		return nil, fmt.Errorf("georule/parser: missing )")
+	}
+	return &ParenExpr{Expr: expr}, nil
 }
 
 func (p *Parser) parseTriggerLit() (Expr, error) {
@@ -211,35 +224,19 @@ func (p *Parser) parseListOrRangeLit() (Expr, error) {
 				return nil, p.error(tok, lit, fmt.Sprintf("expected %v literal", list.Typ))
 			}
 
-			intLit, err := p.parseIntOrTimeLit(lit)
+			val, err := p.parseIntOrTimeLit(lit)
 			if err != nil {
 				return nil, err
 			}
 
-			// time
-			tok := p.s.NextTok()
-			if tok != COLON {
-				if list.Typ == TIME {
-					return nil, p.error(TIME, "", "missing time literal")
-				}
-				list.Items = append(list.Items, intLit)
-				p.s.Reset()
-				continue
+			switch n := val.(type) {
+			case *IntLit:
+				list.Typ = INT
+				list.Items = append(list.Items, n)
+			case *TimeLit:
+				list.Typ = TIME
+				list.Items = append(list.Items, n)
 			}
-
-			lit = p.s.NextLit()
-			intLit2, err := p.parseIntOrTimeLit(lit)
-			if err != nil {
-				return nil, err
-			}
-			if len(list.Items) == 1 && list.Typ == INT {
-				return nil, p.error(TIME, "", "ILLEGAL type")
-			}
-			list.Items = append(list.Items, &TimeLit{
-				Hour:   intLit.(*IntLit).Value,
-				Minute: intLit2.(*IntLit).Value,
-			})
-			list.Typ = TIME
 		case FLOAT:
 			if list.Typ == 0 {
 				list.Typ = FLOAT
@@ -460,7 +457,7 @@ func (p *Parser) parseIntOrTimeLit(val string) (Expr, error) {
 	tok := p.s.NextTok()
 	if tok != COLON {
 		p.s.Reset()
-		return &IntLit{Value: v}, nil
+		return &IntLit{Value: v, Pos: p.s.Offset()}, nil
 	}
 	tok, lit := p.s.Next()
 	if tok != INT {
@@ -473,6 +470,7 @@ func (p *Parser) parseIntOrTimeLit(val string) (Expr, error) {
 	return &TimeLit{
 		Hour:   v,
 		Minute: m,
+		Pos:    p.s.Offset(),
 	}, nil
 }
 
@@ -481,7 +479,7 @@ func (p *Parser) parseFloatLit(val string) (Expr, error) {
 	if err != nil {
 		return nil, p.error(FLOAT, val, err.Error())
 	}
-	return &FloatLit{Value: v}, nil
+	return &FloatLit{Value: v, Pos: p.s.Offset()}, nil
 }
 
 func (p *Parser) error(tok Token, lit string, msg string) error {

@@ -53,6 +53,9 @@ func TestParser(t *testing.T) {
              device :radius 300m intersects line(@id) 
              and speed range [30 .. 120] :trigger once`},
 
+		{spec: `device :radius 300m intersects line(@id) and speed range [30 .. 120]
+			or (temperature >= 0 and temperature < 400)`},
+
 		// failure
 		{spec: "", isErr: true},
 		{spec: "some text", isErr: true},

@@ -56,27 +56,27 @@ func (rm RepeatMode) String() string {
 }
 
 type (
-	// An IdentLit expr represents an identifier.
+	// An IdentLit nodes represents an identifier.
 	IdentLit struct {
 		Name string
 		Pos  Pos
 		Kind Token
 	}
 
-	// A UnaryExpr expr represents a unary expression.
+	// A UnaryExpr nodes represents a unary expression.
 	UnaryExpr struct {
 		Op Token // operator
 		X  Expr  // operand
 	}
 
-	// A BinaryExpr expr represents a binary expression.
+	// A BinaryExpr nodes represents a binary expression.
 	BinaryExpr struct {
 		LHS Expr  // left operand
 		Op  Token // operator
 		RHS Expr  // right operand
 	}
 
-	// A ParenExpr expr represents a parenthesized expression.
+	// A ParenExpr nodes represents a parenthesized expression.
 	ParenExpr struct {
 		Expr Expr // parenthesized expression
 	}
@@ -115,6 +115,7 @@ type (
 		Interval time.Duration
 		Value    time.Duration
 		Times    int
+		Pos      Pos
 	}
 
 	// A ListLit represents a list of int or float or string type.
@@ -132,35 +133,41 @@ type (
 		Unit  DistanceUnit
 	}
 
-	// A StringLit expr represents a literal of string type.
+	// A StringLit nodes represents a literal of string type.
 	StringLit struct {
 		Value string
+		Pos   Pos
 	}
 
-	// An IntLit expr represents a literal of int type.
+	// An IntLit nodes represents a literal of int type.
 	IntLit struct {
 		Value int
+		Pos   Pos
 	}
 
-	// A FloatLit expr represents a literal of float type.
+	// A FloatLit nodes represents a literal of float type.
 	FloatLit struct {
 		Value float64
+		Pos   Pos
 	}
 
-	// A TimeLit expr represents a literal of time type.
+	// A TimeLit nodes represents a literal of time type.
 	TimeLit struct {
 		Hour   int
 		Minute int
+		Pos    Pos
 	}
 
 	// A VarLit represents a variable literal.
 	VarLit struct {
 		Value Token
+		Pos   Pos
 	}
 
 	// A BooleanLit represents a boolean literal.
 	BooleanLit struct {
 		Value bool
+		Pos   Pos
 	}
 )
 

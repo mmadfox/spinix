@@ -2,11 +2,14 @@ package spinix
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/tidwall/geojson"
 )
+
+var ErrObjectNotFound = errors.New("spinix/objects: not found")
 
 type Objects interface {
 	Lookup(ctx context.Context, objectID string) (geojson.Object, error)

@@ -2,6 +2,7 @@ package spinix
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -15,6 +16,8 @@ import (
 )
 
 const minDistMeters = 50
+
+var ErrDeviceNotFound = errors.New("spinix/devices: not found")
 
 type Devices interface {
 	Lookup(ctx context.Context, deviceID string) (*Device, error)
@@ -261,21 +264,4 @@ func (i deviceIndex) get(deviceID string) (*Device, error) {
 		return nil, fmt.Errorf("georule: device %s not found", deviceID)
 	}
 	return device, nil
-}
-
-func contains(p geometry.Point, points []geometry.Point) bool {
-	for i := 0; i < len(points); i++ {
-		var seg geometry.Segment
-		seg.A = points[i]
-		if i == len(points)-1 {
-			seg.B = points[0]
-		} else {
-			seg.B = points[i+1]
-		}
-		res := seg.Raycast(p)
-		if res.In {
-			return true
-		}
-	}
-	return false
 }

@@ -48,11 +48,11 @@ import (
 //	if err != nil {
 //		t.Fatal(err)
 //	}
-//	expr, err := engine.InvokeSpec(ctx, spec, device)
+//	nodes, err := engine.InvokeSpec(ctx, spec, device)
 //	if err != nil {
 //		t.Fatal(err)
 //	}
-//	assertSpec(t, expr, spec.String())
+//	assertSpec(t, nodes, spec.String())
 //}
 //
 //func TestInvokeSpecWithNearbyDevices(t *testing.T) {
@@ -85,21 +85,21 @@ import (
 //	if err != nil {
 //		t.Fatal(err)
 //	}
-//	expr, err := engine.InvokeSpec(ctx, spec, devices[0])
+//	nodes, err := engine.InvokeSpec(ctx, spec, devices[0])
 //	if err != nil {
 //		t.Fatal(err)
 //	}
-//	assertSpec(t, expr, spec.String())
+//	assertSpec(t, nodes, spec.String())
 //
 //	spec, err = ParseSpec(`device(device1, device2) nearby device(device3) on distance 1400`)
 //	if err != nil {
 //		t.Fatal(err)
 //	}
-//	expr, err = engine.InvokeSpec(ctx, spec, devices[0])
+//	nodes, err = engine.InvokeSpec(ctx, spec, devices[0])
 //	if err != nil {
 //		t.Fatal(err)
 //	}
-//	assertSpec(t, expr, spec.String())
+//	assertSpec(t, nodes, spec.String())
 //}
 //
 //func BenchmarkInvokeSpecWithNearbyPolygon(b *testing.B) {
