@@ -328,20 +328,8 @@ func e2range(left, right Expr) (invoker, error) {
 					BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR:
 				default:
 					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %s, expected [%s], pos=%d",
-						lhs, strings.Join([]string{
-							FUELLEVEL.String(),
-							PRESSURE.String(),
-							LUMINOSITY.String(),
-							HUMIDITY.String(),
-							TEMPERATURE.String(),
-							BATTERY_CHARGE.String(),
-							STATUS.String(),
-							SPEED.String(),
-							YEAR.String(),
-							MONTH.String(),
-							WEEK.String(),
-							DAY.String(),
-							HOUR.String()}, ","), rhs.Pos)
+						lhs, tok2Str(FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
+							BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR), rhs.Pos)
 				}
 				begin, ok := rhs.Items[0].(*FloatLit)
 				if !ok {
