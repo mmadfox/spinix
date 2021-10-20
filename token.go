@@ -40,7 +40,7 @@ const (
 	MONTH          // month
 	WEEK           // week
 	DAY            // day
-	HOUR           // hour
+	HOUR           // h
 	DATE           // date
 	DATETIME       // dateTime
 	TRIGGER        // trigger

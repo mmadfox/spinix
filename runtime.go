@@ -197,9 +197,15 @@ func makeOp(left, right Expr, op Token) (invoker, error) {
 		return e2near(left, right)
 	case RANGE:
 		return e2range(left, right)
+	case IN:
+		return e2in(left, right)
 	}
 	return nil, fmt.Errorf("spinix/runtime: unknown operator %v %v %v",
 		left, op, right)
+}
+
+func e2in(left, right Expr) (invoker, error) {
+	return nil, nil
 }
 
 func e2range(left, right Expr) (invoker, error) {
@@ -210,14 +216,7 @@ func e2range(left, right Expr) (invoker, error) {
 	isPropKeyword := func(op Token) bool {
 		switch op {
 		case TIME, FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
-			BATTERY_CHARGE, STATUS, SPEED:
-			return true
-		}
-		return false
-	}
-	isDataTimeKeyword := func(op Token) bool {
-		switch op {
-		case YEAR, MONTH, WEEK, DAY, HOUR, DATE, DATETIME:
+			BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR, DATE, DATETIME:
 			return true
 		}
 		return false
@@ -225,7 +224,7 @@ func e2range(left, right Expr) (invoker, error) {
 
 	switch lhs := left.(type) {
 	case *IdentLit:
-		if !isPropKeyword(lhs.Kind) && !isDataTimeKeyword(lhs.Kind) {
+		if !isPropKeyword(lhs.Kind) {
 			break
 		}
 		switch rhs := right.(type) {
@@ -235,6 +234,26 @@ func e2range(left, right Expr) (invoker, error) {
 			}
 			switch rhs.Typ {
 			case INT:
+				switch lhs.Kind {
+				case FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
+					BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR:
+				default:
+					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %s, expected [%s], pos=%d",
+						lhs, strings.Join([]string{
+							FUELLEVEL.String(),
+							PRESSURE.String(),
+							LUMINOSITY.String(),
+							HUMIDITY.String(),
+							TEMPERATURE.String(),
+							BATTERY_CHARGE.String(),
+							STATUS.String(),
+							SPEED.String(),
+							YEAR.String(),
+							MONTH.String(),
+							WEEK.String(),
+							DAY.String(),
+							HOUR.String()}, ","), rhs.Pos)
+				}
 				begin, ok := rhs.Items[0].(*IntLit)
 				if !ok {
 					break
@@ -243,6 +262,14 @@ func e2range(left, right Expr) (invoker, error) {
 				if !ok {
 					break
 				}
+				if begin.Value > end.Value {
+					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator left %s operand is greater than right %s, pos=%d",
+						begin, end, rhs.Pos)
+				}
+				if begin.Value == end.Value {
+					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator left %s and right %s operands are equal, pos=%d",
+						begin, end, rhs.Pos)
+				}
 				return rangeIntOp{
 					begin:   begin.Value,
 					end:     end.Value,
@@ -250,6 +277,26 @@ func e2range(left, right Expr) (invoker, error) {
 					keyword: lhs.Kind,
 				}, nil
 			case FLOAT:
+				switch lhs.Kind {
+				case FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
+					BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR:
+				default:
+					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %s, expected [%s], pos=%d",
+						lhs, strings.Join([]string{
+							FUELLEVEL.String(),
+							PRESSURE.String(),
+							LUMINOSITY.String(),
+							HUMIDITY.String(),
+							TEMPERATURE.String(),
+							BATTERY_CHARGE.String(),
+							STATUS.String(),
+							SPEED.String(),
+							YEAR.String(),
+							MONTH.String(),
+							WEEK.String(),
+							DAY.String(),
+							HOUR.String()}, ","), rhs.Pos)
+				}
 				begin, ok := rhs.Items[0].(*FloatLit)
 				if !ok {
 					break
@@ -258,6 +305,14 @@ func e2range(left, right Expr) (invoker, error) {
 				if !ok {
 					break
 				}
+				if begin.Value > end.Value {
+					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator left %s operand is greater than right %s, pos=%d",
+						begin, end, rhs.Pos)
+				}
+				if begin.Value == end.Value {
+					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator left %s and right %s operands are equal, pos=%d",
+						begin, end, rhs.Pos)
+				}
 				return rangeFloatOp{
 					begin:   begin.Value,
 					end:     end.Value,
@@ -265,22 +320,36 @@ func e2range(left, right Expr) (invoker, error) {
 					keyword: lhs.Kind,
 				}, nil
 			case TIME:
-				begin, ok := rhs.Items[0].(*TimeLit)
-				if !ok {
-					break
+				if lhs.Kind != TIME {
+					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %s, expected %s, pos=%d",
+						lhs.Kind, TIME, rhs.Pos)
 				}
-				end, ok := rhs.Items[1].(*TimeLit)
-				if !ok {
-					break
+				begin := rhs.Items[0].(*TimeLit)
+				end := rhs.Items[1].(*TimeLit)
+				if begin.Hour < 0 || begin.Hour > 23 {
+					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %d, expected hour >= 0 and hour < 24, pos=%d",
+						begin.Hour, rhs.Pos)
+				}
+				if begin.Minute < 0 || begin.Minute > 59 {
+					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %d, expected minutes >= 0 and minutes < 59, pos=%d",
+						begin.Minute, rhs.Pos)
+				}
+				if end.Hour < 0 || end.Hour > 23 {
+					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %d, expected hour >= 0 and hour < 24, pos=%d",
+						end.Hour, rhs.Pos)
+				}
+				if end.Minute < 0 || end.Minute > 59 {
+					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %d, expected minutes >= 0 and minutes < 59, pos=%d",
+						end.Minute, rhs.Pos)
 				}
 				return rangeTimeOp{
-					begin:   timeVal{hour: begin.Hour, minutes: begin.Minute},
-					end:     timeVal{hour: end.Hour, minutes: end.Minute},
+					begin:   timeVal{h: begin.Hour, m: begin.Minute},
+					end:     timeVal{h: end.Hour, m: end.Minute},
 					pos:     rhs.Pos,
 					keyword: lhs.Kind,
 				}, nil
 			case STRING:
-				if !isDataTimeKeyword(lhs.Kind) {
+				if lhs.Kind != DATE && lhs.Kind != DATETIME {
 					break
 				}
 				begin, ok := rhs.Items[0].(*StringLit)
@@ -291,15 +360,34 @@ func e2range(left, right Expr) (invoker, error) {
 				if !ok {
 					break
 				}
+				var pattern string
+				switch lhs.Kind {
+				case DATE:
+					pattern = "2006-01-02"
+				default:
+					pattern = time.RFC3339
+				}
+
 				beginValue := strings.ReplaceAll(begin.Value, `"`, "")
-				left, err := time.Parse(time.RFC3339, beginValue)
+				left, err := time.Parse(pattern, beginValue)
 				if err != nil {
 					break
 				}
 				endValue := strings.ReplaceAll(end.Value, `"`, "")
-				right, err := time.Parse(time.RFC3339, endValue)
+				right, err := time.Parse(pattern, endValue)
 				if err != nil {
 					break
+				}
+
+				// left == right
+				if lhs.Kind == DATETIME && left.Unix() == right.Unix() {
+					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator left %s and right %s operands are equal, pos=%d",
+						left, right, rhs.Pos)
+				}
+				// left > right
+				if lhs.Kind == DATETIME && left.Unix() > right.Unix() {
+					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator left %s operand is greater than right %s, pos=%d",
+						left, right, rhs.Pos)
 				}
 				return rangeDateTimeOp{
 					keyword: lhs.Kind,
@@ -310,7 +398,6 @@ func e2range(left, right Expr) (invoker, error) {
 			}
 		}
 	}
-
 	return nil, fmt.Errorf("spinix/runtime: invalid expr: %s RANGE %s",
 		left, right)
 }
@@ -599,8 +686,7 @@ func (n rangeDateTimeOp) invoke(ctx context.Context, d *Device, ref reference) (
 }
 
 type timeVal struct {
-	hour    int
-	minutes int
+	h, m int
 }
 
 type rangeTimeOp struct {

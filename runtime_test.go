@@ -332,31 +332,120 @@ func TestNearOpDeviceMultiObjects(t *testing.T) {
 }
 
 func TestRangeOp(t *testing.T) {
+	testCases := []struct {
+		spec string
+		err  bool
+	}{
+		// successfully
+		{
+			spec: `datetime range ["2012-11-01T22:08:41+00:00" .. "2012-12-01T22:08:41+00:00"]`,
+		},
+		{
+			spec: `datetime range ["2012-11-01T22:08:41+00:00" .. "2012-12-01T22:08:41+00:00"]`,
+		},
+		{
+			spec: `date range ["2012-11-01" .. "2012-12-02"]`,
+		},
+		{
+			spec: `time range [01:00 .. 23:50]`,
+		},
+		{
+			spec: `speed range [1 .. 30]`,
+		},
+		{
+			spec: `fuelLevel range [1 .. 2]`,
+		},
+		{
+			spec: `fuelLevel range [1.1 .. 2.1]`,
+		},
 
+		// failure
+		{
+			spec: `datetime range [12:12 .. 14:45]`,
+			err:  true,
+		},
+		{
+			// left == right
+			spec: `datetime range ["2012-11-01T22:08:41+00:00" .. "2012-11-01T22:08:41+00:00"]`,
+			err:  true,
+		},
+		{
+			// left == right
+			spec: `datetime range ["2012-11-01" .. "2012-11-01"]`,
+			err:  true,
+		},
+		{
+			// left > right
+			spec: `datetime range ["2012-12-01T22:08:41+00:00" .. "2012-11-01T22:08:41+00:00"]`,
+			err:  true,
+		},
+		{
+			spec: `datetime range ["" .. ""]`,
+			err:  true,
+		},
+		{
+			spec: `datetime range ["" .. ""]`,
+			err:  true,
+		},
+		{
+			spec: `datetime range ["1" .. "2"]`,
+			err:  true,
+		},
+		{
+			spec: `datetime range []`,
+			err:  true,
+		},
+		{
+			spec: `time range [333:333 .. 1111:55555]`,
+			err:  true,
+		},
+		{
+			spec: `time range [11:333 .. 1111:55555]`,
+			err:  true,
+		},
+		{
+			spec: `time range [11:11 .. 1111:55555]`,
+			err:  true,
+		},
+		{
+			spec: `time range [11:11 .. 11:55555]`,
+			err:  true,
+		},
+		{
+			spec: `time range [1 .. 30]`,
+			err:  true,
+		},
+		{
+			spec: `time range [1.0 .. 30.0]`,
+			err:  true,
+		},
+		{
+			spec: `fuelLevel range [2 .. 1]`,
+			err:  true,
+		},
+		{
+			spec: `fuelLevel range [2 .. 2]`,
+			err:  true,
+		},
+		{
+			spec: `fuelLevel range [3.2 .. 1.0]`,
+			err:  true,
+		},
+		{
+			spec: `fuelLevel range [2.0 .. 2.0]`,
+			err:  true,
+		},
+	}
+	for _, tc := range testCases {
+		_, err := specFromString(tc.spec)
+		if err != nil {
+			if tc.err {
+				continue
+			} else {
+				t.Fatalf("specFromString(%s) => %v", tc.spec, err)
+			}
+		} else if tc.err {
+			t.Fatalf("specFromString(%s) => got nil, expected err", tc.spec)
+		}
+	}
 }
-
-//func BenchmarkDeviceNearObjectWithRadius100meters(b *testing.B) {
-//	ctx := context.Background()
-//	refs := defaultRefs()
-//
-//	if err := refs.objects.Add(ctx, "poly", poly); err != nil {
-//		b.Fatal(err)
-//	}
-//
-//	spec, err := specFromString(`device :radius 100m near objects(@poly)`)
-//	if err != nil {
-//		b.Fatal(err)
-//	}
-//
-//	b.ResetTimer()
-//	for i := 0; i < b.N; i++ {
-//		device := &Device{
-//			Latitude:  42.9273156,
-//			Longitude: -72.2803925,
-//		}
-//		_, err := spec.invoke(ctx, device, refs)
-//		if err != nil {
-//			b.Fatal(err)
-//		}
-//	}
-//}
