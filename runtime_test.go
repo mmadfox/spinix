@@ -460,6 +460,7 @@ func TestInOp(t *testing.T) {
 		{spec: `model in [one, two, three]`},
 		{spec: `status in [1, 2, 3]`},
 		{spec: `status in [1.1, 2.1, 3.1]`},
+		{spec: `day in [2, 55, 124]`},
 
 		// failure
 		{spec: `status in [1, "two" , three]`, err: true},
@@ -468,6 +469,7 @@ func TestInOp(t *testing.T) {
 		{spec: `speed in []`, err: true},
 		{spec: `speed in [1, 1.1, 2]`, err: true},
 		{spec: `speed in [1 .. 2]`, err: true},
+		{spec: `time in [12:00, 13:00, 14:00]`, err: true},
 	}
 	for _, tc := range testCases {
 		_, err := specFromString(tc.spec)

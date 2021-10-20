@@ -212,7 +212,7 @@ func e2in(left, right Expr) (invoker, error) {
 	}
 
 	switch lhs.Kind {
-	case MODEL, BRAND, OWNER, IMEI, TIME, FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
+	case MODEL, BRAND, OWNER, IMEI, FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
 		BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR, DATE, DATETIME:
 	default:
 		return nil, fmt.Errorf("spinix/runtime: invalid IN operator got %s, expected [%s], pos=%d",
