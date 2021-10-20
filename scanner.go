@@ -156,7 +156,7 @@ func (s *Scanner) Next() (tok Token, lit string) {
 				tok = WEEK
 			case "day":
 				tok = DAY
-			case "h":
+			case "hour":
 				tok = HOUR
 			case "time":
 				tok = TIME
