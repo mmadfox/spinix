@@ -449,3 +449,36 @@ func TestRangeOp(t *testing.T) {
 		}
 	}
 }
+
+func TestInOp(t *testing.T) {
+	testCases := []struct {
+		spec string
+		err  bool
+	}{
+		// successfully
+		{spec: `imei in ["one", "two", "three three"]`},
+		{spec: `model in [one, two, three]`},
+		{spec: `status in [1, 2, 3]`},
+		{spec: `status in [1.1, 2.1, 3.1]`},
+
+		// failure
+		{spec: `status in [1, "two" , three]`, err: true},
+		{spec: `device in [1]`, err: true},
+		{spec: `objects(@id) in [1]`, err: true},
+		{spec: `speed in []`, err: true},
+		{spec: `speed in [1, 1.1, 2]`, err: true},
+		{spec: `speed in [1 .. 2]`, err: true},
+	}
+	for _, tc := range testCases {
+		_, err := specFromString(tc.spec)
+		if err != nil {
+			if tc.err {
+				continue
+			} else {
+				t.Fatalf("specFromString(%s) => %v", tc.spec, err)
+			}
+		} else if tc.err {
+			t.Fatalf("specFromString(%s) => got nil, expected err", tc.spec)
+		}
+	}
+}

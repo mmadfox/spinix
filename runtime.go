@@ -205,7 +205,65 @@ func makeOp(left, right Expr, op Token) (invoker, error) {
 }
 
 func e2in(left, right Expr) (invoker, error) {
-	return nil, nil
+	lhs, ok := left.(*IdentLit)
+	if !ok {
+		return nil, fmt.Errorf("spinix/runtime: invalid expr: %s IN %s",
+			left, right)
+	}
+
+	switch lhs.Kind {
+	case MODEL, BRAND, OWNER, IMEI, TIME, FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
+		BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR, DATE, DATETIME:
+	default:
+		return nil, fmt.Errorf("spinix/runtime: invalid IN operator got %s, expected [%s], pos=%d",
+			lhs, tok2Str(MODEL, BRAND, OWNER, IMEI, FUELLEVEL, PRESSURE,
+				LUMINOSITY, HUMIDITY, TEMPERATURE, BATTERY_CHARGE, STATUS, SPEED,
+				YEAR, MONTH, WEEK, DAY, HOUR, DATE, DATETIME), lhs.Pos)
+	}
+
+	rhs, ok := right.(*ListLit)
+	if !ok || rhs.Kind != ILLEGAL {
+		return nil, fmt.Errorf("spinix/runtime: invalid expr: %s IN %s",
+			left, right)
+	}
+
+	switch rhs.Typ {
+	case INT:
+		op := inIntOp{
+			keyword: lhs.Kind,
+			pos:     rhs.Pos,
+			values:  make([]int, len(rhs.Items)),
+		}
+		for i := 0; i < len(rhs.Items); i++ {
+			n := rhs.Items[i].(*IntLit)
+			op.values[i] = n.Value
+		}
+		return op, nil
+	case FLOAT:
+		op := inFloatOp{
+			keyword: lhs.Kind,
+			pos:     rhs.Pos,
+			values:  make([]float64, len(rhs.Items)),
+		}
+		for i := 0; i < len(rhs.Items); i++ {
+			n := rhs.Items[i].(*FloatLit)
+			op.values[i] = n.Value
+		}
+		return op, nil
+	case STRING, IDENT:
+		op := inStringOp{
+			keyword: lhs.Kind,
+			pos:     rhs.Pos,
+			values:  make([]string, len(rhs.Items)),
+		}
+		for i := 0; i < len(rhs.Items); i++ {
+			n := rhs.Items[i].(*StringLit)
+			op.values[i] = n.Value
+		}
+		return op, nil
+	}
+	return nil, fmt.Errorf("spinix/runtime: invalid expr: %s IN %s",
+		left, right)
 }
 
 func e2range(left, right Expr) (invoker, error) {
@@ -239,20 +297,8 @@ func e2range(left, right Expr) (invoker, error) {
 					BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR:
 				default:
 					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %s, expected [%s], pos=%d",
-						lhs, strings.Join([]string{
-							FUELLEVEL.String(),
-							PRESSURE.String(),
-							LUMINOSITY.String(),
-							HUMIDITY.String(),
-							TEMPERATURE.String(),
-							BATTERY_CHARGE.String(),
-							STATUS.String(),
-							SPEED.String(),
-							YEAR.String(),
-							MONTH.String(),
-							WEEK.String(),
-							DAY.String(),
-							HOUR.String()}, ","), rhs.Pos)
+						lhs, tok2Str(FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
+							BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR), rhs.Pos)
 				}
 				begin, ok := rhs.Items[0].(*IntLit)
 				if !ok {
@@ -722,6 +768,36 @@ func (n rangeFloatOp) invoke(ctx context.Context, d *Device, ref reference) (mat
 	return
 }
 
+type inFloatOp struct {
+	keyword Token
+	pos     Pos
+	values  []float64
+}
+
+func (n inFloatOp) invoke(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+	return
+}
+
+type inIntOp struct {
+	keyword Token
+	pos     Pos
+	values  []int
+}
+
+func (n inIntOp) invoke(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+	return
+}
+
+type inStringOp struct {
+	keyword Token
+	pos     Pos
+	values  []string
+}
+
+func (n inStringOp) invoke(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+	return
+}
+
 type equalStrOp struct {
 	left  string
 	right string
@@ -918,4 +994,12 @@ func (rr radiusRing) SegmentAt(index int) geometry.Segment {
 
 func hasMatches(m []Match) bool {
 	return len(m) > 0
+}
+
+func tok2Str(tokens ...Token) string {
+	res := make([]string, 0, len(tokens))
+	for _, tok := range tokens {
+		res = append(res, tok.String())
+	}
+	return strings.Join(res, ",")
 }
