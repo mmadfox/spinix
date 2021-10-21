@@ -12,6 +12,7 @@ func TestParser(t *testing.T) {
 		isErr bool
 	}{
 		// successfully
+		{spec: `status eq 1 OR 1 eq status`},
 		{spec: `device near polygon(@id) :time duration 5m0s`},
 		{spec: `device near polygon(@id) :time after 5m0s`},
 		{spec: `circle(@id) :time duration 5s near device :radius 5km`},
@@ -24,9 +25,9 @@ func TestParser(t *testing.T) {
 		{spec: `objects(@id) contains device`},
 		{spec: `speed range [1 .. 60]`},
 		{spec: `temperature range [2.2 .. 10.8]`},
-		{spec: `temperature >= 1 and temperature < 40`},
-		{spec: `pressure >= 1 and pressure < 40`},
-		{spec: `luminosity >= 1 and luminosity < 40`},
+		{spec: `temperature gte 1 and temperature lt 40`},
+		{spec: `pressure gte 1 and pressure lt 40`},
+		{spec: `luminosity gte 1 and luminosity lt 40`},
 		{spec: `battery range [0 .. 30]`},
 		{spec: `fuelLevel range [0 .. 30]`},
 		{spec: `status range [0 .. 30]`},
@@ -37,10 +38,10 @@ func TestParser(t *testing.T) {
 		{spec: `week in [48, 49, 50] and week range [40 .. 52]`},
 		{spec: `day range [1 .. 12]`},
 		{spec: `time range [12:00 .. 23:00]`},
-		{spec: `time > 12:00 and time < 15:00`},
-		{spec: `time == 19:21`},
+		{spec: `time gt 12:00 and time lt 15:00`},
+		{spec: `time eq 19:21`},
 		{spec: `datetime range ["2012-11-01T22:08:41+00:00" .. "2012-11-01T22:08:41+00:00"]`},
-		{spec: `datetime >= "2012-11-01T22:08:41+00:00" and datetime < "2012-11-01T22:08:41+00:00"`},
+		{spec: `datetime gte "2012-11-01T22:08:41+00:00" and datetime lt "2012-11-01T22:08:41+00:00"`},
 		{spec: `datetime in ["2012-11-01T22:08:41+00:00", "2012-11-01T22:08:41+00:00"]`},
 		{spec: `device :radius 300m intersects line(@id) and speed range [30 .. 120]`},
 		{spec: `
@@ -54,7 +55,7 @@ func TestParser(t *testing.T) {
              and speed range [30 .. 120] :trigger once`},
 
 		{spec: `device :radius 300m intersects line(@id) and speed range [30 .. 120]
-			or (temperature >= 0 and temperature < 400)`},
+			or (temperature gte 0 and temperature lt 400)`},
 
 		// failure
 		{spec: "", isErr: true},
@@ -69,7 +70,6 @@ func TestParser(t *testing.T) {
 		{spec: `device :`, isErr: true},
 		{spec: `device near polygon(@id) :time before 5m0s`, isErr: true},
 		{spec: `device near polygon(@id) :time after`, isErr: true},
-		{spec: `circle(@id) :time duration 5s near device :radius 5km`, isErr: true},
 		{spec: `device :radius b0km`, isErr: true},
 		{spec: `speed range [0x0 .. b0]`, isErr: true},
 		{spec: `speed range [0x0 .. b0.0]`, isErr: true},
@@ -80,11 +80,8 @@ func TestParser(t *testing.T) {
 		{spec: `owner in [1.1, "one", 1]`, isErr: true},
 		{spec: `owner in ["one", 1.1, 1]`, isErr: true},
 		{spec: `owner in [1.1, 1]`, isErr: true},
-		{spec: `time > 12: and time < 15:00`, isErr: true},
-		{spec: `datetime >= 2012-11-01T22:08:41+00:00 and datetime < 2012-11-01T22:08:41+00:00`, isErr: true},
-		{spec: `
-             :trigger once and device :radius 300m intersects line(@id) 
-             and speed range [30 .. 120]`, isErr: true},
+		{spec: `time gt 12: and time lt 15:00`, isErr: true},
+		{spec: `datetime gte 2012-11-01T22:08:41+00:00 and datetime lt 2012-11-01T22:08:41+00:00`, isErr: true},
 		{spec: `
              device :radius 300m intersects line(@id) 
              and speed range [30 .. 120] :trigger`, isErr: true},
@@ -118,6 +115,8 @@ func TestParser(t *testing.T) {
 			} else {
 				t.Fatal(err)
 			}
+		} else if tc.isErr {
+			t.Fatalf("ParseSpec(%s) => nil, want err", tc.spec)
 		}
 		if expr == nil {
 			t.Fatalf("ParseSpec(%s) => nil, want Expr", tc.spec)

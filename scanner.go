@@ -70,16 +70,6 @@ func (s *Scanner) Next() (tok Token, lit string) {
 		tok = LBRACE
 	case '}':
 		tok = RBRACE
-	case '+':
-		tok = ADD
-	case '-':
-		tok = SUB
-	case '/':
-		tok = QUO
-	case '*':
-		tok = MUL
-	case '%':
-		tok = REM
 	case ':':
 		tok = COLON
 		st, sl = s.Scan()
@@ -87,48 +77,6 @@ func (s *Scanner) Next() (tok Token, lit string) {
 			tok = TRIGGER
 		} else {
 			s.Reset()
-		}
-	case '>':
-		st, sl = s.Scan()
-		if st == '=' {
-			tok = GEQ
-			sl = ">="
-		} else {
-			tok = GTR
-			sl = ">"
-			s.Reset()
-		}
-	case '<':
-		st, sl = s.Scan()
-		if st == '=' {
-			tok = LEQ
-			sl = "<="
-		} else {
-			tok = LSS
-			sl = "<"
-			s.Reset()
-		}
-	case '!':
-		st, sl = s.Scan()
-		if st == '=' {
-			tok = NEQ
-			sl = "!="
-		} else if st == '~' {
-			tok = NEREG
-			sl = "!~"
-		} else {
-			tok = ILLEGAL
-		}
-	case '=':
-		st, sl = s.Scan()
-		if st == '=' {
-			tok = EQL
-			sl = "=="
-		} else if st == '~' {
-			tok = EREG
-			sl = "=~"
-		} else {
-			tok = ILLEGAL
 		}
 	case scanner.Float:
 		tok = FLOAT
@@ -142,6 +90,18 @@ func (s *Scanner) Next() (tok Token, lit string) {
 			tok = keyword
 		} else {
 			switch strings.ToLower(sl) {
+			case "gte":
+				tok = GTE
+			case "lte":
+				tok = LTE
+			case "ne":
+				tok = NE
+			case "gt":
+				tok = GT
+			case "lt":
+				tok = LT
+			case "eq":
+				tok = EQ
 			case "trigger":
 				tok = TRIGGER
 			case "date":

@@ -12,8 +12,8 @@ import (
 	"github.com/uber/h3-go"
 )
 
-type invoker interface {
-	invoke(ctx context.Context, d *Device, ref reference) (Match, error)
+type evaluater interface {
+	evaluate(ctx context.Context, d *Device, ref reference) (Match, error)
 }
 
 type reference struct {
@@ -46,7 +46,7 @@ func defaultRefs() reference {
 }
 
 type spec struct {
-	nodes []invoker
+	nodes []evaluater
 	ops   []Token
 	pos   Pos
 }
@@ -59,13 +59,13 @@ func specFromString(s string) (*spec, error) {
 	return exprToSpec(expr)
 }
 
-func (s *spec) invoke(ctx context.Context, d *Device, r reference) (matches []Match, err error) {
+func (s *spec) evaluate(ctx context.Context, d *Device, r reference) (matches []Match, err error) {
 	if len(s.nodes) == 0 {
 		return
 	}
 
 	if len(s.nodes) == 1 {
-		match, err := s.nodes[0].invoke(ctx, d, r)
+		match, err := s.nodes[0].evaluate(ctx, d, r)
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +97,7 @@ func (s *spec) invoke(ctx context.Context, d *Device, r reference) (matches []Ma
 			}
 		}
 
-		right, err = s.nodes[index].invoke(ctx, d, r)
+		right, err = s.nodes[index].evaluate(ctx, d, r)
 		if err != nil {
 			return nil, err
 		}
@@ -166,7 +166,7 @@ func walkExpr(
 func exprToSpec(e Expr) (*spec, error) {
 	s := &spec{
 		ops:   make([]Token, 0, 2),
-		nodes: make([]invoker, 0, 2),
+		nodes: make([]evaluater, 0, 2),
 	}
 	_, err := walkExpr(e,
 		func(a, b Expr, op Token) error {
@@ -191,7 +191,7 @@ func exprToSpec(e Expr) (*spec, error) {
 	return s, nil
 }
 
-func makeOp(left, right Expr, op Token) (invoker, error) {
+func makeOp(left, right Expr, op Token) (evaluater, error) {
 	switch op {
 	case NEAR:
 		return e2near(left, right)
@@ -199,40 +199,44 @@ func makeOp(left, right Expr, op Token) (invoker, error) {
 		return e2range(left, right)
 	case IN:
 		return e2in(left, right)
+	case EQ:
+		return e2equal(left, right)
 	}
 	return nil, fmt.Errorf("spinix/runtime: unknown operator %v %v %v",
 		left, op, right)
 }
 
-func e2in(left, right Expr) (invoker, error) {
+func e2in(left, right Expr) (evaluater, error) {
 	lhs, ok := left.(*IdentLit)
 	if !ok {
-		return nil, fmt.Errorf("spinix/runtime: invalid expr: %s IN %s",
-			left, right)
-	}
-
-	switch lhs.Kind {
-	case MODEL, BRAND, OWNER, IMEI, FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
-		BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR, DATE, DATETIME:
-	default:
-		return nil, fmt.Errorf("spinix/runtime: invalid IN operator got %s, expected [%s], pos=%d",
-			lhs, tok2Str(MODEL, BRAND, OWNER, IMEI, FUELLEVEL, PRESSURE,
-				LUMINOSITY, HUMIDITY, TEMPERATURE, BATTERY_CHARGE, STATUS, SPEED,
-				YEAR, MONTH, WEEK, DAY, HOUR, DATE, DATETIME), lhs.Pos)
+		return nil, &InvalidExprError{
+			Left:  left,
+			Right: right,
+			Op:    IN,
+			Msg:   "illegal",
+		}
 	}
 
 	rhs, ok := right.(*ListLit)
 	if !ok || rhs.Kind != ILLEGAL {
-		return nil, fmt.Errorf("spinix/runtime: invalid expr: %s IN %s",
-			left, right)
+		return nil, &InvalidExprError{
+			Left:  left,
+			Right: right,
+			Op:    IN,
+			Msg:   "expected [left .. right]",
+		}
 	}
 
 	switch rhs.Typ {
 	case INT:
-		if isOneOf(lhs.Kind, MODEL, BRAND, OWNER, IMEI) {
-			return nil, fmt.Errorf("spinix/runtime: invalid IN operator got %s, expected [%s], pos=%d",
-				lhs.Kind, tok2Str(FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE, BATTERY_CHARGE, STATUS, SPEED,
-					YEAR, MONTH, WEEK, DAY, HOUR, DATE, DATETIME), lhs.Pos)
+		if !isNumberToken(lhs.Kind) {
+			return nil, &InvalidExprError{
+				Left:  left,
+				Right: right,
+				Op:    IN,
+				Msg: fmt.Sprintf("got %s, expected [%s]",
+					lhs.Kind, group2str(numberTokenGroup)),
+			}
 		}
 		op := inIntOp{
 			keyword: lhs.Kind,
@@ -245,10 +249,14 @@ func e2in(left, right Expr) (invoker, error) {
 		}
 		return op, nil
 	case FLOAT:
-		if isOneOf(lhs.Kind, MODEL, BRAND, OWNER, IMEI) {
-			return nil, fmt.Errorf("spinix/runtime: invalid IN operator got %s, expected [%s], pos=%d",
-				lhs.Kind, tok2Str(FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE, BATTERY_CHARGE, STATUS, SPEED,
-					YEAR, MONTH, WEEK, DAY, HOUR, DATE, DATETIME), lhs.Pos)
+		if !isNumberToken(lhs.Kind) {
+			return nil, &InvalidExprError{
+				Left:  left,
+				Right: right,
+				Op:    IN,
+				Msg: fmt.Sprintf("got %s, expected [%s]",
+					lhs.Kind, group2str(numberTokenGroup)),
+			}
 		}
 		op := inFloatOp{
 			keyword: lhs.Kind,
@@ -261,10 +269,14 @@ func e2in(left, right Expr) (invoker, error) {
 		}
 		return op, nil
 	case STRING, IDENT:
-		if isOneOf(lhs.Kind, FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE, BATTERY_CHARGE, STATUS, SPEED,
-			YEAR, HOUR, WEEK) {
-			return nil, fmt.Errorf("spinix/runtime: invalid IN operator got %s, expected [%s], pos=%d",
-				lhs.Kind, tok2Str(MODEL, BRAND, OWNER, IMEI, MONTH, DATE, DATETIME, DAY), lhs.Pos)
+		if !isStringToken(lhs.Kind) {
+			return nil, &InvalidExprError{
+				Left:  left,
+				Right: right,
+				Op:    IN,
+				Msg: fmt.Sprintf("got %s, expected [%s]",
+					lhs.Kind, group2str(stringTokenGroup)),
+			}
 		}
 		op := inStringOp{
 			keyword: lhs.Kind,
@@ -281,7 +293,7 @@ func e2in(left, right Expr) (invoker, error) {
 		left, right)
 }
 
-func e2range(left, right Expr) (invoker, error) {
+func e2range(left, right Expr) (evaluater, error) {
 	// int -> int
 	// float -> float
 	// time -> time
@@ -451,11 +463,149 @@ func e2range(left, right Expr) (invoker, error) {
 		left, right)
 }
 
-func e2equal(left, right Expr) (invoker, error) {
-	return nil, nil
+func e2equal(left, right Expr) (evaluater, error) {
+	// ident -> int
+	// ident -> float
+	// ident -> string
+	// ident -> time
+	// int -> ident
+	// float -> ident
+	// string -> ident
+	// time -> ident
+
+	// left
+	switch lhs := left.(type) {
+	// time -> ident
+	case *TimeLit:
+		switch rhs := right.(type) {
+		case *IdentLit:
+			if !isTimeToken(rhs.Kind) {
+				return nil, &InvalidExprError{
+					Left:  lhs,
+					Right: rhs,
+					Op:    EQ,
+					Pos:   rhs.Pos,
+					Msg:   fmt.Sprintf("got %s, expected %s", rhs.Kind, TIME),
+				}
+			}
+			return equalTimeOp{
+				keyword: rhs.Kind,
+				value: timeVal{
+					h: lhs.Hour,
+					m: lhs.Minute,
+				}, pos: rhs.Pos,
+			}, nil
+		}
+	// string -> ident
+	case *StringLit:
+		switch rhs := right.(type) {
+		case *IdentLit:
+			if !isStringToken(rhs.Kind) {
+				return nil, &InvalidExprError{
+					Left:  lhs,
+					Right: rhs,
+					Op:    EQ,
+					Pos:   rhs.Pos,
+					Msg: fmt.Sprintf("got %s, expected [%s]",
+						rhs.Kind, group2str(stringTokenGroup)),
+				}
+			}
+			return equalStrOp{keyword: rhs.Kind, value: lhs.Value, pos: rhs.Pos}, nil
+		}
+	// float -> ident
+	case *FloatLit:
+		switch rhs := right.(type) {
+		case *IdentLit:
+			if !isNumberToken(rhs.Kind) {
+				return nil, &InvalidExprError{
+					Left:  lhs,
+					Right: rhs,
+					Op:    EQ,
+					Pos:   rhs.Pos,
+					Msg: fmt.Sprintf("got %s, expected [%s]",
+						rhs.Kind, group2str(numberTokenGroup)),
+				}
+			}
+			return equalFloatOp{keyword: rhs.Kind, value: lhs.Value, pos: rhs.Pos}, nil
+		}
+	// int -> ident
+	case *IntLit:
+		switch rhs := right.(type) {
+		case *IdentLit:
+			if !isNumberToken(rhs.Kind) {
+				return nil, &InvalidExprError{
+					Left:  lhs,
+					Right: rhs,
+					Op:    EQ,
+					Pos:   rhs.Pos,
+					Msg: fmt.Sprintf("got %s, expected [%s]",
+						rhs.Kind, group2str(numberTokenGroup)),
+				}
+			}
+			return equalIntOp{keyword: rhs.Kind, value: lhs.Value, pos: rhs.Pos}, nil
+		}
+	case *IdentLit:
+		switch rhs := right.(type) {
+		// ident -> int
+		case *IntLit:
+			if !isNumberToken(lhs.Kind) {
+				return nil, &InvalidExprError{
+					Left:  lhs,
+					Right: rhs,
+					Op:    EQ,
+					Pos:   rhs.Pos,
+					Msg: fmt.Sprintf("got %s, expected [%s]",
+						lhs.Kind, group2str(numberTokenGroup)),
+				}
+			}
+			return equalIntOp{keyword: lhs.Kind, value: rhs.Value, pos: rhs.Pos}, nil
+		case *FloatLit:
+			if !isNumberToken(lhs.Kind) {
+				return nil, &InvalidExprError{
+					Left:  lhs,
+					Right: rhs,
+					Op:    EQ,
+					Pos:   rhs.Pos,
+					Msg: fmt.Sprintf("got %s, expected [%s]",
+						lhs.Kind, group2str(numberTokenGroup)),
+				}
+			}
+			return equalFloatOp{keyword: lhs.Kind, value: rhs.Value, pos: rhs.Pos}, nil
+		case *StringLit:
+			if !isStringToken(lhs.Kind) {
+				return nil, &InvalidExprError{
+					Left:  lhs,
+					Right: rhs,
+					Op:    EQ,
+					Pos:   rhs.Pos,
+					Msg: fmt.Sprintf("got %s, expected [%s]",
+						lhs.Kind, group2str(stringTokenGroup)),
+				}
+			}
+			return equalStrOp{keyword: lhs.Kind, value: rhs.Value, pos: rhs.Pos}, nil
+		case *TimeLit:
+			if !isTimeToken(lhs.Kind) {
+				return nil, &InvalidExprError{
+					Left:  lhs,
+					Right: rhs,
+					Op:    EQ,
+					Pos:   rhs.Pos,
+					Msg: fmt.Sprintf("got %s, expected %s",
+						lhs.Kind, TIME),
+				}
+			}
+			return equalTimeOp{keyword: lhs.Kind, value: timeVal{h: rhs.Hour, m: rhs.Minute}, pos: rhs.Pos}, nil
+		}
+	}
+	return nil, &InvalidExprError{
+		Left:  left,
+		Right: right,
+		Op:    EQ,
+		Msg:   "illegal",
+	}
 }
 
-func e2near(left, right Expr) (invoker, error) {
+func e2near(left, right Expr) (evaluater, error) {
 	var node nearOp
 	// device -> object
 	// device -> devices
@@ -535,7 +685,7 @@ type nearOp struct {
 	pos Pos
 }
 
-func (n nearOp) invoke(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n nearOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
 	// device
 	var (
 		meters       float64
@@ -730,7 +880,7 @@ type rangeDateTimeOp struct {
 	pos     Pos
 }
 
-func (n rangeDateTimeOp) invoke(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n rangeDateTimeOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
 	return
 }
 
@@ -745,7 +895,7 @@ type rangeTimeOp struct {
 	pos     Pos
 }
 
-func (n rangeTimeOp) invoke(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n rangeTimeOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
 	return
 }
 
@@ -756,7 +906,7 @@ type rangeIntOp struct {
 	pos     Pos
 }
 
-func (n rangeIntOp) invoke(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n rangeIntOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
 	return
 }
 
@@ -767,7 +917,7 @@ type rangeFloatOp struct {
 	pos     Pos
 }
 
-func (n rangeFloatOp) invoke(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n rangeFloatOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
 	return
 }
 
@@ -777,50 +927,15 @@ type inFloatOp struct {
 	values  map[float64]struct{}
 }
 
-func (n inFloatOp) invoke(_ context.Context, d *Device, _ reference) (match Match, err error) {
-	var value float64
-	switch n.keyword {
-	case FUELLEVEL:
-		value = d.FuelLevel
-	case PRESSURE:
-		value = d.Pressure
-	case LUMINOSITY:
-		value = d.Luminosity
-	case HUMIDITY:
-		value = d.Humidity
-	case TEMPERATURE:
-		value = d.Temperature
-	case BATTERY_CHARGE:
-		value = d.BatteryCharge
-	case STATUS:
-		value = float64(d.Status)
-	case SPEED:
-		value = d.Speed
-	case YEAR:
-		dt := time.Unix(d.DateTime, 0)
-		value = float64(dt.Year())
-	case MONTH:
-		dt := time.Unix(d.DateTime, 0)
-		value = float64(dt.Month())
-	case WEEK:
-		_, week := time.Unix(d.DateTime, 0).ISOWeek()
-		value = float64(week)
-	case DAY:
-		dt := time.Unix(d.DateTime, 0)
-		value = float64(dt.Day())
-	case HOUR:
-		dt := time.Unix(d.DateTime, 0)
-		value = float64(dt.Hour())
-	}
+func (n inFloatOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+	value := mapper{device: d}.floatVal(n.keyword)
 	_, found := n.values[value]
-	if found {
-		match = Match{
-			Ok:       true,
-			Left:     Decl{Keyword: n.keyword},
-			Right:    Decl{Keyword: FLOAT},
-			Operator: IN,
-			Pos:      n.pos,
-		}
+	match = Match{
+		Ok:       found,
+		Left:     Decl{Keyword: n.keyword},
+		Right:    Decl{Keyword: FLOAT},
+		Operator: IN,
+		Pos:      n.pos,
 	}
 	return
 }
@@ -831,50 +946,15 @@ type inIntOp struct {
 	values  map[int]struct{}
 }
 
-func (n inIntOp) invoke(_ context.Context, d *Device, _ reference) (match Match, err error) {
-	var value int
-	switch n.keyword {
-	case FUELLEVEL:
-		value = int(d.FuelLevel)
-	case PRESSURE:
-		value = int(d.Pressure)
-	case LUMINOSITY:
-		value = int(d.Luminosity)
-	case HUMIDITY:
-		value = int(d.Humidity)
-	case TEMPERATURE:
-		value = int(d.Temperature)
-	case BATTERY_CHARGE:
-		value = int(d.BatteryCharge)
-	case STATUS:
-		value = d.Status
-	case SPEED:
-		value = int(d.Speed)
-	case YEAR:
-		dt := time.Unix(d.DateTime, 0)
-		value = dt.Year()
-	case MONTH:
-		dt := time.Unix(d.DateTime, 0)
-		value = int(dt.Month())
-	case WEEK:
-		_, week := time.Unix(d.DateTime, 0).ISOWeek()
-		value = week
-	case DAY:
-		dt := time.Unix(d.DateTime, 0)
-		value = dt.Day()
-	case HOUR:
-		dt := time.Unix(d.DateTime, 0)
-		value = dt.Hour()
-	}
+func (n inIntOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+	value := mapper{device: d}.intVal(n.keyword)
 	_, found := n.values[value]
-	if found {
-		match = Match{
-			Ok:       true,
-			Left:     Decl{Keyword: n.keyword},
-			Right:    Decl{Keyword: INT},
-			Operator: IN,
-			Pos:      n.pos,
-		}
+	match = Match{
+		Ok:       found,
+		Left:     Decl{Keyword: n.keyword},
+		Right:    Decl{Keyword: INT},
+		Operator: IN,
+		Pos:      n.pos,
 	}
 	return
 }
@@ -885,50 +965,78 @@ type inStringOp struct {
 	values  map[string]struct{}
 }
 
-func (n inStringOp) invoke(_ context.Context, d *Device, _ reference) (match Match, err error) {
-	var value string
-	switch n.keyword {
-	case MODEL:
-		value = d.Model
-	case BRAND:
-		value = d.Brand
-	case OWNER:
-		value = d.Owner
-	case IMEI:
-		value = d.IMEI
-	case MONTH:
-		dt := time.Unix(d.DateTime, 0)
-		value = dt.Month().String()
-	case DAY:
-		dt := time.Unix(d.DateTime, 0)
-		value = dt.Weekday().String()
-	case DATE:
-		dt := time.Unix(d.DateTime, 0)
-		value = dt.Format("2006-01-02")
-	case DATETIME:
-		dt := time.Unix(d.DateTime, 0)
-		value = dt.Format(time.RFC3339)
-	}
+func (n inStringOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+	value := mapper{device: d}.stringVal(n.keyword)
 	_, found := n.values[value]
-	if found {
-		match = Match{
-			Ok:       true,
-			Left:     Decl{Keyword: n.keyword},
-			Right:    Decl{Keyword: STRING},
-			Operator: IN,
-			Pos:      n.pos,
-		}
+	match = Match{
+		Ok:       found,
+		Left:     Decl{Keyword: n.keyword},
+		Right:    Decl{Keyword: STRING},
+		Operator: IN,
+		Pos:      n.pos,
 	}
 	return
 }
 
-type equalStrOp struct {
-	left  string
-	right string
-	pos   Pos
+type equalTimeOp struct {
+	keyword Token
+	value   timeVal
+	pos     Pos
 }
 
-func (n equalStrOp) invoke(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n equalTimeOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+	values := mapper{device: d}
+	ts := values.dateTime()
+	match.Ok = ts.Hour() == n.value.h && ts.Minute() == n.value.m
+	match.Left.Keyword = n.keyword
+	match.Right.Keyword = TIME
+	match.Pos = n.pos
+	match.Operator = EQ
+	return
+}
+
+type equalStrOp struct {
+	keyword Token
+	value   string
+	pos     Pos
+}
+
+func (n equalStrOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+	match.Ok = mapper{device: d}.stringVal(n.keyword) == n.value
+	match.Left.Keyword = n.keyword
+	match.Right.Keyword = STRING
+	match.Pos = n.pos
+	match.Operator = EQ
+	return
+}
+
+type equalIntOp struct {
+	keyword Token
+	value   int
+	pos     Pos
+}
+
+func (n equalIntOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+	match.Ok = mapper{device: d}.intVal(n.keyword) == n.value
+	match.Left.Keyword = n.keyword
+	match.Right.Keyword = INT
+	match.Pos = n.pos
+	match.Operator = EQ
+	return
+}
+
+type equalFloatOp struct {
+	keyword Token
+	value   float64
+	pos     Pos
+}
+
+func (n equalFloatOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+	match.Ok = mapper{device: d}.floatVal(n.keyword) == n.value
+	match.Left.Keyword = n.keyword
+	match.Right.Keyword = FLOAT
+	match.Pos = n.pos
+	match.Operator = EQ
 	return
 }
 
@@ -1120,19 +1228,123 @@ func hasMatches(m []Match) bool {
 	return len(m) > 0
 }
 
-func isOneOf(op Token, tokens ...Token) bool {
-	for i := 0; i < len(tokens); i++ {
-		if op == tokens[i] {
-			return true
-		}
-	}
-	return false
+type InvalidExprError struct {
+	Left  Expr
+	Right Expr
+	Op    Token
+	Msg   string
+	Pos   Pos
 }
 
-func tok2Str(tokens ...Token) string {
-	res := make([]string, 0, len(tokens))
-	for _, tok := range tokens {
-		res = append(res, tok.String())
+func (e *InvalidExprError) Error() string {
+	return fmt.Sprintf("spinix/runtime: invalid expression: %s %s %s, %s, pos=%d",
+		e.Left, e.Op, e.Right, e.Msg, e.Pos+1)
+}
+
+type mapper struct {
+	device *Device
+}
+
+func (m mapper) dateTime() time.Time {
+	return time.Unix(m.device.DateTime, 0)
+}
+
+func (m mapper) stringVal(keyword Token) (v string) {
+	switch keyword {
+	case MODEL:
+		v = m.device.Model
+	case BRAND:
+		v = m.device.Brand
+	case OWNER:
+		v = m.device.Owner
+	case IMEI:
+		v = m.device.IMEI
+	case MONTH:
+		dt := time.Unix(m.device.DateTime, 0)
+		v = dt.Month().String()
+	case DAY:
+		dt := time.Unix(m.device.DateTime, 0)
+		v = dt.Weekday().String()
+	case DATE:
+		dt := time.Unix(m.device.DateTime, 0)
+		v = dt.Format("2006-01-02")
+	case DATETIME:
+		dt := time.Unix(m.device.DateTime, 0)
+		v = dt.Format(time.RFC3339)
 	}
-	return strings.Join(res, ",")
+	return v
+}
+
+func (m mapper) floatVal(keyword Token) (v float64) {
+	switch keyword {
+	case FUELLEVEL:
+		v = m.device.FuelLevel
+	case PRESSURE:
+		v = m.device.Pressure
+	case LUMINOSITY:
+		v = m.device.Luminosity
+	case HUMIDITY:
+		v = m.device.Humidity
+	case TEMPERATURE:
+		v = m.device.Temperature
+	case BATTERY_CHARGE:
+		v = m.device.BatteryCharge
+	case STATUS:
+		v = float64(m.device.Status)
+	case SPEED:
+		v = m.device.Speed
+	case YEAR:
+		dt := time.Unix(m.device.DateTime, 0)
+		v = float64(dt.Year())
+	case MONTH:
+		dt := time.Unix(m.device.DateTime, 0)
+		v = float64(dt.Month())
+	case WEEK:
+		_, week := time.Unix(m.device.DateTime, 0).ISOWeek()
+		v = float64(week)
+	case DAY:
+		dt := time.Unix(m.device.DateTime, 0)
+		v = float64(dt.Day())
+	case HOUR:
+		dt := time.Unix(m.device.DateTime, 0)
+		v = float64(dt.Hour())
+	}
+	return
+}
+
+func (m mapper) intVal(keyword Token) (v int) {
+	switch keyword {
+	case FUELLEVEL:
+		v = int(m.device.FuelLevel)
+	case PRESSURE:
+		v = int(m.device.Pressure)
+	case LUMINOSITY:
+		v = int(m.device.Luminosity)
+	case HUMIDITY:
+		v = int(m.device.Humidity)
+	case TEMPERATURE:
+		v = int(m.device.Temperature)
+	case BATTERY_CHARGE:
+		v = int(m.device.BatteryCharge)
+	case STATUS:
+		v = m.device.Status
+	case SPEED:
+		v = int(m.device.Speed)
+	case YEAR:
+		dt := time.Unix(m.device.DateTime, 0)
+		v = dt.Year()
+	case MONTH:
+		dt := time.Unix(m.device.DateTime, 0)
+		v = int(dt.Month())
+	case WEEK:
+		_, week := time.Unix(m.device.DateTime, 0).ISOWeek()
+		v = week
+	case DAY:
+		dt := time.Unix(m.device.DateTime, 0)
+		v = dt.Day()
+	case HOUR:
+		dt := time.Unix(m.device.DateTime, 0)
+		v = dt.Hour()
+	}
+	return
 }

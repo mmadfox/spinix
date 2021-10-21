@@ -1,10 +1,20 @@
 package spinix
 
-import "strconv"
+import (
+	"strconv"
+	"strings"
+)
 
 type (
 	Pos   int
 	Token int
+)
+
+const (
+	numberTokenGroup = 1
+	stringTokenGroup = 2
+	dateTokenGroup   = 3
+	timeTokenGroup   = 4
 )
 
 const (
@@ -70,20 +80,15 @@ const (
 	NOTINTERSECTSBOX // NOT INTERSECTSBOX
 	NOTCONTAINES     // NOT CONTAINS
 	RANGE            // range
-	ADD              // +
-	SUB              // -
-	MUL              // *
-	QUO              // /
-	REM              // %
-	EQL              // ==
-	LSS              // <
-	GTR              // >
-	NOT              // !
-	NEQ              // !=
-	LEQ              // <=
-	GEQ              // >=
-	EREG             // =~
-	NEREG            // !~
+
+	EQ  // eq  i.e. ==
+	LT  // lt  i.e. <
+	GT  // gt  i.e. >
+	NOT // not i.e. !
+	NE  // ne  i.e. !=
+	LTE // lte i.e. <=
+	GTE // gte i.e. >=
+
 	precedenceEnd
 
 	LBRACK // [
@@ -129,12 +134,6 @@ var tokens = [...]string{
 	FLOAT:  "FLOAT",
 	STRING: "STRING",
 
-	ADD: "+",
-	SUB: "-",
-	MUL: "*",
-	QUO: "/",
-	REM: "%",
-
 	AND:              "AND",
 	OR:               "OR",
 	NOT:              "NOT",
@@ -170,12 +169,12 @@ var tokens = [...]string{
 	RANGE:         "RANGE",
 	ONDISTANCE:    "ON DISTANCE",
 
-	EQL: "==",
-	LSS: "<",
-	GTR: ">",
-	NEQ: "!=",
-	LEQ: "<=",
-	GEQ: ">=",
+	EQ:  "eq",
+	LT:  "lt",
+	GT:  "gt",
+	NE:  "ne",
+	LTE: "lte",
+	GTE: "gte",
 
 	LPAREN: "(",
 	LBRACK: "[",
@@ -266,4 +265,104 @@ func (tok Token) String() string {
 func LookupKeyword(ident string) (tok Token, found bool) {
 	tok, found = keywords[ident]
 	return
+}
+
+var numberToken = map[Token]struct{}{
+	FUELLEVEL:      {},
+	PRESSURE:       {},
+	LUMINOSITY:     {},
+	HUMIDITY:       {},
+	TEMPERATURE:    {},
+	BATTERY_CHARGE: {},
+	STATUS:         {},
+	SPEED:          {},
+	YEAR:           {},
+	MONTH:          {},
+	WEEK:           {},
+	DAY:            {},
+	HOUR:           {},
+}
+
+var stringToken = map[Token]struct{}{
+	MODEL:    {},
+	BRAND:    {},
+	OWNER:    {},
+	IMEI:     {},
+	DATE:     {},
+	DATETIME: {},
+	MONTH:    {},
+	DAY:      {},
+}
+
+var dateToken = map[Token]struct{}{
+	DATE:     {},
+	DATETIME: {},
+}
+
+var timeToken = map[Token]struct{}{
+	TIME: {},
+}
+
+func isNumberToken(op Token) bool {
+	_, found := numberToken[op]
+	return found
+}
+
+func isStringToken(op Token) bool {
+	_, found := stringToken[op]
+	return found
+}
+
+func isDateToken(op Token) bool {
+	_, found := dateToken[op]
+	return found
+}
+
+func isTimeToken(op Token) bool {
+	_, found := timeToken[op]
+	return found
+}
+
+func isOneOf(op Token, tokens ...Token) bool {
+	for i := 0; i < len(tokens); i++ {
+		if op == tokens[i] {
+			return true
+		}
+	}
+	return false
+}
+
+func group2str(group int) string {
+	var res []string
+	switch group {
+	case numberTokenGroup:
+		res = make([]string, 0, len(numberToken))
+		for tok := range numberToken {
+			res = append(res, tok.String())
+		}
+	case stringTokenGroup:
+		res = make([]string, 0, len(stringToken))
+		for tok := range stringToken {
+			res = append(res, tok.String())
+		}
+	case dateTokenGroup:
+		res = make([]string, 0, len(dateToken))
+		for tok := range dateToken {
+			res = append(res, tok.String())
+		}
+	case timeTokenGroup:
+		res = make([]string, 0, len(timeToken))
+		for tok := range timeToken {
+			res = append(res, tok.String())
+		}
+	}
+	return strings.Join(res, ",")
+}
+
+func tok2Str(tokens ...Token) string {
+	res := make([]string, 0, len(tokens))
+	for _, tok := range tokens {
+		res = append(res, tok.String())
+	}
+	return strings.Join(res, ",")
 }

@@ -23,17 +23,17 @@ package spinix
 //		return e.applyAND(l, r) // AND
 //	case OR:
 //		return e.applyOR(l, r) // OR
-//	case GEQ:
+//	case GTE:
 //		return e.applyGEQ(l, r) // >=
-//	case GTR:
+//	case GT:
 //		return e.applyGTR(l, r) // >
-//	case LEQ:
+//	case LTE:
 //		return e.applyLEQ(l, r) // <=
-//	case LSS:
+//	case LT:
 //		return e.applyLSS(l, r) // <
-//	case NEQ:
+//	case NE:
 //		return e.applyNEQ(l, r) // !=
-//	case EQL:
+//	case EQ:
 //		return e.applyEQL(l, r) // ==
 //	case DISTANCETO:
 //		return &BooleanLit{Value: true}, nil
