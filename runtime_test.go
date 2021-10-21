@@ -452,20 +452,388 @@ func TestRangeOp(t *testing.T) {
 
 func TestInOp(t *testing.T) {
 	testCases := []struct {
-		spec     string
-		d        *Device
-		lhs, rhs Token
-		err      bool
+		spec string
+		d    *Device
+		m    []Match
+		err  bool
 	}{
 		// successfully
-		{spec: `imei in ["one", "two", "three three"]`, d: &Device{IMEI: "one"}, lhs: IMEI, rhs: STRING},
-		{spec: `model in [one, two, three]`, d: &Device{Model: "one"}, lhs: MODEL, rhs: STRING},
-		{spec: `status in [1, 2, 3]`, d: &Device{Status: 1}, lhs: STATUS, rhs: INT},
-		{spec: `speed in [1.1, 2.1, 3.1]`, d: &Device{Speed: 1.1}, lhs: SPEED, rhs: FLOAT},
-		{spec: `day in [21, 55, 124]`, d: &Device{DateTime: 1634774886}, lhs: DAY, rhs: INT},
-		{spec: `month in [10, 11]`, d: &Device{DateTime: 1634774886}, lhs: MONTH, rhs: INT},
-		{spec: `month in [October, "October"]`, d: &Device{DateTime: 1634774886}, lhs: MONTH, rhs: STRING},
-		{spec: `day in [Thursday]`, d: &Device{DateTime: 1634774886}, lhs: DAY, rhs: STRING},
+		{
+			spec: `imei in ["one", "two", "three three"] and speed in [60]`,
+			d:    &Device{IMEI: "one", Speed: 60},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: IMEI},
+					Right:    Decl{Keyword: STRING},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: SPEED},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+			}},
+
+		{
+			spec: `model in [one, two, three] or imei in ["ONE"]`,
+			d:    &Device{Model: "one"},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: MODEL},
+					Right:    Decl{Keyword: STRING},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `status in [1, 2, 3] or status in [1.0]`,
+			d:    &Device{Status: 1},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: STATUS},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: STATUS},
+					Right:    Decl{Keyword: FLOAT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `speed in [1.1, 2.1, 3.1]`,
+			d:    &Device{Speed: 1.1},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: SPEED},
+					Right:    Decl{Keyword: FLOAT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `day in [21, 55, 124] and month in [10]`,
+			d:    &Device{DateTime: 1634774886},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: DAY},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: MONTH},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `fuelLevel in [21] or fuelLevel in [21.0]`,
+			d:    &Device{FuelLevel: 21},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: FUELLEVEL},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: FUELLEVEL},
+					Right:    Decl{Keyword: FLOAT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `pressure in [21] or pressure in [21.0]`,
+			d:    &Device{Pressure: 21},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: PRESSURE},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: PRESSURE},
+					Right:    Decl{Keyword: FLOAT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `luminosity in [21] or luminosity in [21.0]`,
+			d:    &Device{Luminosity: 21},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: LUMINOSITY},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: LUMINOSITY},
+					Right:    Decl{Keyword: FLOAT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `humidity in [21] or humidity in [21.0]`,
+			d:    &Device{Humidity: 21},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: HUMIDITY},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: HUMIDITY},
+					Right:    Decl{Keyword: FLOAT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `temperature in [21] or temperature in [21.0]`,
+			d:    &Device{Temperature: 21},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: TEMPERATURE},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: TEMPERATURE},
+					Right:    Decl{Keyword: FLOAT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `battery in [21] or battery in [21.0]`,
+			d:    &Device{BatteryCharge: 21},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: BATTERY_CHARGE},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: BATTERY_CHARGE},
+					Right:    Decl{Keyword: FLOAT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `
+              (model in [one]) or (brand in ["one-one"]) or 
+              (owner in ["40c34e6c-c3c1-4226-bfea-7995336c9a9e"]) or 
+              (imei in ["40c34e6c-c3c1-4226-bfea-7995336c9a9e"])`,
+			d: &Device{Model: "one", Brand: "one-one", Owner: "40c34e6c-c3c1-4226-bfea-7995336c9a9e", IMEI: "40c34e6c-c3c1-4226-bfea-7995336c9a9e"},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: MODEL},
+					Right:    Decl{Keyword: STRING},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: BRAND},
+					Right:    Decl{Keyword: STRING},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: OWNER},
+					Right:    Decl{Keyword: STRING},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: IMEI},
+					Right:    Decl{Keyword: STRING},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `year in [2021] or year in [2021.0]`,
+			d:    &Device{DateTime: 1634774886},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: YEAR},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: YEAR},
+					Right:    Decl{Keyword: FLOAT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `month in [10] or month in [10.0]`,
+			d:    &Device{DateTime: 1634774886},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: MONTH},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: MONTH},
+					Right:    Decl{Keyword: FLOAT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `week in [42] or week in [42.0]`,
+			d:    &Device{DateTime: 1634774886},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: WEEK},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: WEEK},
+					Right:    Decl{Keyword: FLOAT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `day in [21] or day in [21.0]`,
+			d:    &Device{DateTime: 1634774886},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: DAY},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: DAY},
+					Right:    Decl{Keyword: FLOAT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `hour in [03] or hour in [03.0]`,
+			d:    &Device{DateTime: 1634774886},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: HOUR},
+					Right:    Decl{Keyword: INT},
+					Operator: IN,
+				},
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: HOUR},
+					Right:    Decl{Keyword: FLOAT},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `month in [October]`,
+			d:    &Device{DateTime: 1634774886},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: MONTH},
+					Right:    Decl{Keyword: STRING},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `day in [Thursday]`,
+			d:    &Device{DateTime: 1634774886},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: DAY},
+					Right:    Decl{Keyword: STRING},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `date in ["2021-10-21"]`,
+			d:    &Device{DateTime: 1634774886},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: DATE},
+					Right:    Decl{Keyword: STRING},
+					Operator: IN,
+				},
+			},
+		},
+
+		{
+			spec: `datetime in ["2021-10-21T03:08:06+03:00"]`,
+			d:    &Device{DateTime: 1634774886},
+			m: []Match{
+				{
+					Ok:       true,
+					Left:     Decl{Keyword: DATETIME},
+					Right:    Decl{Keyword: STRING},
+					Operator: IN,
+				},
+			},
+		},
 
 		// failure
 		{spec: `status in [1, "two" , three]`, err: true},
@@ -497,18 +865,22 @@ func TestInOp(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if have, want := len(matches), 1; have != want {
-			t.Fatalf("specFromString(%s) => got %d, expected %d matches", tc.spec, have, want)
-		}
-		match := matches[0]
-		if have, want := match.Ok, true; have != want {
+		if have, want := len(matches), len(tc.m); have != want {
 			t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
 		}
-		if have, want := match.Left.Keyword, tc.lhs; have != want {
-			t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
-		}
-		if have, want := match.Right.Keyword, tc.rhs; have != want {
-			t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+		for i, m := range matches {
+			if have, want := m.Ok, tc.m[i].Ok; have != want {
+				t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+			}
+			if have, want := m.Left.Keyword, tc.m[i].Left.Keyword; have != want {
+				t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+			}
+			if have, want := m.Right.Keyword, tc.m[i].Right.Keyword; have != want {
+				t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+			}
+			if have, want := m.Operator, tc.m[i].Operator; have != want {
+				t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+			}
 		}
 	}
 }

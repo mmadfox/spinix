@@ -175,7 +175,7 @@ func (s *Scanner) Next() (tok Token, lit string) {
 			case "luminosity":
 				tok = LUMINOSITY
 			case "humidity":
-				tok = LUMINOSITY
+				tok = HUMIDITY
 			case "temperature":
 				tok = TEMPERATURE
 			case "battery":
