@@ -229,36 +229,51 @@ func e2in(left, right Expr) (invoker, error) {
 
 	switch rhs.Typ {
 	case INT:
+		if isOneOf(lhs.Kind, MODEL, BRAND, OWNER, IMEI) {
+			return nil, fmt.Errorf("spinix/runtime: invalid IN operator got %s, expected [%s], pos=%d",
+				lhs.Kind, tok2Str(FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE, BATTERY_CHARGE, STATUS, SPEED,
+					YEAR, MONTH, WEEK, DAY, HOUR, DATE, DATETIME), lhs.Pos)
+		}
 		op := inIntOp{
 			keyword: lhs.Kind,
 			pos:     rhs.Pos,
-			values:  make([]int, len(rhs.Items)),
+			values:  make(map[int]struct{}),
 		}
 		for i := 0; i < len(rhs.Items); i++ {
 			n := rhs.Items[i].(*IntLit)
-			op.values[i] = n.Value
+			op.values[n.Value] = struct{}{}
 		}
 		return op, nil
 	case FLOAT:
+		if isOneOf(lhs.Kind, MODEL, BRAND, OWNER, IMEI) {
+			return nil, fmt.Errorf("spinix/runtime: invalid IN operator got %s, expected [%s], pos=%d",
+				lhs.Kind, tok2Str(FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE, BATTERY_CHARGE, STATUS, SPEED,
+					YEAR, MONTH, WEEK, DAY, HOUR, DATE, DATETIME), lhs.Pos)
+		}
 		op := inFloatOp{
 			keyword: lhs.Kind,
 			pos:     rhs.Pos,
-			values:  make([]float64, len(rhs.Items)),
+			values:  make(map[float64]struct{}),
 		}
 		for i := 0; i < len(rhs.Items); i++ {
 			n := rhs.Items[i].(*FloatLit)
-			op.values[i] = n.Value
+			op.values[n.Value] = struct{}{}
 		}
 		return op, nil
 	case STRING, IDENT:
+		if isOneOf(lhs.Kind, FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE, BATTERY_CHARGE, STATUS, SPEED,
+			YEAR, HOUR, WEEK) {
+			return nil, fmt.Errorf("spinix/runtime: invalid IN operator got %s, expected [%s], pos=%d",
+				lhs.Kind, tok2Str(MODEL, BRAND, OWNER, IMEI, MONTH, DATE, DATETIME, DAY), lhs.Pos)
+		}
 		op := inStringOp{
 			keyword: lhs.Kind,
 			pos:     rhs.Pos,
-			values:  make([]string, len(rhs.Items)),
+			values:  make(map[string]struct{}),
 		}
 		for i := 0; i < len(rhs.Items); i++ {
 			n := rhs.Items[i].(*StringLit)
-			op.values[i] = n.Value
+			op.values[n.Value] = struct{}{}
 		}
 		return op, nil
 	}
@@ -759,30 +774,151 @@ func (n rangeFloatOp) invoke(ctx context.Context, d *Device, ref reference) (mat
 type inFloatOp struct {
 	keyword Token
 	pos     Pos
-	values  []float64
+	values  map[float64]struct{}
 }
 
-func (n inFloatOp) invoke(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n inFloatOp) invoke(_ context.Context, d *Device, _ reference) (match Match, err error) {
+	var value float64
+	switch n.keyword {
+	case FUELLEVEL:
+		value = d.FuelLevel
+	case PRESSURE:
+		value = d.Pressure
+	case LUMINOSITY:
+		value = d.Luminosity
+	case HUMIDITY:
+		value = d.Humidity
+	case TEMPERATURE:
+		value = d.Temperature
+	case BATTERY_CHARGE:
+		value = d.BatteryCharge
+	case STATUS:
+		value = float64(d.Status)
+	case SPEED:
+		value = d.Speed
+	case YEAR:
+		dt := time.Unix(d.DateTime, 0)
+		value = float64(dt.Year())
+	case MONTH:
+		dt := time.Unix(d.DateTime, 0)
+		value = float64(dt.Month())
+	case WEEK:
+		_, week := time.Unix(d.DateTime, 0).ISOWeek()
+		value = float64(week)
+	case DAY:
+		dt := time.Unix(d.DateTime, 0)
+		value = float64(dt.Day())
+	case HOUR:
+		dt := time.Unix(d.DateTime, 0)
+		value = float64(dt.Hour())
+	}
+	_, found := n.values[value]
+	if found {
+		match = Match{
+			Ok:       true,
+			Left:     Decl{Keyword: n.keyword},
+			Right:    Decl{Keyword: FLOAT},
+			Operator: IN,
+			Pos:      n.pos,
+		}
+	}
 	return
 }
 
 type inIntOp struct {
 	keyword Token
 	pos     Pos
-	values  []int
+	values  map[int]struct{}
 }
 
-func (n inIntOp) invoke(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n inIntOp) invoke(_ context.Context, d *Device, _ reference) (match Match, err error) {
+	var value int
+	switch n.keyword {
+	case FUELLEVEL:
+		value = int(d.FuelLevel)
+	case PRESSURE:
+		value = int(d.Pressure)
+	case LUMINOSITY:
+		value = int(d.Luminosity)
+	case HUMIDITY:
+		value = int(d.Humidity)
+	case TEMPERATURE:
+		value = int(d.Temperature)
+	case BATTERY_CHARGE:
+		value = int(d.BatteryCharge)
+	case STATUS:
+		value = d.Status
+	case SPEED:
+		value = int(d.Speed)
+	case YEAR:
+		dt := time.Unix(d.DateTime, 0)
+		value = dt.Year()
+	case MONTH:
+		dt := time.Unix(d.DateTime, 0)
+		value = int(dt.Month())
+	case WEEK:
+		_, week := time.Unix(d.DateTime, 0).ISOWeek()
+		value = week
+	case DAY:
+		dt := time.Unix(d.DateTime, 0)
+		value = dt.Day()
+	case HOUR:
+		dt := time.Unix(d.DateTime, 0)
+		value = dt.Hour()
+	}
+	_, found := n.values[value]
+	if found {
+		match = Match{
+			Ok:       true,
+			Left:     Decl{Keyword: n.keyword},
+			Right:    Decl{Keyword: INT},
+			Operator: IN,
+			Pos:      n.pos,
+		}
+	}
 	return
 }
 
 type inStringOp struct {
 	keyword Token
 	pos     Pos
-	values  []string
+	values  map[string]struct{}
 }
 
-func (n inStringOp) invoke(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n inStringOp) invoke(_ context.Context, d *Device, _ reference) (match Match, err error) {
+	var value string
+	switch n.keyword {
+	case MODEL:
+		value = d.Model
+	case BRAND:
+		value = d.Brand
+	case OWNER:
+		value = d.Owner
+	case IMEI:
+		value = d.IMEI
+	case MONTH:
+		dt := time.Unix(d.DateTime, 0)
+		value = dt.Month().String()
+	case DAY:
+		dt := time.Unix(d.DateTime, 0)
+		value = dt.Weekday().String()
+	case DATE:
+		dt := time.Unix(d.DateTime, 0)
+		value = dt.Format("2006-01-02")
+	case DATETIME:
+		dt := time.Unix(d.DateTime, 0)
+		value = dt.Format(time.RFC3339)
+	}
+	_, found := n.values[value]
+	if found {
+		match = Match{
+			Ok:       true,
+			Left:     Decl{Keyword: n.keyword},
+			Right:    Decl{Keyword: STRING},
+			Operator: IN,
+			Pos:      n.pos,
+		}
+	}
 	return
 }
 
@@ -982,6 +1118,15 @@ func (rr radiusRing) SegmentAt(index int) geometry.Segment {
 
 func hasMatches(m []Match) bool {
 	return len(m) > 0
+}
+
+func isOneOf(op Token, tokens ...Token) bool {
+	for i := 0; i < len(tokens); i++ {
+		if op == tokens[i] {
+			return true
+		}
+	}
+	return false
 }
 
 func tok2Str(tokens ...Token) string {

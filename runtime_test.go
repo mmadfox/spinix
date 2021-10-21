@@ -452,15 +452,20 @@ func TestRangeOp(t *testing.T) {
 
 func TestInOp(t *testing.T) {
 	testCases := []struct {
-		spec string
-		err  bool
+		spec     string
+		d        *Device
+		lhs, rhs Token
+		err      bool
 	}{
 		// successfully
-		{spec: `imei in ["one", "two", "three three"]`},
-		{spec: `model in [one, two, three]`},
-		{spec: `status in [1, 2, 3]`},
-		{spec: `status in [1.1, 2.1, 3.1]`},
-		{spec: `day in [2, 55, 124]`},
+		{spec: `imei in ["one", "two", "three three"]`, d: &Device{IMEI: "one"}, lhs: IMEI, rhs: STRING},
+		{spec: `model in [one, two, three]`, d: &Device{Model: "one"}, lhs: MODEL, rhs: STRING},
+		{spec: `status in [1, 2, 3]`, d: &Device{Status: 1}, lhs: STATUS, rhs: INT},
+		{spec: `speed in [1.1, 2.1, 3.1]`, d: &Device{Speed: 1.1}, lhs: SPEED, rhs: FLOAT},
+		{spec: `day in [21, 55, 124]`, d: &Device{DateTime: 1634774886}, lhs: DAY, rhs: INT},
+		{spec: `month in [10, 11]`, d: &Device{DateTime: 1634774886}, lhs: MONTH, rhs: INT},
+		{spec: `month in [October, "October"]`, d: &Device{DateTime: 1634774886}, lhs: MONTH, rhs: STRING},
+		{spec: `day in [Thursday]`, d: &Device{DateTime: 1634774886}, lhs: DAY, rhs: STRING},
 
 		// failure
 		{spec: `status in [1, "two" , three]`, err: true},
@@ -470,9 +475,15 @@ func TestInOp(t *testing.T) {
 		{spec: `speed in [1, 1.1, 2]`, err: true},
 		{spec: `speed in [1 .. 2]`, err: true},
 		{spec: `time in [12:00, 13:00, 14:00]`, err: true},
+		{spec: `model in [1,2,3]`, err: true},
+		{spec: `imei in [2.2,4.4,3.3]`, err: true},
+		{spec: `speed in [one, two]`, err: true},
+		{spec: `week in [one]`, err: true},
 	}
+	ctx := context.Background()
+	refs := defaultRefs()
 	for _, tc := range testCases {
-		_, err := specFromString(tc.spec)
+		spec, err := specFromString(tc.spec)
 		if err != nil {
 			if tc.err {
 				continue
@@ -481,6 +492,23 @@ func TestInOp(t *testing.T) {
 			}
 		} else if tc.err {
 			t.Fatalf("specFromString(%s) => got nil, expected err", tc.spec)
+		}
+		matches, err := spec.invoke(ctx, tc.d, refs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if have, want := len(matches), 1; have != want {
+			t.Fatalf("specFromString(%s) => got %d, expected %d matches", tc.spec, have, want)
+		}
+		match := matches[0]
+		if have, want := match.Ok, true; have != want {
+			t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+		}
+		if have, want := match.Left.Keyword, tc.lhs; have != want {
+			t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+		}
+		if have, want := match.Right.Keyword, tc.rhs; have != want {
+			t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
 		}
 	}
 }

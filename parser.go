@@ -95,6 +95,8 @@ func (p *Parser) parseExpr() (Expr, error) {
 	case FLOAT:
 		return p.parseFloatLit(lit)
 	case STRING:
+		lit = strings.TrimLeft(lit, `"`)
+		lit = strings.TrimRight(lit, `"`)
 		return &StringLit{Value: lit, Pos: p.s.Offset()}, nil
 	case LBRACK:
 		return p.parseListOrRangeLit()
@@ -254,6 +256,8 @@ func (p *Parser) parseListOrRangeLit() (Expr, error) {
 			} else if list.Typ != STRING {
 				return nil, p.error(tok, lit, fmt.Sprintf("expected %v literal", list.Typ))
 			}
+			lit = strings.TrimLeft(lit, `"`)
+			lit = strings.TrimRight(lit, `"`)
 			list.Items = append(list.Items, &StringLit{Value: lit})
 		case COMMA:
 		case PERIOD:
