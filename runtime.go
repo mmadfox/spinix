@@ -211,8 +211,7 @@ func makeOp(left, right Expr, op Token) (evaluater, error) {
 	case GTE:
 		return e2equal(left, right, GTE)
 	}
-	return nil, fmt.Errorf("spinix/runtime: unknown operator %v %v %v",
-		left, op, right)
+	return nil, fmt.Errorf("spinix/runtime: illegal %v %v %v", left, op, right)
 }
 
 func e2in(left, right Expr) (evaluater, error) {
@@ -307,50 +306,50 @@ func e2range(left, right Expr) (evaluater, error) {
 	// float -> float
 	// time -> time
 	// dateTime -> dateTime
-	isPropKeyword := func(op Token) bool {
-		switch op {
-		case TIME, FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
-			BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR, DATE, DATETIME:
-			return true
-		}
-		return false
-	}
 
 	switch lhs := left.(type) {
 	case *IdentLit:
-		if !isPropKeyword(lhs.Kind) {
-			break
-		}
 		switch rhs := right.(type) {
 		case *ListLit:
 			if rhs.Kind != RANGE {
-				break
+				return nil, &InvalidExprError{
+					Left:  left,
+					Right: right,
+					Pos:   rhs.Pos,
+					Op:    RANGE,
+				}
 			}
 			switch rhs.Typ {
 			case INT:
-				switch lhs.Kind {
-				case FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
-					BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR:
-				default:
-					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %s, expected [%s], pos=%d",
-						lhs, tok2Str(FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
-							BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR), rhs.Pos)
+				if !isNumberToken(lhs.Kind) {
+					return nil, &InvalidExprError{
+						Left:  left,
+						Right: right,
+						Op:    RANGE,
+						Pos:   rhs.Pos,
+						Msg: fmt.Sprintf("got %s, expected [%s]",
+							lhs.Kind, group2str(numberTokenGroup)),
+					}
 				}
-				begin, ok := rhs.Items[0].(*IntLit)
-				if !ok {
-					break
-				}
-				end, ok := rhs.Items[1].(*IntLit)
-				if !ok {
-					break
-				}
+				begin := rhs.Items[0].(*IntLit)
+				end := rhs.Items[1].(*IntLit)
 				if begin.Value > end.Value {
-					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator left %s operand is greater than right %s, pos=%d",
-						begin, end, rhs.Pos)
+					return nil, &InvalidExprError{
+						Left:  left,
+						Right: right,
+						Op:    RANGE,
+						Pos:   rhs.Pos,
+						Msg:   "left operand is greater than right",
+					}
 				}
 				if begin.Value == end.Value {
-					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator left %s and right %s operands are equal, pos=%d",
-						begin, end, rhs.Pos)
+					return nil, &InvalidExprError{
+						Left:  left,
+						Right: right,
+						Op:    RANGE,
+						Pos:   rhs.Pos,
+						Msg:   "left and right operands are equal",
+					}
 				}
 				return rangeIntOp{
 					begin:   begin.Value,
@@ -359,29 +358,35 @@ func e2range(left, right Expr) (evaluater, error) {
 					keyword: lhs.Kind,
 				}, nil
 			case FLOAT:
-				switch lhs.Kind {
-				case FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
-					BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR:
-				default:
-					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %s, expected [%s], pos=%d",
-						lhs, tok2Str(FUELLEVEL, PRESSURE, LUMINOSITY, HUMIDITY, TEMPERATURE,
-							BATTERY_CHARGE, STATUS, SPEED, YEAR, MONTH, WEEK, DAY, HOUR), rhs.Pos)
+				if !isNumberToken(lhs.Kind) {
+					return nil, &InvalidExprError{
+						Left:  left,
+						Right: right,
+						Op:    RANGE,
+						Pos:   rhs.Pos,
+						Msg: fmt.Sprintf("got %s, expected [%s]",
+							lhs.Kind, group2str(numberTokenGroup)),
+					}
 				}
-				begin, ok := rhs.Items[0].(*FloatLit)
-				if !ok {
-					break
-				}
-				end, ok := rhs.Items[1].(*FloatLit)
-				if !ok {
-					break
-				}
+				begin := rhs.Items[0].(*FloatLit)
+				end := rhs.Items[1].(*FloatLit)
 				if begin.Value > end.Value {
-					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator left %s operand is greater than right %s, pos=%d",
-						begin, end, rhs.Pos)
+					return nil, &InvalidExprError{
+						Left:  left,
+						Right: right,
+						Op:    RANGE,
+						Pos:   rhs.Pos,
+						Msg:   "left operand is greater than right",
+					}
 				}
 				if begin.Value == end.Value {
-					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator left %s and right %s operands are equal, pos=%d",
-						begin, end, rhs.Pos)
+					return nil, &InvalidExprError{
+						Left:  left,
+						Right: right,
+						Op:    RANGE,
+						Pos:   rhs.Pos,
+						Msg:   "left and right operands are equal",
+					}
 				}
 				return rangeFloatOp{
 					begin:   begin.Value,
@@ -390,26 +395,31 @@ func e2range(left, right Expr) (evaluater, error) {
 					keyword: lhs.Kind,
 				}, nil
 			case TIME:
-				if lhs.Kind != TIME {
-					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %s, expected %s, pos=%d",
-						lhs.Kind, TIME, rhs.Pos)
+				if !isTimeToken(lhs.Kind) {
+					return nil, &InvalidExprError{
+						Left:  left,
+						Right: right,
+						Op:    RANGE,
+						Pos:   rhs.Pos,
+						Msg:   fmt.Sprintf("got %s, expected %s", lhs.Kind, TIME),
+					}
 				}
 				begin := rhs.Items[0].(*TimeLit)
 				end := rhs.Items[1].(*TimeLit)
 				if begin.Hour < 0 || begin.Hour > 23 {
-					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %d, expected hour >= 0 and hour < 24, pos=%d",
+					return nil, fmt.Errorf("spinix/runtime: invalid expr: got %d, expected hour >= 0 and hour < 24, pos=%d",
 						begin.Hour, rhs.Pos)
 				}
 				if begin.Minute < 0 || begin.Minute > 59 {
-					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %d, expected minutes >= 0 and minutes < 59, pos=%d",
+					return nil, fmt.Errorf("spinix/runtime: invalid expr: got %d, expected minutes >= 0 and minutes < 59, pos=%d",
 						begin.Minute, rhs.Pos)
 				}
 				if end.Hour < 0 || end.Hour > 23 {
-					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %d, expected hour >= 0 and hour < 24, pos=%d",
+					return nil, fmt.Errorf("spinix/runtime: invalid expr: got %d, expected hour >= 0 and hour < 24, pos=%d",
 						end.Hour, rhs.Pos)
 				}
 				if end.Minute < 0 || end.Minute > 59 {
-					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator got %d, expected minutes >= 0 and minutes < 59, pos=%d",
+					return nil, fmt.Errorf("spinix/runtime: invalid expr: got %d, expected minutes >= 0 and minutes < 59, pos=%d",
 						end.Minute, rhs.Pos)
 				}
 				return rangeTimeOp{
@@ -451,12 +461,12 @@ func e2range(left, right Expr) (evaluater, error) {
 
 				// left == right
 				if lhs.Kind == DATETIME && left.Unix() == right.Unix() {
-					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator left %s and right %s operands are equal, pos=%d",
+					return nil, fmt.Errorf("spinix/runtime: invalid expr: left %s and right %s operands are equal, pos=%d",
 						left, right, rhs.Pos)
 				}
 				// left > right
 				if lhs.Kind == DATETIME && left.Unix() > right.Unix() {
-					return nil, fmt.Errorf("spinix/runtime: invalid RANGE operator left %s operand is greater than right %s, pos=%d",
+					return nil, fmt.Errorf("spinix/runtime: invalid expr: left %s operand is greater than right %s, pos=%d",
 						left, right, rhs.Pos)
 				}
 				return rangeDateTimeOp{
@@ -468,8 +478,11 @@ func e2range(left, right Expr) (evaluater, error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("spinix/runtime: invalid expr: %s RANGE %s",
-		left, right)
+	return nil, &InvalidExprError{
+		Left:  left,
+		Right: right,
+		Op:    RANGE,
+	}
 }
 
 func e2equal(left, right Expr, op Token) (evaluater, error) {
@@ -921,7 +934,14 @@ type rangeIntOp struct {
 	pos     Pos
 }
 
-func (n rangeIntOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n rangeIntOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+	values := mapper{device: d}
+	v := values.intVal(n.keyword)
+	match.Ok = v >= n.begin && v <= n.end
+	match.Left.Keyword = n.keyword
+	match.Right.Keyword = INT
+	match.Pos = n.pos
+	match.Operator = RANGE
 	return
 }
 
@@ -932,7 +952,14 @@ type rangeFloatOp struct {
 	pos     Pos
 }
 
-func (n rangeFloatOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n rangeFloatOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+	values := mapper{device: d}
+	v := values.floatVal(n.keyword)
+	match.Ok = v >= n.begin && v <= n.end
+	match.Left.Keyword = n.keyword
+	match.Right.Keyword = FLOAT
+	match.Pos = n.pos
+	match.Operator = RANGE
 	return
 }
 

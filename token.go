@@ -61,8 +61,8 @@ const (
 	OR  //  OR
 
 	precedenceBegin
-	NOT           // NOT
-	IN            // IN
+	NOT // NOT
+
 	WITHIN        // WITHIN
 	CONTAINS      // CONTAINS
 	INTERSECTSBOX // INTERSECTSBOX
@@ -80,7 +80,9 @@ const (
 	NOTINTERSECTS    // NOT INTERSECTS
 	NOTINTERSECTSBOX // NOT INTERSECTSBOX
 	NOTCONTAINES     // NOT CONTAINS
-	RANGE            // range
+
+	IN    // IN
+	RANGE // RANGE
 
 	EQ  // eq  i.e. ==
 	LT  // lt  i.e. <

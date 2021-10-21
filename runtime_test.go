@@ -334,110 +334,57 @@ func TestNearOpDeviceMultiObjects(t *testing.T) {
 func TestRangeOp(t *testing.T) {
 	testCases := []struct {
 		spec string
+		d    *Device
+		m    []Match
 		err  bool
+		ok   bool
 	}{
 		// successfully
 		{
-			spec: `datetime range ["2012-11-01T22:08:41+00:00" .. "2012-12-01T22:08:41+00:00"]`,
+			spec: `speed range [1 .. 20]`,
+			d:    &Device{Speed: 19},
+			m:    []Match{_mm(SPEED, INT, RANGE)},
+			ok:   true,
 		},
 		{
-			spec: `datetime range ["2012-11-01T22:08:41+00:00" .. "2012-12-01T22:08:41+00:00"]`,
-		},
-		{
-			spec: `date range ["2012-11-01" .. "2012-12-02"]`,
-		},
-		{
-			spec: `time range [01:00 .. 23:50]`,
-		},
-		{
-			spec: `speed range [1 .. 30]`,
-		},
-		{
-			spec: `fuelLevel range [1 .. 2]`,
-		},
-		{
-			spec: `fuelLevel range [1.1 .. 2.1]`,
+			spec: `speed range [1.1 .. 20.5]`,
+			d:    &Device{Speed: 19},
+			m:    []Match{_mm(SPEED, FLOAT, RANGE)},
+			ok:   true,
 		},
 
-		// failure
 		{
-			spec: `datetime range [12:12 .. 14:45]`,
+			spec: `speed range [1,2,3]`,
 			err:  true,
 		},
 		{
-			// left == right
-			spec: `datetime range ["2012-11-01T22:08:41+00:00" .. "2012-11-01T22:08:41+00:00"]`,
+			spec: `owner range [1 .. 2]`,
 			err:  true,
 		},
 		{
-			// left == right
-			spec: `datetime range ["2012-11-01" .. "2012-11-01"]`,
+			spec: `owner range [1.0 .. 2.1]`,
 			err:  true,
 		},
 		{
-			// left > right
-			spec: `datetime range ["2012-12-01T22:08:41+00:00" .. "2012-11-01T22:08:41+00:00"]`,
+			spec: `speed range [2 .. 1]`,
 			err:  true,
 		},
 		{
-			spec: `datetime range ["" .. ""]`,
+			spec: `speed range [2 .. 2]`,
 			err:  true,
 		},
 		{
-			spec: `datetime range ["" .. ""]`,
+			spec: `speed range [2.0 .. 1.0]`,
 			err:  true,
 		},
 		{
-			spec: `datetime range ["1" .. "2"]`,
-			err:  true,
-		},
-		{
-			spec: `datetime range []`,
-			err:  true,
-		},
-		{
-			spec: `time range [333:333 .. 1111:55555]`,
-			err:  true,
-		},
-		{
-			spec: `time range [11:333 .. 1111:55555]`,
-			err:  true,
-		},
-		{
-			spec: `time range [11:11 .. 1111:55555]`,
-			err:  true,
-		},
-		{
-			spec: `time range [11:11 .. 11:55555]`,
-			err:  true,
-		},
-		{
-			spec: `time range [1 .. 30]`,
-			err:  true,
-		},
-		{
-			spec: `time range [1.0 .. 30.0]`,
-			err:  true,
-		},
-		{
-			spec: `fuelLevel range [2 .. 1]`,
-			err:  true,
-		},
-		{
-			spec: `fuelLevel range [2 .. 2]`,
-			err:  true,
-		},
-		{
-			spec: `fuelLevel range [3.2 .. 1.0]`,
-			err:  true,
-		},
-		{
-			spec: `fuelLevel range [2.0 .. 2.0]`,
+			spec: `speed range [2.0 .. 2.0]`,
 			err:  true,
 		},
 	}
+	refs := defaultRefs()
 	for _, tc := range testCases {
-		_, err := specFromString(tc.spec)
+		spec, err := specFromString(tc.spec)
 		if err != nil {
 			if tc.err {
 				continue
@@ -446,6 +393,30 @@ func TestRangeOp(t *testing.T) {
 			}
 		} else if tc.err {
 			t.Fatalf("specFromString(%s) => got nil, expected err", tc.spec)
+		}
+		matches, ok, err := spec.evaluate(context.Background(), tc.d, refs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tc.ok != ok {
+			t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, ok, tc.ok)
+		}
+		if have, want := len(matches), len(tc.m); have != want {
+			t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+		}
+		for i, m := range matches {
+			if have, want := m.Ok, tc.m[i].Ok; have != want {
+				t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+			}
+			if have, want := m.Left.Keyword, tc.m[i].Left.Keyword; have != want {
+				t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+			}
+			if have, want := m.Right.Keyword, tc.m[i].Right.Keyword; have != want {
+				t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+			}
+			if have, want := m.Operator, tc.m[i].Operator; have != want {
+				t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+			}
 		}
 	}
 }
