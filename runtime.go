@@ -200,7 +200,17 @@ func makeOp(left, right Expr, op Token) (evaluater, error) {
 	case IN:
 		return e2in(left, right)
 	case EQ:
-		return e2equal(left, right)
+		return e2equal(left, right, EQ)
+	case LT:
+		return e2equal(left, right, LT)
+	case GT:
+		return e2equal(left, right, GT)
+	case NE:
+		return e2equal(left, right, NE)
+	case LTE:
+		return e2equal(left, right, LTE)
+	case GTE:
+		return e2equal(left, right, GTE)
 	}
 	return nil, fmt.Errorf("spinix/runtime: unknown operator %v %v %v",
 		left, op, right)
@@ -463,7 +473,7 @@ func e2range(left, right Expr) (evaluater, error) {
 		left, right)
 }
 
-func e2equal(left, right Expr) (evaluater, error) {
+func e2equal(left, right Expr, op Token) (evaluater, error) {
 	// ident -> int
 	// ident -> float
 	// ident -> string
@@ -483,13 +493,14 @@ func e2equal(left, right Expr) (evaluater, error) {
 				return nil, &InvalidExprError{
 					Left:  lhs,
 					Right: rhs,
-					Op:    EQ,
+					Op:    op,
 					Pos:   rhs.Pos,
 					Msg:   fmt.Sprintf("got %s, expected %s", rhs.Kind, TIME),
 				}
 			}
 			return equalTimeOp{
 				keyword: rhs.Kind,
+				op:      op,
 				value: timeVal{
 					h: lhs.Hour,
 					m: lhs.Minute,
@@ -504,13 +515,13 @@ func e2equal(left, right Expr) (evaluater, error) {
 				return nil, &InvalidExprError{
 					Left:  lhs,
 					Right: rhs,
-					Op:    EQ,
+					Op:    op,
 					Pos:   rhs.Pos,
 					Msg: fmt.Sprintf("got %s, expected [%s]",
 						rhs.Kind, group2str(stringTokenGroup)),
 				}
 			}
-			return equalStrOp{keyword: rhs.Kind, value: lhs.Value, pos: rhs.Pos}, nil
+			return equalStrOp{keyword: rhs.Kind, value: lhs.Value, pos: rhs.Pos, op: op}, nil
 		}
 	// float -> ident
 	case *FloatLit:
@@ -520,13 +531,13 @@ func e2equal(left, right Expr) (evaluater, error) {
 				return nil, &InvalidExprError{
 					Left:  lhs,
 					Right: rhs,
-					Op:    EQ,
+					Op:    op,
 					Pos:   rhs.Pos,
 					Msg: fmt.Sprintf("got %s, expected [%s]",
 						rhs.Kind, group2str(numberTokenGroup)),
 				}
 			}
-			return equalFloatOp{keyword: rhs.Kind, value: lhs.Value, pos: rhs.Pos}, nil
+			return equalFloatOp{keyword: rhs.Kind, value: lhs.Value, pos: rhs.Pos, op: op}, nil
 		}
 	// int -> ident
 	case *IntLit:
@@ -536,13 +547,13 @@ func e2equal(left, right Expr) (evaluater, error) {
 				return nil, &InvalidExprError{
 					Left:  lhs,
 					Right: rhs,
-					Op:    EQ,
+					Op:    op,
 					Pos:   rhs.Pos,
 					Msg: fmt.Sprintf("got %s, expected [%s]",
 						rhs.Kind, group2str(numberTokenGroup)),
 				}
 			}
-			return equalIntOp{keyword: rhs.Kind, value: lhs.Value, pos: rhs.Pos}, nil
+			return equalIntOp{keyword: rhs.Kind, value: lhs.Value, pos: rhs.Pos, op: op}, nil
 		}
 	case *IdentLit:
 		switch rhs := right.(type) {
@@ -552,55 +563,60 @@ func e2equal(left, right Expr) (evaluater, error) {
 				return nil, &InvalidExprError{
 					Left:  lhs,
 					Right: rhs,
-					Op:    EQ,
+					Op:    op,
 					Pos:   rhs.Pos,
 					Msg: fmt.Sprintf("got %s, expected [%s]",
 						lhs.Kind, group2str(numberTokenGroup)),
 				}
 			}
-			return equalIntOp{keyword: lhs.Kind, value: rhs.Value, pos: rhs.Pos}, nil
+			return equalIntOp{keyword: lhs.Kind, value: rhs.Value, pos: rhs.Pos, op: op}, nil
 		case *FloatLit:
 			if !isNumberToken(lhs.Kind) {
 				return nil, &InvalidExprError{
 					Left:  lhs,
 					Right: rhs,
-					Op:    EQ,
+					Op:    op,
 					Pos:   rhs.Pos,
 					Msg: fmt.Sprintf("got %s, expected [%s]",
 						lhs.Kind, group2str(numberTokenGroup)),
 				}
 			}
-			return equalFloatOp{keyword: lhs.Kind, value: rhs.Value, pos: rhs.Pos}, nil
+			return equalFloatOp{keyword: lhs.Kind, value: rhs.Value, pos: rhs.Pos, op: op}, nil
 		case *StringLit:
 			if !isStringToken(lhs.Kind) {
 				return nil, &InvalidExprError{
 					Left:  lhs,
 					Right: rhs,
-					Op:    EQ,
+					Op:    op,
 					Pos:   rhs.Pos,
 					Msg: fmt.Sprintf("got %s, expected [%s]",
 						lhs.Kind, group2str(stringTokenGroup)),
 				}
 			}
-			return equalStrOp{keyword: lhs.Kind, value: rhs.Value, pos: rhs.Pos}, nil
+			return equalStrOp{keyword: lhs.Kind, value: rhs.Value, pos: rhs.Pos, op: op}, nil
 		case *TimeLit:
 			if !isTimeToken(lhs.Kind) {
 				return nil, &InvalidExprError{
 					Left:  lhs,
 					Right: rhs,
-					Op:    EQ,
+					Op:    op,
 					Pos:   rhs.Pos,
 					Msg: fmt.Sprintf("got %s, expected %s",
 						lhs.Kind, TIME),
 				}
 			}
-			return equalTimeOp{keyword: lhs.Kind, value: timeVal{h: rhs.Hour, m: rhs.Minute}, pos: rhs.Pos}, nil
+			return equalTimeOp{
+				keyword: lhs.Kind,
+				value:   timeVal{h: rhs.Hour, m: rhs.Minute},
+				pos:     rhs.Pos,
+				op:      op,
+			}, nil
 		}
 	}
 	return nil, &InvalidExprError{
 		Left:  left,
 		Right: right,
-		Op:    EQ,
+		Op:    op,
 		Msg:   "illegal",
 	}
 }
@@ -980,6 +996,7 @@ func (n inStringOp) evaluate(_ context.Context, d *Device, _ reference) (match M
 
 type equalTimeOp struct {
 	keyword Token
+	op      Token
 	value   timeVal
 	pos     Pos
 }
@@ -987,17 +1004,51 @@ type equalTimeOp struct {
 func (n equalTimeOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	ts := values.dateTime()
-	match.Ok = ts.Hour() == n.value.h && ts.Minute() == n.value.m
+	switch n.op {
+	case EQ:
+		match.Ok = ts.Hour() == n.value.h && ts.Minute() == n.value.m
+	case LT:
+		if ts.Hour() < n.value.h {
+			match.Ok = true
+		} else if ts.Hour() == n.value.h && ts.Minute() < n.value.m {
+			match.Ok = true
+		}
+	case GT:
+		if ts.Hour() > n.value.h {
+			match.Ok = true
+		} else if ts.Hour() == n.value.h && ts.Minute() > n.value.m {
+			match.Ok = true
+		}
+	case NE:
+		if ts.Hour() != n.value.h {
+			match.Ok = true
+		} else if ts.Hour() == n.value.h && ts.Minute() != n.value.m {
+			match.Ok = true
+		}
+	case LTE:
+		if ts.Hour() <= n.value.h {
+			match.Ok = true
+		} else if ts.Hour() == n.value.h && ts.Minute() <= n.value.m {
+			match.Ok = true
+		}
+	case GTE:
+		if ts.Hour() >= n.value.h {
+			match.Ok = true
+		} else if ts.Hour() == n.value.h && ts.Minute() >= n.value.m {
+			match.Ok = true
+		}
+	}
 	match.Left.Keyword = n.keyword
 	match.Right.Keyword = TIME
 	match.Pos = n.pos
-	match.Operator = EQ
+	match.Operator = n.op
 	return
 }
 
 type equalStrOp struct {
 	keyword Token
 	value   string
+	op      Token
 	pos     Pos
 }
 
@@ -1006,28 +1057,30 @@ func (n equalStrOp) evaluate(_ context.Context, d *Device, _ reference) (match M
 	match.Left.Keyword = n.keyword
 	match.Right.Keyword = STRING
 	match.Pos = n.pos
-	match.Operator = EQ
+	match.Operator = n.op
 	return
 }
 
 type equalIntOp struct {
 	keyword Token
 	value   int
+	op      Token
 	pos     Pos
 }
 
-func (n equalIntOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n equalIntOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
 	match.Ok = mapper{device: d}.intVal(n.keyword) == n.value
 	match.Left.Keyword = n.keyword
 	match.Right.Keyword = INT
 	match.Pos = n.pos
-	match.Operator = EQ
+	match.Operator = n.op
 	return
 }
 
 type equalFloatOp struct {
 	keyword Token
 	value   float64
+	op      Token
 	pos     Pos
 }
 
@@ -1036,7 +1089,7 @@ func (n equalFloatOp) evaluate(_ context.Context, d *Device, _ reference) (match
 	match.Left.Keyword = n.keyword
 	match.Right.Keyword = FLOAT
 	match.Pos = n.pos
-	match.Operator = EQ
+	match.Operator = n.op
 	return
 }
 

@@ -635,6 +635,26 @@ func TestEqualOp(t *testing.T) {
 			m:    []Match{_mm(TIME, TIME, EQ), _mm(TIME, TIME, EQ)},
 		},
 		{
+			spec: `time lt 22:00`,
+			d:    &Device{DateTime: 1634839200},
+			m:    []Match{_mm(TIME, TIME, LT)},
+		},
+		{
+			spec: `time lte 21:00`,
+			d:    &Device{DateTime: 1634839200},
+			m:    []Match{_mm(TIME, TIME, LTE)},
+		},
+		{
+			spec: `time lte 23:59`,
+			d:    &Device{DateTime: 1634839200},
+			m:    []Match{_mm(TIME, TIME, LTE)},
+		},
+		{
+			spec: `time lt 21:01`,
+			d:    &Device{DateTime: 1634839200},
+			m:    []Match{_mm(TIME, TIME, LT)},
+		},
+		{
 			spec: `"91645c47-009f-4958-a3d1-34e8fbdce69d" eq imei OR imei eq "91645c47-009f-4958-a3d1-34e8fbdce69d"`,
 			d:    &Device{IMEI: "91645c47-009f-4958-a3d1-34e8fbdce69d"},
 			m:    []Match{_mm(IMEI, STRING, EQ), _mm(IMEI, STRING, EQ)},
@@ -677,14 +697,14 @@ func TestEqualOp(t *testing.T) {
 				t.Fatalf("specFromString(%s) => %v", tc.spec, err)
 			}
 		} else if tc.err {
-			t.Fatalf("specFromString(%s) => got nil, expected err", tc.spec)
+			t.Fatalf("specFromString(%s) => no matching rules: got nil, expected err", tc.spec)
 		}
 		matches, err := spec.evaluate(ctx, tc.d, refs)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if have, want := len(matches), len(tc.m); have != want {
-			t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+			t.Fatalf("specFromString(%s) => no matching rules: got %v, expected %v", tc.spec, have, want)
 		}
 		for i, m := range matches {
 			if have, want := m.Ok, tc.m[i].Ok; have != want {

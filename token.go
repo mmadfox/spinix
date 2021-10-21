@@ -61,6 +61,7 @@ const (
 	OR  //  OR
 
 	precedenceBegin
+	NOT           // NOT
 	IN            // IN
 	WITHIN        // WITHIN
 	CONTAINS      // CONTAINS
@@ -84,7 +85,6 @@ const (
 	EQ  // eq  i.e. ==
 	LT  // lt  i.e. <
 	GT  // gt  i.e. >
-	NOT // not i.e. !
 	NE  // ne  i.e. !=
 	LTE // lte i.e. <=
 	GTE // gte i.e. >=
