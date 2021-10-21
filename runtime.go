@@ -59,7 +59,7 @@ func specFromString(s string) (*spec, error) {
 	return exprToSpec(expr)
 }
 
-func (s *spec) evaluate(ctx context.Context, d *Device, r reference) (matches []Match, err error) {
+func (s *spec) evaluate(ctx context.Context, d *Device, r reference) (matches []Match, ok bool, err error) {
 	if len(s.nodes) == 0 {
 		return
 	}
@@ -67,17 +67,16 @@ func (s *spec) evaluate(ctx context.Context, d *Device, r reference) (matches []
 	if len(s.nodes) == 1 {
 		match, err := s.nodes[0].evaluate(ctx, d, r)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if match.Ok {
-			return []Match{match}, nil
+			return []Match{match}, true, nil
 		}
 	}
 
 	var (
 		index int
 		op    Token
-		ok    bool
 	)
 
 	for index < len(s.nodes) {
@@ -99,7 +98,7 @@ func (s *spec) evaluate(ctx context.Context, d *Device, r reference) (matches []
 
 		right, err = s.nodes[index].evaluate(ctx, d, r)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if index < len(s.ops) {
 			op = s.ops[index]
@@ -1053,7 +1052,21 @@ type equalStrOp struct {
 }
 
 func (n equalStrOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
-	match.Ok = mapper{device: d}.stringVal(n.keyword) == n.value
+	values := mapper{device: d}
+	switch n.op {
+	case EQ:
+		match.Ok = values.stringVal(n.keyword) == n.value
+	case LT:
+		match.Ok = values.stringVal(n.keyword) < n.value
+	case GT:
+		match.Ok = values.stringVal(n.keyword) > n.value
+	case NE:
+		match.Ok = values.stringVal(n.keyword) != n.value
+	case LTE:
+		match.Ok = values.stringVal(n.keyword) <= n.value
+	case GTE:
+		match.Ok = values.stringVal(n.keyword) >= n.value
+	}
 	match.Left.Keyword = n.keyword
 	match.Right.Keyword = STRING
 	match.Pos = n.pos
@@ -1069,7 +1082,21 @@ type equalIntOp struct {
 }
 
 func (n equalIntOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
-	match.Ok = mapper{device: d}.intVal(n.keyword) == n.value
+	values := mapper{device: d}
+	switch n.op {
+	case EQ:
+		match.Ok = values.intVal(n.keyword) == n.value
+	case LT:
+		match.Ok = values.intVal(n.keyword) < n.value
+	case GT:
+		match.Ok = values.intVal(n.keyword) > n.value
+	case NE:
+		match.Ok = values.intVal(n.keyword) != n.value
+	case LTE:
+		match.Ok = values.intVal(n.keyword) <= n.value
+	case GTE:
+		match.Ok = values.intVal(n.keyword) >= n.value
+	}
 	match.Left.Keyword = n.keyword
 	match.Right.Keyword = INT
 	match.Pos = n.pos
@@ -1085,7 +1112,21 @@ type equalFloatOp struct {
 }
 
 func (n equalFloatOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
-	match.Ok = mapper{device: d}.floatVal(n.keyword) == n.value
+	values := mapper{device: d}
+	switch n.op {
+	case EQ:
+		match.Ok = values.floatVal(n.keyword) == n.value
+	case LT:
+		match.Ok = values.floatVal(n.keyword) < n.value
+	case GT:
+		match.Ok = values.floatVal(n.keyword) > n.value
+	case NE:
+		match.Ok = values.floatVal(n.keyword) != n.value
+	case LTE:
+		match.Ok = values.floatVal(n.keyword) <= n.value
+	case GTE:
+		match.Ok = values.floatVal(n.keyword) >= n.value
+	}
 	match.Left.Keyword = n.keyword
 	match.Right.Keyword = FLOAT
 	match.Pos = n.pos
