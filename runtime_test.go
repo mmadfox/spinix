@@ -453,6 +453,95 @@ func TestRangeOp(t *testing.T) {
 	}
 }
 
+func TestIntersectsOp(t *testing.T) {
+	testCases := []struct {
+		spec string
+		d    *Device
+		m    []Match
+		err  bool
+	}{
+		{
+			spec: `device :radius 100m intersects devices(@other) :radius 100m`,
+			d:    &Device{Latitude: 42.9284788, Longitude: -72.2776118},
+			m:    []Match{_mm(DEVICE, DEVICES, INTERSECTS)},
+		},
+		{
+			spec: `device :radius 100m nintersects devices(@other) :radius 100m`,
+			d:    &Device{Latitude: 42.9276186, Longitude: -72.2798106},
+			m:    []Match{_mm(DEVICE, DEVICES, NINTERSECTS)},
+		},
+		{
+			spec: `device intersects polygon(@poly1)`,
+			d:    &Device{Latitude: 42.9272263, Longitude: -72.2796414},
+			m:    []Match{_mm(DEVICE, POLY, INTERSECTS)},
+		},
+		{
+			spec: `polygon(@poly1) intersects device`,
+			d:    &Device{Latitude: 42.9272263, Longitude: -72.2796414},
+			m:    []Match{_mm(DEVICE, POLY, INTERSECTS)},
+		},
+		{
+			spec: `device nintersects polygon(@poly1)`,
+			d:    &Device{Latitude: 42.9285063, Longitude: -72.2776171},
+			m:    []Match{_mm(DEVICE, POLY, NINTERSECTS)},
+		},
+		{
+			spec: `polygon(@poly1) nintersects device`,
+			d:    &Device{Latitude: 42.9285063, Longitude: -72.2776171},
+			m:    []Match{_mm(DEVICE, POLY, NINTERSECTS)},
+		},
+		{
+			spec: `device :radius 300m intersects polygon(@poly1)`,
+			d:    &Device{Latitude: 42.9265468, Longitude: -72.2795556},
+			m:    []Match{_mm(DEVICE, POLY, INTERSECTS)},
+		},
+		{
+			spec: `device :bbox 1km intersects polygon(@poly1)`,
+			d:    &Device{Latitude: 42.9291859, Longitude: -72.2765499},
+			m:    []Match{_mm(DEVICE, POLY, INTERSECTS)},
+		},
+	}
+
+	ctx := context.Background()
+	refs := defaultRefs()
+	_ = refs.objects.Add(ctx, "poly1", poly)
+	_ = refs.devices.InsertOrReplace(ctx, &Device{IMEI: "other", Latitude: 42.9287184, Longitude: -72.2778048})
+
+	for _, tc := range testCases {
+		spec, err := specFromString(tc.spec)
+		if err != nil {
+			if tc.err {
+				continue
+			} else {
+				t.Fatalf("specFromString(%s) => %v", tc.spec, err)
+			}
+		} else if tc.err {
+			t.Fatalf("specFromString(%s) => got nil, expected err", tc.spec)
+		}
+		matches, _, err := spec.evaluate(ctx, tc.d, refs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if have, want := len(matches), len(tc.m); have != want {
+			t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+		}
+		for i, m := range matches {
+			if have, want := m.Ok, tc.m[i].Ok; have != want {
+				t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+			}
+			if have, want := m.Left.Keyword, tc.m[i].Left.Keyword; have != want {
+				t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+			}
+			if have, want := m.Right.Keyword, tc.m[i].Right.Keyword; have != want {
+				t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+			}
+			if have, want := m.Operator, tc.m[i].Operator; have != want {
+				t.Fatalf("specFromString(%s) => got %v, expected %v", tc.spec, have, want)
+			}
+		}
+	}
+}
+
 func TestInOp(t *testing.T) {
 	testCases := []struct {
 		spec string

@@ -61,12 +61,13 @@ const (
 	OR  //  OR
 
 	precedenceBegin
-	IN         // IN
-	NIN        // NOT IN
-	RANGE      // RANGE
-	NRANGE     // NOT RANGE
-	NEAR       // NEAR
-	INTERSECTS // INTERSECTS
+	IN          // IN
+	NIN         // NOT IN
+	RANGE       // RANGE
+	NRANGE      // NOT RANGE
+	NEAR        // NEAR
+	INTERSECTS  // INTERSECTS
+	NINTERSECTS // NOT INTERSECTS
 
 	EQ  // eq  i.e. ==
 	LT  // lt  i.e. <
@@ -136,12 +137,13 @@ var tokens = [...]string{
 	OWNER:          "owner",
 	IMEI:           "imei",
 
-	INTERSECTS: "INTERSECTS",
-	NEAR:       "NEAR",
-	RANGE:      "RANGE",
-	IN:         "IN",
-	NIN:        "NIN",
-	NRANGE:     "NRANGE",
+	INTERSECTS:  "INTERSECTS",
+	NINTERSECTS: "NINTERSECTS",
+	NEAR:        "NEAR",
+	RANGE:       "RANGE",
+	NRANGE:      "NRANGE",
+	IN:          "IN",
+	NIN:         "NIN",
 
 	EQ:  "eq",
 	LT:  "lt",
