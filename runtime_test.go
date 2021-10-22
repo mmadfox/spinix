@@ -341,6 +341,17 @@ func TestRangeOp(t *testing.T) {
 	}{
 		// successfully
 		{
+			spec: `time range [12:00 .. 23:00]`,
+			d:    &Device{DateTime: 1634839200},
+			m:    []Match{_mm(TIME, TIME, RANGE)},
+			ok:   true,
+		},
+		{
+			spec: `time range [21:01 .. 23:00]`,
+			d:    &Device{DateTime: 1634839200},
+			ok:   false,
+		},
+		{
 			spec: `speed range [1 .. 20]`,
 			d:    &Device{Speed: 19},
 			m:    []Match{_mm(SPEED, INT, RANGE)},
@@ -353,6 +364,10 @@ func TestRangeOp(t *testing.T) {
 			ok:   true,
 		},
 
+		{
+			spec: `time range [21:01 .. 23.00]`,
+			err:  true,
+		},
 		{
 			spec: `speed range [1,2,3]`,
 			err:  true,

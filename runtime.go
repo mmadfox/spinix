@@ -923,7 +923,18 @@ type rangeTimeOp struct {
 	pos     Pos
 }
 
-func (n rangeTimeOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n rangeTimeOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+	values := mapper{device: d}
+	ts := values.dateTime()
+	d1 := time.Date(ts.Year(), ts.Month(), ts.Day(), n.begin.h, n.begin.m, 0, 0, ts.Location())
+	d2 := time.Date(ts.Year(), ts.Month(), ts.Day(), n.end.h, n.end.m, 0, 0, ts.Location())
+	if ts.Unix() >= d1.Unix() && ts.Unix() <= d2.Unix() {
+		match.Ok = true
+	}
+	match.Left.Keyword = n.keyword
+	match.Right.Keyword = TIME
+	match.Pos = n.pos
+	match.Operator = RANGE
 	return
 }
 
@@ -1030,39 +1041,20 @@ type equalTimeOp struct {
 func (n equalTimeOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	ts := values.dateTime()
+	right := time.Date(ts.Year(), ts.Month(), ts.Day(), n.value.h, n.value.m, 0, 0, ts.Location())
 	switch n.op {
 	case EQ:
-		match.Ok = ts.Hour() == n.value.h && ts.Minute() == n.value.m
+		match.Ok = ts.Unix() == right.Unix()
 	case LT:
-		if ts.Hour() < n.value.h {
-			match.Ok = true
-		} else if ts.Hour() == n.value.h && ts.Minute() < n.value.m {
-			match.Ok = true
-		}
+		match.Ok = ts.Unix() < right.Unix()
 	case GT:
-		if ts.Hour() > n.value.h {
-			match.Ok = true
-		} else if ts.Hour() == n.value.h && ts.Minute() > n.value.m {
-			match.Ok = true
-		}
+		match.Ok = ts.Unix() > right.Unix()
 	case NE:
-		if ts.Hour() != n.value.h {
-			match.Ok = true
-		} else if ts.Hour() == n.value.h && ts.Minute() != n.value.m {
-			match.Ok = true
-		}
+		match.Ok = ts.Unix() != right.Unix()
 	case LTE:
-		if ts.Hour() <= n.value.h {
-			match.Ok = true
-		} else if ts.Hour() == n.value.h && ts.Minute() <= n.value.m {
-			match.Ok = true
-		}
+		match.Ok = ts.Unix() <= right.Unix()
 	case GTE:
-		if ts.Hour() >= n.value.h {
-			match.Ok = true
-		} else if ts.Hour() == n.value.h && ts.Minute() >= n.value.m {
-			match.Ok = true
-		}
+		match.Ok = ts.Unix() >= right.Unix()
 	}
 	match.Left.Keyword = n.keyword
 	match.Right.Keyword = TIME
