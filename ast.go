@@ -319,7 +319,7 @@ func (e *DeviceLit) meters() float64 {
 	}
 }
 
-func (e *DeviceLit) hasDistance() bool {
+func (e *DeviceLit) hasRadius() bool {
 	switch e.Kind {
 	case RADIUS, BBOX:
 	default:

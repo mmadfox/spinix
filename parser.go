@@ -181,7 +181,7 @@ func (p *Parser) parseDevicesLit() (Expr, error) {
 	switch tok {
 	case BBOX:
 		devices.Kind = BBOX
-	case RADIUS, DISTANCE:
+	case RADIUS:
 		devices.Kind = RADIUS
 	default:
 		devices.Pos = p.s.Offset()
@@ -361,7 +361,7 @@ func (p *Parser) parseDeviceLit() (expr Expr, err error) {
 	switch p.s.NextTok() {
 	case BBOX:
 		device.Kind = BBOX
-	case RADIUS, DISTANCE:
+	case RADIUS:
 		device.Kind = RADIUS
 	default:
 		return nil, p.error(DEVICE, ":", "missing radius literal")

@@ -666,6 +666,25 @@ func TestEqualOp(t *testing.T) {
 	}{
 		// successfully
 		{
+			spec: `device :radius 200m eq polygon(@poly)`,
+			d:    &Device{Latitude: 42.9273235, Longitude: -72.2823695},
+			m:    []Match{_mm(DEVICE, POLY, EQ)},
+		},
+		{
+			spec: `device :radius 200m ne polygon(@poly)`,
+			d:    &Device{Latitude: 42.9273235, Longitude: -72.2823695},
+		},
+		{
+			spec: `device :radius 200m gte polygon(@poly)`,
+			d:    &Device{Latitude: 42.9273235, Longitude: -72.2823695},
+			m:    []Match{_mm(DEVICE, POLY, GTE)},
+		},
+		{
+			spec: `device :radius 200m lte polygon(@poly)`,
+			d:    &Device{Latitude: 42.9273235, Longitude: -72.2823695},
+			m:    []Match{_mm(DEVICE, POLY, LTE)},
+		},
+		{
 			spec: `speed gte 10 and speed lte 50`,
 			d:    &Device{Speed: 51},
 			m:    []Match{_mm(SPEED, INT, GTE)},
@@ -729,6 +748,7 @@ func TestEqualOp(t *testing.T) {
 	}
 	ctx := context.Background()
 	refs := defaultRefs()
+	_ = refs.objects.Add(ctx, "poly", poly)
 	for _, tc := range testCases {
 		spec, err := specFromString(tc.spec)
 		if err != nil {

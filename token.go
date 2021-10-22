@@ -29,7 +29,6 @@ const (
 	STRING         // "abc"
 	DEVICE         // device
 	RADIUS         // radius
-	DISTANCE       // distance
 	BBOX           // bbox
 	TIME           // time
 	DURATION       // duration
@@ -62,14 +61,12 @@ const (
 	OR  //  OR
 
 	precedenceBegin
-	INTERSECTSBOX // INTERSECTSBOX
-	INTERSECTS    // INTERSECTS
-
-	IN     // IN
-	NIN    // NOT IN
-	RANGE  // RANGE
-	NRANGE // NOT RANGE
-	NEAR   // NEAR
+	IN         // IN
+	NIN        // NOT IN
+	RANGE      // RANGE
+	NRANGE     // NOT RANGE
+	NEAR       // NEAR
+	INTERSECTS // INTERSECTS
 
 	EQ  // eq  i.e. ==
 	LT  // lt  i.e. <
@@ -139,13 +136,12 @@ var tokens = [...]string{
 	OWNER:          "owner",
 	IMEI:           "imei",
 
-	INTERSECTS:    "INTERSECTS",
-	INTERSECTSBOX: "INTERSECTSBOX",
-	NEAR:          "NEAR",
-	RANGE:         "RANGE",
-	IN:            "IN",
-	NIN:           "NIN",
-	NRANGE:        "NRANGE",
+	INTERSECTS: "INTERSECTS",
+	NEAR:       "NEAR",
+	RANGE:      "RANGE",
+	IN:         "IN",
+	NIN:        "NIN",
+	NRANGE:     "NRANGE",
 
 	EQ:  "eq",
 	LT:  "lt",

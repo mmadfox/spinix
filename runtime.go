@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -549,9 +550,63 @@ func e2equal(left, right Expr, op Token) (evaluater, error) {
 	// float -> ident
 	// string -> ident
 	// time -> ident
+	// device -> objects(polygon, rect, circle, ...)
+	// device -> devices
+	// object -> device
+	// devices -> device
 
 	// left
 	switch lhs := left.(type) {
+	// device -> objects, devices
+	case *DeviceLit:
+		switch rhs := right.(type) {
+		case *ObjectLit:
+			if !isObjectToken(rhs.Kind) {
+				return nil, &InvalidExprError{
+					Left:  lhs,
+					Right: rhs,
+					Pos:   rhs.Pos,
+					Op:    op,
+					Msg: fmt.Sprintf("got %s, expected [%s]",
+						rhs.Kind, group2str(objectTokenGroup)),
+				}
+			}
+			return equalObjectOp{
+				left:  lhs,
+				right: rhs,
+				op:    op,
+				pos:   rhs.Pos,
+			}, nil
+		case *DevicesLit:
+			return equalDevicesOp{
+				left:  lhs,
+				right: rhs,
+				pos:   rhs.Pos,
+				op:    op,
+			}, nil
+		}
+	// devices -> device
+	case *DevicesLit:
+		switch rhs := right.(type) {
+		case *DeviceLit:
+			return equalDevicesOp{
+				left:  rhs,
+				right: lhs,
+				pos:   rhs.Pos,
+				op:    op,
+			}, nil
+		}
+	// object -> device
+	case *ObjectLit:
+		switch rhs := right.(type) {
+		case *DeviceLit:
+			return equalObjectOp{
+				left:  rhs,
+				right: lhs,
+				pos:   rhs.Pos,
+				op:    op,
+			}, nil
+		}
 	// time -> ident
 	case *TimeLit:
 		switch rhs := right.(type) {
@@ -1103,7 +1158,7 @@ func (n inObjectOp) evaluate(ctx context.Context, d *Device, ref reference) (mat
 	var deviceRadius *geojson.Polygon
 	var devicePoint *geojson.Point
 
-	if n.device.hasDistance() {
+	if n.device.hasRadius() {
 		ring := makeRadiusRing(d.Latitude, d.Longitude, n.device.meters(), n.device.steps())
 		deviceRadius = geojson.NewPolygon(&geometry.Poly{Exterior: ring})
 	} else {
@@ -1184,6 +1239,71 @@ func (n inStringOp) evaluate(_ context.Context, d *Device, _ reference) (match M
 		match.Ok = found
 		match.Operator = IN
 	}
+	return
+}
+
+type equalObjectOp struct {
+	op    Token
+	left  *DeviceLit
+	right *ObjectLit
+	pos   Pos
+}
+
+func (n equalObjectOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+	match.Left.Keyword = DEVICE
+	match.Right.Keyword = n.right.Kind
+	match.Pos = n.pos
+	match.Operator = n.op
+	for i := 0; i < len(n.right.Ref); i++ {
+		objectID := n.right.Ref[i]
+		object, err := ref.objects.Lookup(ctx, objectID)
+		if err != nil {
+			if errors.Is(err, ErrObjectNotFound) {
+				continue
+			}
+			return match, err
+		}
+		center := object.Center()
+		distance := round(geo.DistanceTo(
+			d.Latitude,
+			d.Longitude,
+			center.X,
+			center.Y), 50)
+		switch n.op {
+		case EQ:
+			match.Ok = distance == n.left.meters()
+		case LT:
+			match.Ok = distance < n.left.meters()
+		case GT:
+			match.Ok = distance > n.left.meters()
+		case NE:
+			match.Ok = distance != n.left.meters()
+		case LTE:
+			match.Ok = distance <= n.left.meters()
+		case GTE:
+			match.Ok = distance >= n.left.meters()
+		}
+		if match.Ok {
+			if match.Right.Refs == nil {
+				match.Right.Refs = make([]string, 0, len(n.right.Ref))
+			}
+			match.Right.Refs = append(match.Right.Refs, objectID)
+		}
+	}
+	if match.Ok {
+		match.Left.Refs = []string{d.IMEI}
+	}
+	return
+}
+
+type equalDevicesOp struct {
+	op    Token
+	left  *DeviceLit
+	right *DevicesLit
+	pos   Pos
+}
+
+func (n equalDevicesOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
 	return
 }
 
@@ -1616,4 +1736,8 @@ func (m mapper) intVal(keyword Token) (v int) {
 		v = dt.Hour()
 	}
 	return
+}
+
+func round(v, unit float64) float64 {
+	return math.Round(v/unit) * unit
 }

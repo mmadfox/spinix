@@ -164,8 +164,6 @@ func (s *Scanner) Next() (tok Token, lit string) {
 				tok = NIN
 			case "intersects":
 				tok = INTERSECTS
-			case "intersectsBox":
-				tok = INTERSECTSBOX
 			case "near", "nearby":
 				tok = NEAR
 			case "and":

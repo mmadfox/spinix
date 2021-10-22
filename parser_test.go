@@ -12,6 +12,8 @@ func TestParser(t *testing.T) {
 		isErr bool
 	}{
 		// successfully
+		{spec: `device :radius 4km intersects polygon(@id)`},
+		{spec: `device intersects polygon(@id)`},
 		{spec: `device :radius 4km in polygon(@id)`},
 		{spec: `device :radius 4km nin polygon(@id)`},
 		{spec: `status eq 1 OR 1 eq status`},
