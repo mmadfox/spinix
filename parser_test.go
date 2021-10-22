@@ -13,6 +13,7 @@ func TestParser(t *testing.T) {
 	}{
 		// successfully
 		{spec: `device :radius 4km in polygon(@id)`},
+		{spec: `device :radius 4km nin polygon(@id)`},
 		{spec: `status eq 1 OR 1 eq status`},
 		{spec: `device near polygon(@id) :time duration 5m0s`},
 		{spec: `device near polygon(@id) :time after 5m0s`},
@@ -20,6 +21,7 @@ func TestParser(t *testing.T) {
 		{spec: `devices(@id, @id2) :bbox 300m near devices(@id, @id) :bbox 400m`},
 		{spec: `device :radius 300m intersects devices(@id, @id) :radius 400m`},
 		{spec: `speed range [1 .. 60]`},
+		{spec: `speed nrange [1 .. 60]`},
 		{spec: `temperature range [2.2 .. 10.8]`},
 		{spec: `temperature gte 1 and temperature lt 40`},
 		{spec: `pressure gte 1 and pressure lt 40`},

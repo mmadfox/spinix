@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tidwall/geojson"
+
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
 	"github.com/uber/h3-go"
@@ -1091,7 +1093,23 @@ func (n inObjectOp) evaluate(ctx context.Context, d *Device, ref reference) (mat
 	match.Left.Keyword = DEVICE
 	match.Right.Keyword = n.object.Kind
 	match.Pos = n.pos
-	device := geometry.Point{X: d.Latitude, Y: d.Longitude}
+
+	if n.not {
+		match.Operator = NIN
+	} else {
+		match.Operator = IN
+	}
+
+	var deviceRadius *geojson.Polygon
+	var devicePoint *geojson.Point
+
+	if n.device.hasDistance() {
+		ring := makeRadiusRing(d.Latitude, d.Longitude, n.device.meters(), n.device.steps())
+		deviceRadius = geojson.NewPolygon(&geometry.Poly{Exterior: ring})
+	} else {
+		devicePoint = geojson.NewPoint(geometry.Point{X: d.Latitude, Y: d.Longitude})
+	}
+
 	for _, objectID := range n.object.Ref {
 		object, err := ref.objects.Lookup(ctx, objectID)
 		if err != nil {
@@ -1100,9 +1118,20 @@ func (n inObjectOp) evaluate(ctx context.Context, d *Device, ref reference) (mat
 			}
 			return match, err
 		}
-		ok := object.Spatial().WithinPoint(device)
-		if ok {
-			match.Ok = ok
+
+		if deviceRadius != nil {
+			if ok := object.Contains(deviceRadius); ok {
+				match.Ok = true
+			}
+		} else {
+			if ok := object.Contains(devicePoint); ok {
+				match.Ok = true
+			}
+		}
+		if n.not {
+			match.Ok = !match.Ok
+		}
+		if match.Ok {
 			if match.Right.Refs == nil {
 				match.Right.Refs = make([]string, 0, len(n.object.Ref))
 			}

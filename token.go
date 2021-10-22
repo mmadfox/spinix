@@ -123,11 +123,8 @@ var tokens = [...]string{
 	FLOAT:  "FLOAT",
 	STRING: "STRING",
 
-	AND:    "AND",
-	OR:     "OR",
-	IN:     "IN",
-	NIN:    "NOT IN",
-	NRANGE: "NOT RANGE",
+	AND: "AND",
+	OR:  "OR",
 
 	FUELLEVEL:      "fuelLevel",
 	PRESSURE:       "pressure",
@@ -146,6 +143,9 @@ var tokens = [...]string{
 	INTERSECTSBOX: "INTERSECTSBOX",
 	NEAR:          "NEAR",
 	RANGE:         "RANGE",
+	IN:            "IN",
+	NIN:           "NIN",
+	NRANGE:        "NRANGE",
 
 	EQ:  "eq",
 	LT:  "lt",

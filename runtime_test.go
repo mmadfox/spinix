@@ -347,19 +347,19 @@ func TestRangeOp(t *testing.T) {
 			ok:   true,
 		},
 		{
-			spec: `time not range [12:00 .. 13:00]`,
+			spec: `time nrange [12:00 .. 13:00]`,
 			d:    &Device{DateTime: 1634839200},
 			m:    []Match{_mm(TIME, TIME, NRANGE)},
 			ok:   true,
 		},
 		{
-			spec: `speed not range [30 .. 60]`,
+			spec: `speed nrange [30 .. 60]`,
 			d:    &Device{Speed: 25},
 			m:    []Match{_mm(SPEED, INT, NRANGE)},
 			ok:   true,
 		},
 		{
-			spec: `speed not range [10 .. 60]`,
+			spec: `speed nrange [10 .. 60]`,
 			d:    &Device{Speed: 25},
 			ok:   false,
 		},
@@ -462,7 +462,24 @@ func TestInOp(t *testing.T) {
 	}{
 		// successfully
 		{
-			spec: `device :radius 4km in polygon(@id)`,
+			spec: `device :radius 10m in polygon(@poly1)`,
+			d:    &Device{Latitude: 42.927512, Longitude: -72.2798742},
+			m:    []Match{_mm(DEVICE, POLY, IN)},
+		},
+		{
+			spec: `device :bbox 40m in polygon(@poly1)`,
+			d:    &Device{Latitude: 42.927512, Longitude: -72.2798742},
+			m:    []Match{_mm(DEVICE, POLY, IN)},
+		},
+		{
+			spec: `device in polygon(@poly1)`,
+			d:    &Device{Latitude: 42.927512, Longitude: -72.2798742},
+			m:    []Match{_mm(DEVICE, POLY, IN)},
+		},
+		{
+			spec: `device nin polygon(@poly1)`,
+			d:    &Device{Latitude: 42.9273235, Longitude: -72.2823695},
+			m:    []Match{_mm(DEVICE, POLY, NIN)},
 		},
 		{
 			spec: `imei in ["one", "two", "three three"] and speed in [60]`,
@@ -470,7 +487,7 @@ func TestInOp(t *testing.T) {
 			m:    []Match{_mm(IMEI, STRING, IN), _mm(SPEED, INT, IN)},
 		},
 		{
-			spec: `imei not in ["one", "two", "three three"] and speed in [60]`,
+			spec: `imei nin ["one", "two", "three three"] and speed in [60]`,
 			d:    &Device{IMEI: "bad", Speed: 60},
 			m:    []Match{_mm(IMEI, STRING, NIN), _mm(SPEED, INT, IN)},
 		},
@@ -485,7 +502,7 @@ func TestInOp(t *testing.T) {
 			m:    []Match{_mm(STATUS, INT, IN), _mm(STATUS, FLOAT, IN)},
 		},
 		{
-			spec: `status not in [1, 2, 3]`,
+			spec: `status nin [1, 2, 3]`,
 			d:    &Device{Status: 10},
 			m:    []Match{_mm(STATUS, INT, NIN)},
 		},
@@ -600,8 +617,11 @@ func TestInOp(t *testing.T) {
 		{spec: `speed in [one, two]`, err: true},
 		{spec: `week in [one]`, err: true},
 	}
+
 	ctx := context.Background()
 	refs := defaultRefs()
+	_ = refs.objects.Add(ctx, "poly1", poly)
+
 	for _, tc := range testCases {
 		spec, err := specFromString(tc.spec)
 		if err != nil {

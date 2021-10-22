@@ -156,8 +156,12 @@ func (s *Scanner) Next() (tok Token, lit string) {
 				tok = DEVICE
 			case "range":
 				tok = RANGE
+			case "nrange":
+				tok = NRANGE
 			case "in":
 				tok = IN
+			case "nin":
+				tok = NIN
 			case "intersects":
 				tok = INTERSECTS
 			case "intersectsBox":
@@ -168,13 +172,6 @@ func (s *Scanner) Next() (tok Token, lit string) {
 				tok = AND
 			case "or":
 				tok = OR
-			case "not":
-				switch strings.ToLower(s.NextLit()) {
-				case "range":
-					tok = NRANGE
-				case "in":
-					tok = NIN
-				}
 			default:
 				tok = ILLEGAL
 			}
