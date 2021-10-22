@@ -158,10 +158,6 @@ func (s *Scanner) Next() (tok Token, lit string) {
 				tok = RANGE
 			case "in":
 				tok = IN
-			case "within":
-				tok = WITHIN
-			case "contains":
-				tok = CONTAINS
 			case "intersects":
 				tok = INTERSECTS
 			case "intersectsBox":
@@ -178,16 +174,6 @@ func (s *Scanner) Next() (tok Token, lit string) {
 					tok = NRANGE
 				case "in":
 					tok = NIN
-				case "near":
-					tok = NOTNEAR
-				case "within":
-					tok = NOTWITHIN
-				case "intersects":
-					tok = NOTINTERSECTS
-				case "intersectsBox":
-					tok = NOTINTERSECTSBOX
-				case "contains":
-					tok = NOTCONTAINES
 				}
 			default:
 				tok = ILLEGAL

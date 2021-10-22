@@ -462,6 +462,9 @@ func TestInOp(t *testing.T) {
 	}{
 		// successfully
 		{
+			spec: `device :radius 4km in polygon(@id)`,
+		},
+		{
 			spec: `imei in ["one", "two", "three three"] and speed in [60]`,
 			d:    &Device{IMEI: "one", Speed: 60},
 			m:    []Match{_mm(IMEI, STRING, IN), _mm(SPEED, INT, IN)},

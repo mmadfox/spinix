@@ -15,6 +15,7 @@ const (
 	stringTokenGroup = 2
 	dateTokenGroup   = 3
 	timeTokenGroup   = 4
+	objectTokenGroup = 5
 )
 
 const (
@@ -61,22 +62,8 @@ const (
 	OR  //  OR
 
 	precedenceBegin
-	WITHIN        // WITHIN
-	CONTAINS      // CONTAINS
 	INTERSECTSBOX // INTERSECTSBOX
 	INTERSECTS    // INTERSECTS
-	// <---
-	DISTANCETO    // DISTANCE TO
-	DURATIONIN    // DURATION IN
-	DURATIONNOTIN // DURATION NOT IN
-	ONDISTANCE    // ON DISTANCE
-	// -->
-
-	NOTNEAR          // NOT NEAR
-	NOTWITHIN        // NOT WITHIN
-	NOTINTERSECTS    // NOT INTERSECTS
-	NOTINTERSECTSBOX // NOT INTERSECTSBOX
-	NOTCONTAINES     // NOT CONTAINS
 
 	IN     // IN
 	NIN    // NOT IN
@@ -142,12 +129,6 @@ var tokens = [...]string{
 	NIN:    "NOT IN",
 	NRANGE: "NOT RANGE",
 
-	NOTNEAR:          "NOT NEAR",
-	NOTWITHIN:        "NOT WITHIN",
-	NOTINTERSECTS:    "NOT INTERSECTS",
-	NOTINTERSECTSBOX: "NOT INTERSECTSBOX",
-	NOTCONTAINES:     "NOT CONTAINS",
-
 	FUELLEVEL:      "fuelLevel",
 	PRESSURE:       "pressure",
 	LUMINOSITY:     "luminosity",
@@ -161,16 +142,10 @@ var tokens = [...]string{
 	OWNER:          "owner",
 	IMEI:           "imei",
 
-	WITHIN:        "WITHIN",
-	CONTAINS:      "CONTAINS",
 	INTERSECTS:    "INTERSECTS",
 	INTERSECTSBOX: "INTERSECTSBOX",
 	NEAR:          "NEAR",
-	DISTANCETO:    "DISTANCE TO",
-	DURATIONIN:    "DURATION IN",
-	DURATIONNOTIN: "DURATION NOT IN",
 	RANGE:         "RANGE",
-	ONDISTANCE:    "ON DISTANCE",
 
 	EQ:  "eq",
 	LT:  "lt",
@@ -297,6 +272,21 @@ var stringToken = map[Token]struct{}{
 	DAY:      {},
 }
 
+var objectToken = map[Token]struct{}{
+	DEVICES:        {},
+	OBJECTS:        {},
+	POLY:           {},
+	MULTI_POLY:     {},
+	LINE:           {},
+	MULTI_LINE:     {},
+	POINT:          {},
+	MULTI_POINT:    {},
+	RECT:           {},
+	CIRCLE:         {},
+	COLLECTION:     {},
+	FUT_COLLECTION: {},
+}
+
 var dateToken = map[Token]struct{}{
 	DATE:     {},
 	DATETIME: {},
@@ -308,6 +298,11 @@ var timeToken = map[Token]struct{}{
 
 func isNumberToken(op Token) bool {
 	_, found := numberToken[op]
+	return found
+}
+
+func isObjectToken(op Token) bool {
+	_, found := objectToken[op]
 	return found
 }
 
@@ -326,18 +321,14 @@ func isTimeToken(op Token) bool {
 	return found
 }
 
-func isOneOf(op Token, tokens ...Token) bool {
-	for i := 0; i < len(tokens); i++ {
-		if op == tokens[i] {
-			return true
-		}
-	}
-	return false
-}
-
 func group2str(group int) string {
 	var res []string
 	switch group {
+	case objectTokenGroup:
+		res = make([]string, 0, len(objectToken))
+		for tok := range objectToken {
+			res = append(res, tok.String())
+		}
 	case numberTokenGroup:
 		res = make([]string, 0, len(numberToken))
 		for tok := range numberToken {
@@ -358,14 +349,6 @@ func group2str(group int) string {
 		for tok := range timeToken {
 			res = append(res, tok.String())
 		}
-	}
-	return strings.Join(res, ",")
-}
-
-func tok2Str(tokens ...Token) string {
-	res := make([]string, 0, len(tokens))
-	for _, tok := range tokens {
-		res = append(res, tok.String())
 	}
 	return strings.Join(res, ",")
 }

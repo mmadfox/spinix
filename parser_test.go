@@ -12,17 +12,13 @@ func TestParser(t *testing.T) {
 		isErr bool
 	}{
 		// successfully
+		{spec: `device :radius 4km in polygon(@id)`},
 		{spec: `status eq 1 OR 1 eq status`},
 		{spec: `device near polygon(@id) :time duration 5m0s`},
 		{spec: `device near polygon(@id) :time after 5m0s`},
 		{spec: `circle(@id) :time duration 5s near device :radius 5km`},
 		{spec: `devices(@id, @id2) :bbox 300m near devices(@id, @id) :bbox 400m`},
 		{spec: `device :radius 300m intersects devices(@id, @id) :radius 400m`},
-		{spec: `device not intersects rect(@id)`},
-		{spec: `device not intersects rect(@1, @2, @3)`},
-		{spec: `objects(@id) contains device :bbox 4m`},
-		{spec: `device :radius 2.4km within circle(@home) :time duration 10m`},
-		{spec: `objects(@id) contains device`},
 		{spec: `speed range [1 .. 60]`},
 		{spec: `temperature range [2.2 .. 10.8]`},
 		{spec: `temperature gte 1 and temperature lt 40`},
@@ -66,7 +62,6 @@ func TestParser(t *testing.T) {
 		{spec: `circle(@id, @"test", "test") intersects device`, isErr: true},
 		{spec: `device near polygon(@id) :time duration h3s`, isErr: true},
 		{spec: fmt.Sprintf(`device near polygon(@%s) :time duration h3s`, strings.Repeat("o", 128)), isErr: true},
-		{spec: `objects(@id) contains device :bbox 4meters`, isErr: true},
 		{spec: `device :`, isErr: true},
 		{spec: `device near polygon(@id) :time before 5m0s`, isErr: true},
 		{spec: `device near polygon(@id) :time after`, isErr: true},

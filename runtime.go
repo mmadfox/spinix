@@ -17,10 +17,9 @@ type evaluater interface {
 }
 
 type reference struct {
-	rules      Rules
-	objects    Objects
-	geospatial Geospatial
-	devices    Devices
+	rules   Rules
+	objects Objects
+	devices Devices
 }
 
 type Match struct {
@@ -38,10 +37,9 @@ type Decl struct {
 
 func defaultRefs() reference {
 	return reference{
-		devices:    NewDevices(),
-		objects:    NewObjects(),
-		geospatial: DefaultGeospatial(),
-		rules:      NewRules(),
+		devices: NewDevices(),
+		objects: NewObjects(),
+		rules:   NewRules(),
 	}
 }
 
@@ -60,6 +58,10 @@ func specFromString(s string) (*spec, error) {
 }
 
 func (s *spec) evaluate(ctx context.Context, d *Device, r reference) (matches []Match, ok bool, err error) {
+	if d == nil {
+		return matches, false, nil
+	}
+
 	if len(s.nodes) == 0 {
 		return
 	}
@@ -219,97 +221,130 @@ func makeOp(left, right Expr, op Token) (evaluater, error) {
 }
 
 func e2in(left, right Expr, not bool) (evaluater, error) {
-	lhs, ok := left.(*IdentLit)
 	op := IN
 	if not {
 		op = NIN
 	}
-	if !ok {
-		return nil, &InvalidExprError{
-			Left:  left,
-			Right: right,
-			Op:    op,
-			Msg:   "illegal",
+	switch lhs := left.(type) {
+	// device -> objects(polygon, circle, rect, ...)
+	case *DeviceLit:
+		switch lhs.Unit {
+		case DistanceMeters, DistanceKilometers:
+			if lhs.Value <= 0 {
+				return nil, &InvalidExprError{
+					Left:  left,
+					Right: right,
+					Op:    op,
+					Pos:   lhs.Pos,
+					Msg:   fmt.Sprintf("invalid distance value %s", lhs.Kind),
+				}
+			}
+		}
+
+		switch rhs := right.(type) {
+		case *ObjectLit:
+			if !isObjectToken(rhs.Kind) {
+				return nil, &InvalidExprError{
+					Left:  left,
+					Right: right,
+					Op:    op,
+					Msg: fmt.Sprintf("got %s, expected [%s]",
+						rhs.Kind, group2str(objectTokenGroup)),
+				}
+			}
+			return inObjectOp{
+				device: lhs,
+				object: rhs,
+				pos:    lhs.Pos,
+				not:    not,
+			}, nil
+		}
+
+	// ident -> int, float, string
+	case *IdentLit:
+		rhs, ok := right.(*ListLit)
+		if !ok || rhs.Kind != ILLEGAL {
+			return nil, &InvalidExprError{
+				Left:  left,
+				Right: right,
+				Op:    op,
+				Msg:   "expected [left .. right]",
+			}
+		}
+
+		switch rhs.Typ {
+		case INT:
+			if !isNumberToken(lhs.Kind) {
+				return nil, &InvalidExprError{
+					Left:  left,
+					Right: right,
+					Op:    op,
+					Msg: fmt.Sprintf("got %s, expected [%s]",
+						lhs.Kind, group2str(numberTokenGroup)),
+				}
+			}
+			op := inIntOp{
+				keyword: lhs.Kind,
+				pos:     rhs.Pos,
+				values:  make(map[int]struct{}),
+				not:     not,
+			}
+			for i := 0; i < len(rhs.Items); i++ {
+				n := rhs.Items[i].(*IntLit)
+				op.values[n.Value] = struct{}{}
+			}
+			return op, nil
+		case FLOAT:
+			if !isNumberToken(lhs.Kind) {
+				return nil, &InvalidExprError{
+					Left:  left,
+					Right: right,
+					Op:    op,
+					Msg: fmt.Sprintf("got %s, expected [%s]",
+						lhs.Kind, group2str(numberTokenGroup)),
+				}
+			}
+			op := inFloatOp{
+				keyword: lhs.Kind,
+				pos:     rhs.Pos,
+				values:  make(map[float64]struct{}),
+				not:     not,
+			}
+			for i := 0; i < len(rhs.Items); i++ {
+				n := rhs.Items[i].(*FloatLit)
+				op.values[n.Value] = struct{}{}
+			}
+			return op, nil
+		case STRING, IDENT:
+			if !isStringToken(lhs.Kind) {
+				return nil, &InvalidExprError{
+					Left:  left,
+					Right: right,
+					Op:    op,
+					Msg: fmt.Sprintf("got %s, expected [%s]",
+						lhs.Kind, group2str(stringTokenGroup)),
+				}
+			}
+			op := inStringOp{
+				keyword: lhs.Kind,
+				pos:     rhs.Pos,
+				values:  make(map[string]struct{}),
+				not:     not,
+			}
+			for i := 0; i < len(rhs.Items); i++ {
+				n := rhs.Items[i].(*StringLit)
+				op.values[n.Value] = struct{}{}
+			}
+			return op, nil
 		}
 	}
 
-	rhs, ok := right.(*ListLit)
-	if !ok || rhs.Kind != ILLEGAL {
-		return nil, &InvalidExprError{
-			Left:  left,
-			Right: right,
-			Op:    op,
-			Msg:   "expected [left .. right]",
-		}
+	return nil, &InvalidExprError{
+		Left:  left,
+		Right: right,
+		Op:    op,
+		Msg:   "illegal",
 	}
-
-	switch rhs.Typ {
-	case INT:
-		if !isNumberToken(lhs.Kind) {
-			return nil, &InvalidExprError{
-				Left:  left,
-				Right: right,
-				Op:    op,
-				Msg: fmt.Sprintf("got %s, expected [%s]",
-					lhs.Kind, group2str(numberTokenGroup)),
-			}
-		}
-		op := inIntOp{
-			keyword: lhs.Kind,
-			pos:     rhs.Pos,
-			values:  make(map[int]struct{}),
-			not:     not,
-		}
-		for i := 0; i < len(rhs.Items); i++ {
-			n := rhs.Items[i].(*IntLit)
-			op.values[n.Value] = struct{}{}
-		}
-		return op, nil
-	case FLOAT:
-		if !isNumberToken(lhs.Kind) {
-			return nil, &InvalidExprError{
-				Left:  left,
-				Right: right,
-				Op:    op,
-				Msg: fmt.Sprintf("got %s, expected [%s]",
-					lhs.Kind, group2str(numberTokenGroup)),
-			}
-		}
-		op := inFloatOp{
-			keyword: lhs.Kind,
-			pos:     rhs.Pos,
-			values:  make(map[float64]struct{}),
-			not:     not,
-		}
-		for i := 0; i < len(rhs.Items); i++ {
-			n := rhs.Items[i].(*FloatLit)
-			op.values[n.Value] = struct{}{}
-		}
-		return op, nil
-	case STRING, IDENT:
-		if !isStringToken(lhs.Kind) {
-			return nil, &InvalidExprError{
-				Left:  left,
-				Right: right,
-				Op:    op,
-				Msg: fmt.Sprintf("got %s, expected [%s]",
-					lhs.Kind, group2str(stringTokenGroup)),
-			}
-		}
-		op := inStringOp{
-			keyword: lhs.Kind,
-			pos:     rhs.Pos,
-			values:  make(map[string]struct{}),
-			not:     not,
-		}
-		for i := 0; i < len(rhs.Items); i++ {
-			n := rhs.Items[i].(*StringLit)
-			op.values[n.Value] = struct{}{}
-		}
-		return op, nil
-	}
-	return nil, fmt.Errorf("spinix/runtime: invalid expr: %s IN %s",
-		left, right)
 }
 
 func e2range(left, right Expr, not bool) (evaluater, error) {
@@ -499,7 +534,7 @@ func e2range(left, right Expr, not bool) (evaluater, error) {
 	return nil, &InvalidExprError{
 		Left:  left,
 		Right: right,
-		Op:    RANGE,
+		Op:    op,
 	}
 }
 
@@ -1041,6 +1076,38 @@ func (n inFloatOp) evaluate(_ context.Context, d *Device, _ reference) (match Ma
 	} else {
 		match.Ok = found
 		match.Operator = IN
+	}
+	return
+}
+
+type inObjectOp struct {
+	device *DeviceLit
+	object *ObjectLit
+	pos    Pos
+	not    bool
+}
+
+func (n inObjectOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+	match.Left.Keyword = DEVICE
+	match.Right.Keyword = n.object.Kind
+	match.Pos = n.pos
+	device := geometry.Point{X: d.Latitude, Y: d.Longitude}
+	for _, objectID := range n.object.Ref {
+		object, err := ref.objects.Lookup(ctx, objectID)
+		if err != nil {
+			if errors.Is(err, ErrObjectNotFound) {
+				continue
+			}
+			return match, err
+		}
+		ok := object.Spatial().WithinPoint(device)
+		if ok {
+			match.Ok = ok
+			if match.Right.Refs == nil {
+				match.Right.Refs = make([]string, 0, len(n.object.Ref))
+			}
+			match.Right.Refs = append(match.Right.Refs, objectID)
+		}
 	}
 	return
 }
