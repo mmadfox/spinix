@@ -61,8 +61,6 @@ const (
 	OR  //  OR
 
 	precedenceBegin
-	NOT // NOT
-
 	WITHIN        // WITHIN
 	CONTAINS      // CONTAINS
 	INTERSECTSBOX // INTERSECTSBOX
@@ -73,16 +71,18 @@ const (
 	DURATIONNOTIN // DURATION NOT IN
 	ONDISTANCE    // ON DISTANCE
 	// -->
-	NOTIN            // NOT IN
-	NEAR             // NEAR
+
 	NOTNEAR          // NOT NEAR
 	NOTWITHIN        // NOT WITHIN
 	NOTINTERSECTS    // NOT INTERSECTS
 	NOTINTERSECTSBOX // NOT INTERSECTSBOX
 	NOTCONTAINES     // NOT CONTAINS
 
-	IN    // IN
-	RANGE // RANGE
+	IN     // IN
+	NIN    // NOT IN
+	RANGE  // RANGE
+	NRANGE // NOT RANGE
+	NEAR   // NEAR
 
 	EQ  // eq  i.e. ==
 	LT  // lt  i.e. <
@@ -136,11 +136,12 @@ var tokens = [...]string{
 	FLOAT:  "FLOAT",
 	STRING: "STRING",
 
-	AND:              "AND",
-	OR:               "OR",
-	NOT:              "NOT",
-	IN:               "IN",
-	NOTIN:            "NOT IN",
+	AND:    "AND",
+	OR:     "OR",
+	IN:     "IN",
+	NIN:    "NOT IN",
+	NRANGE: "NOT RANGE",
+
 	NOTNEAR:          "NOT NEAR",
 	NOTWITHIN:        "NOT WITHIN",
 	NOTINTERSECTS:    "NOT INTERSECTS",

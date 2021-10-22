@@ -195,9 +195,13 @@ func makeOp(left, right Expr, op Token) (evaluater, error) {
 	case NEAR:
 		return e2near(left, right)
 	case RANGE:
-		return e2range(left, right)
+		return e2range(left, right, false)
+	case NRANGE:
+		return e2range(left, right, true)
 	case IN:
-		return e2in(left, right)
+		return e2in(left, right, false)
+	case NIN:
+		return e2in(left, right, true)
 	case EQ:
 		return e2equal(left, right, EQ)
 	case LT:
@@ -214,13 +218,17 @@ func makeOp(left, right Expr, op Token) (evaluater, error) {
 	return nil, fmt.Errorf("spinix/runtime: illegal %v %v %v", left, op, right)
 }
 
-func e2in(left, right Expr) (evaluater, error) {
+func e2in(left, right Expr, not bool) (evaluater, error) {
 	lhs, ok := left.(*IdentLit)
+	op := IN
+	if not {
+		op = NIN
+	}
 	if !ok {
 		return nil, &InvalidExprError{
 			Left:  left,
 			Right: right,
-			Op:    IN,
+			Op:    op,
 			Msg:   "illegal",
 		}
 	}
@@ -230,7 +238,7 @@ func e2in(left, right Expr) (evaluater, error) {
 		return nil, &InvalidExprError{
 			Left:  left,
 			Right: right,
-			Op:    IN,
+			Op:    op,
 			Msg:   "expected [left .. right]",
 		}
 	}
@@ -241,7 +249,7 @@ func e2in(left, right Expr) (evaluater, error) {
 			return nil, &InvalidExprError{
 				Left:  left,
 				Right: right,
-				Op:    IN,
+				Op:    op,
 				Msg: fmt.Sprintf("got %s, expected [%s]",
 					lhs.Kind, group2str(numberTokenGroup)),
 			}
@@ -250,6 +258,7 @@ func e2in(left, right Expr) (evaluater, error) {
 			keyword: lhs.Kind,
 			pos:     rhs.Pos,
 			values:  make(map[int]struct{}),
+			not:     not,
 		}
 		for i := 0; i < len(rhs.Items); i++ {
 			n := rhs.Items[i].(*IntLit)
@@ -261,7 +270,7 @@ func e2in(left, right Expr) (evaluater, error) {
 			return nil, &InvalidExprError{
 				Left:  left,
 				Right: right,
-				Op:    IN,
+				Op:    op,
 				Msg: fmt.Sprintf("got %s, expected [%s]",
 					lhs.Kind, group2str(numberTokenGroup)),
 			}
@@ -270,6 +279,7 @@ func e2in(left, right Expr) (evaluater, error) {
 			keyword: lhs.Kind,
 			pos:     rhs.Pos,
 			values:  make(map[float64]struct{}),
+			not:     not,
 		}
 		for i := 0; i < len(rhs.Items); i++ {
 			n := rhs.Items[i].(*FloatLit)
@@ -281,7 +291,7 @@ func e2in(left, right Expr) (evaluater, error) {
 			return nil, &InvalidExprError{
 				Left:  left,
 				Right: right,
-				Op:    IN,
+				Op:    op,
 				Msg: fmt.Sprintf("got %s, expected [%s]",
 					lhs.Kind, group2str(stringTokenGroup)),
 			}
@@ -290,6 +300,7 @@ func e2in(left, right Expr) (evaluater, error) {
 			keyword: lhs.Kind,
 			pos:     rhs.Pos,
 			values:  make(map[string]struct{}),
+			not:     not,
 		}
 		for i := 0; i < len(rhs.Items); i++ {
 			n := rhs.Items[i].(*StringLit)
@@ -301,12 +312,15 @@ func e2in(left, right Expr) (evaluater, error) {
 		left, right)
 }
 
-func e2range(left, right Expr) (evaluater, error) {
+func e2range(left, right Expr, not bool) (evaluater, error) {
 	// int -> int
 	// float -> float
 	// time -> time
 	// dateTime -> dateTime
-
+	op := RANGE
+	if not {
+		op = NRANGE
+	}
 	switch lhs := left.(type) {
 	case *IdentLit:
 		switch rhs := right.(type) {
@@ -316,7 +330,7 @@ func e2range(left, right Expr) (evaluater, error) {
 					Left:  left,
 					Right: right,
 					Pos:   rhs.Pos,
-					Op:    RANGE,
+					Op:    op,
 				}
 			}
 			switch rhs.Typ {
@@ -325,7 +339,7 @@ func e2range(left, right Expr) (evaluater, error) {
 					return nil, &InvalidExprError{
 						Left:  left,
 						Right: right,
-						Op:    RANGE,
+						Op:    op,
 						Pos:   rhs.Pos,
 						Msg: fmt.Sprintf("got %s, expected [%s]",
 							lhs.Kind, group2str(numberTokenGroup)),
@@ -337,7 +351,7 @@ func e2range(left, right Expr) (evaluater, error) {
 					return nil, &InvalidExprError{
 						Left:  left,
 						Right: right,
-						Op:    RANGE,
+						Op:    op,
 						Pos:   rhs.Pos,
 						Msg:   "left operand is greater than right",
 					}
@@ -346,7 +360,7 @@ func e2range(left, right Expr) (evaluater, error) {
 					return nil, &InvalidExprError{
 						Left:  left,
 						Right: right,
-						Op:    RANGE,
+						Op:    op,
 						Pos:   rhs.Pos,
 						Msg:   "left and right operands are equal",
 					}
@@ -356,13 +370,14 @@ func e2range(left, right Expr) (evaluater, error) {
 					end:     end.Value,
 					pos:     rhs.Pos,
 					keyword: lhs.Kind,
+					not:     not,
 				}, nil
 			case FLOAT:
 				if !isNumberToken(lhs.Kind) {
 					return nil, &InvalidExprError{
 						Left:  left,
 						Right: right,
-						Op:    RANGE,
+						Op:    op,
 						Pos:   rhs.Pos,
 						Msg: fmt.Sprintf("got %s, expected [%s]",
 							lhs.Kind, group2str(numberTokenGroup)),
@@ -374,7 +389,7 @@ func e2range(left, right Expr) (evaluater, error) {
 					return nil, &InvalidExprError{
 						Left:  left,
 						Right: right,
-						Op:    RANGE,
+						Op:    op,
 						Pos:   rhs.Pos,
 						Msg:   "left operand is greater than right",
 					}
@@ -383,7 +398,7 @@ func e2range(left, right Expr) (evaluater, error) {
 					return nil, &InvalidExprError{
 						Left:  left,
 						Right: right,
-						Op:    RANGE,
+						Op:    op,
 						Pos:   rhs.Pos,
 						Msg:   "left and right operands are equal",
 					}
@@ -393,13 +408,14 @@ func e2range(left, right Expr) (evaluater, error) {
 					end:     end.Value,
 					pos:     rhs.Pos,
 					keyword: lhs.Kind,
+					not:     not,
 				}, nil
 			case TIME:
 				if !isTimeToken(lhs.Kind) {
 					return nil, &InvalidExprError{
 						Left:  left,
 						Right: right,
-						Op:    RANGE,
+						Op:    op,
 						Pos:   rhs.Pos,
 						Msg:   fmt.Sprintf("got %s, expected %s", lhs.Kind, TIME),
 					}
@@ -427,6 +443,7 @@ func e2range(left, right Expr) (evaluater, error) {
 					end:     timeVal{h: end.Hour, m: end.Minute},
 					pos:     rhs.Pos,
 					keyword: lhs.Kind,
+					not:     not,
 				}, nil
 			case STRING:
 				if lhs.Kind != DATE && lhs.Kind != DATETIME {
@@ -474,6 +491,7 @@ func e2range(left, right Expr) (evaluater, error) {
 					begin:   left,
 					end:     right,
 					pos:     rhs.Pos,
+					not:     not,
 				}, nil
 			}
 		}
@@ -906,9 +924,22 @@ type rangeDateTimeOp struct {
 	begin   time.Time
 	end     time.Time
 	pos     Pos
+	not     bool
 }
 
-func (n rangeDateTimeOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n rangeDateTimeOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+	values := mapper{device: d}
+	ts := values.dateTime()
+	if n.not {
+		match.Ok = ts.Unix() <= n.begin.Unix() || ts.Unix() >= n.end.Unix()
+		match.Operator = NRANGE
+	} else {
+		match.Ok = ts.Unix() >= n.begin.Unix() && ts.Unix() <= n.end.Unix()
+		match.Operator = RANGE
+	}
+	match.Left.Keyword = n.keyword
+	match.Right.Keyword = DATETIME
+	match.Pos = n.pos
 	return
 }
 
@@ -921,6 +952,7 @@ type rangeTimeOp struct {
 	begin   timeVal
 	end     timeVal
 	pos     Pos
+	not     bool
 }
 
 func (n rangeTimeOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
@@ -928,13 +960,16 @@ func (n rangeTimeOp) evaluate(_ context.Context, d *Device, _ reference) (match 
 	ts := values.dateTime()
 	d1 := time.Date(ts.Year(), ts.Month(), ts.Day(), n.begin.h, n.begin.m, 0, 0, ts.Location())
 	d2 := time.Date(ts.Year(), ts.Month(), ts.Day(), n.end.h, n.end.m, 0, 0, ts.Location())
-	if ts.Unix() >= d1.Unix() && ts.Unix() <= d2.Unix() {
-		match.Ok = true
+	if n.not {
+		match.Ok = ts.Unix() <= d1.Unix() || ts.Unix() >= d2.Unix()
+		match.Operator = NRANGE
+	} else {
+		match.Ok = ts.Unix() >= d1.Unix() && ts.Unix() <= d2.Unix()
+		match.Operator = RANGE
 	}
 	match.Left.Keyword = n.keyword
 	match.Right.Keyword = TIME
 	match.Pos = n.pos
-	match.Operator = RANGE
 	return
 }
 
@@ -943,16 +978,23 @@ type rangeIntOp struct {
 	begin   int
 	end     int
 	pos     Pos
+	not     bool
 }
 
 func (n rangeIntOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	v := values.intVal(n.keyword)
-	match.Ok = v >= n.begin && v <= n.end
+	if n.not {
+		match.Ok = v <= n.begin || v >= n.end
+		match.Operator = NRANGE
+	} else {
+		match.Ok = v >= n.begin && v <= n.end
+		match.Operator = RANGE
+	}
 	match.Left.Keyword = n.keyword
 	match.Right.Keyword = INT
 	match.Pos = n.pos
-	match.Operator = RANGE
+
 	return
 }
 
@@ -961,16 +1003,22 @@ type rangeFloatOp struct {
 	begin   float64
 	end     float64
 	pos     Pos
+	not     bool
 }
 
 func (n rangeFloatOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	v := values.floatVal(n.keyword)
-	match.Ok = v >= n.begin && v <= n.end
+	if n.not {
+		match.Ok = v <= n.begin || v >= n.end
+		match.Operator = NRANGE
+	} else {
+		match.Ok = v >= n.begin && v <= n.end
+		match.Operator = RANGE
+	}
 	match.Left.Keyword = n.keyword
 	match.Right.Keyword = FLOAT
 	match.Pos = n.pos
-	match.Operator = RANGE
 	return
 }
 
@@ -978,17 +1026,21 @@ type inFloatOp struct {
 	keyword Token
 	pos     Pos
 	values  map[float64]struct{}
+	not     bool
 }
 
 func (n inFloatOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
 	value := mapper{device: d}.floatVal(n.keyword)
 	_, found := n.values[value]
-	match = Match{
-		Ok:       found,
-		Left:     Decl{Keyword: n.keyword},
-		Right:    Decl{Keyword: FLOAT},
-		Operator: IN,
-		Pos:      n.pos,
+	match.Left.Keyword = n.keyword
+	match.Right.Keyword = FLOAT
+	match.Pos = n.pos
+	if n.not {
+		match.Ok = !found
+		match.Operator = NIN
+	} else {
+		match.Ok = found
+		match.Operator = IN
 	}
 	return
 }
@@ -997,17 +1049,21 @@ type inIntOp struct {
 	keyword Token
 	pos     Pos
 	values  map[int]struct{}
+	not     bool
 }
 
 func (n inIntOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
 	value := mapper{device: d}.intVal(n.keyword)
 	_, found := n.values[value]
-	match = Match{
-		Ok:       found,
-		Left:     Decl{Keyword: n.keyword},
-		Right:    Decl{Keyword: INT},
-		Operator: IN,
-		Pos:      n.pos,
+	match.Left.Keyword = n.keyword
+	match.Right.Keyword = INT
+	match.Pos = n.pos
+	if n.not {
+		match.Ok = !found
+		match.Operator = NIN
+	} else {
+		match.Ok = found
+		match.Operator = IN
 	}
 	return
 }
@@ -1016,17 +1072,21 @@ type inStringOp struct {
 	keyword Token
 	pos     Pos
 	values  map[string]struct{}
+	not     bool
 }
 
 func (n inStringOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
 	value := mapper{device: d}.stringVal(n.keyword)
 	_, found := n.values[value]
-	match = Match{
-		Ok:       found,
-		Left:     Decl{Keyword: n.keyword},
-		Right:    Decl{Keyword: STRING},
-		Operator: IN,
-		Pos:      n.pos,
+	match.Left.Keyword = n.keyword
+	match.Right.Keyword = STRING
+	match.Pos = n.pos
+	if n.not {
+		match.Ok = !found
+		match.Operator = NIN
+	} else {
+		match.Ok = found
+		match.Operator = IN
 	}
 	return
 }

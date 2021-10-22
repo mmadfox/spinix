@@ -174,8 +174,10 @@ func (s *Scanner) Next() (tok Token, lit string) {
 				tok = OR
 			case "not":
 				switch strings.ToLower(s.NextLit()) {
+				case "range":
+					tok = NRANGE
 				case "in":
-					tok = NOTIN
+					tok = NIN
 				case "near":
 					tok = NOTNEAR
 				case "within":
