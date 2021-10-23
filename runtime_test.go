@@ -46,7 +46,7 @@ func TestNearOpDeviceObjectWithoutRadius(t *testing.T) {
 			Latitude:  tc.lat,
 			Longitude: tc.lon,
 		}
-		matches, _, err := spec.evaluate(ctx, device, refs)
+		matches, _, err := spec.evaluate(ctx, "", device, refs)
 		if err != nil {
 			if tc.isErr {
 				continue
@@ -90,7 +90,7 @@ func TestNearOpDeviceObjectWithRadius100meters(t *testing.T) {
 			Latitude:  tc.lat,
 			Longitude: tc.lon,
 		}
-		matches, _, err := spec.evaluate(ctx, device, refs)
+		matches, _, err := spec.evaluate(ctx, "", device, refs)
 		if err != nil {
 			if tc.isErr {
 				continue
@@ -133,7 +133,7 @@ func TestNearOpDeviceObjectWithBBox2kilometers(t *testing.T) {
 			Latitude:  tc.lat,
 			Longitude: tc.lon,
 		}
-		matches, _, err := spec.evaluate(ctx, device, refs)
+		matches, _, err := spec.evaluate(ctx, "", device, refs)
 		if err != nil {
 			if tc.isErr {
 				continue
@@ -188,7 +188,7 @@ func TestNearOpDeviceDevicesWithoutRadius(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		matches, _, err := spec.evaluate(ctx, device, refs)
+		matches, _, err := spec.evaluate(ctx, "", device, refs)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -245,7 +245,7 @@ func TestNearOpDeviceDevicesWithRadius100meters(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		matches, _, err := specBBox.evaluate(ctx, device, refs)
+		matches, _, err := specBBox.evaluate(ctx, "", device, refs)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -253,7 +253,7 @@ func TestNearOpDeviceDevicesWithRadius100meters(t *testing.T) {
 			t.Fatalf("specBBox: %v => have %v, want %v", deviceLatLon[i], have, want)
 		}
 
-		matches, _, err = specRadius.evaluate(ctx, device, refs)
+		matches, _, err = specRadius.evaluate(ctx, "", device, refs)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -288,7 +288,7 @@ func TestNearOpDeviceDeviceWithRadius100meters(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	matches, _, err := spec.evaluate(ctx, &Device{
+	matches, _, err := spec.evaluate(ctx, "", &Device{
 		IMEI:      "three",
 		Latitude:  42.9327438,
 		Longitude: -72.2759504,
@@ -321,7 +321,7 @@ func TestNearOpDeviceMultiObjects(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	matching, _, err := spec.evaluate(ctx, &Device{
+	matching, _, err := spec.evaluate(ctx, "", &Device{
 		Latitude:  42.9261765,
 		Longitude: -72.2796643,
 	}, refs)
@@ -426,7 +426,7 @@ func TestRangeOp(t *testing.T) {
 		} else if tc.err {
 			t.Fatalf("specFromString(%s) => got nil, expected err", tc.spec)
 		}
-		matches, ok, err := spec.evaluate(context.Background(), tc.d, refs)
+		matches, ok, err := spec.evaluate(context.Background(), "", tc.d, refs)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -518,7 +518,7 @@ func TestIntersectsOp(t *testing.T) {
 		} else if tc.err {
 			t.Fatalf("specFromString(%s) => got nil, expected err", tc.spec)
 		}
-		matches, _, err := spec.evaluate(ctx, tc.d, refs)
+		matches, _, err := spec.evaluate(ctx, "", tc.d, refs)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -722,7 +722,7 @@ func TestInOp(t *testing.T) {
 		} else if tc.err {
 			t.Fatalf("specFromString(%s) => got nil, expected err", tc.spec)
 		}
-		matches, _, err := spec.evaluate(ctx, tc.d, refs)
+		matches, _, err := spec.evaluate(ctx, "", tc.d, refs)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -849,7 +849,7 @@ func TestEqualOp(t *testing.T) {
 		} else if tc.err {
 			t.Fatalf("specFromString(%s) => no matching rules: got nil, expected err", tc.spec)
 		}
-		matches, _, err := spec.evaluate(ctx, tc.d, refs)
+		matches, _, err := spec.evaluate(ctx, "", tc.d, refs)
 		if err != nil {
 			t.Fatal(err)
 		}

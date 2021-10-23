@@ -83,7 +83,7 @@ type (
 
 	SpecExpr struct {
 		Expr    Expr // expression
-		Trigger Expr // index expression
+		Trigger Expr // indexByID expression
 	}
 
 	DeviceLit struct {

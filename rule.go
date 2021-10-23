@@ -29,7 +29,6 @@ type Rules interface {
 	Delete(ctx context.Context, ruleID string) error
 	FindOne(ctx context.Context, ruleID string) (*Rule, error)
 	Find(ctx context.Context, f RulesFilter) ([]*Rule, error)
-	Stats() (Stats, error)
 }
 
 type WalkRuleFunc func(ctx context.Context, rule *Rule, err error) error
@@ -168,7 +167,7 @@ func (r Rule) Less(b btree.Item) bool {
 type Stats struct {
 }
 
-func NewRules() Rules {
+func NewMemoryRules() Rules {
 	return &rules{
 		smallRegionIndex: newSmallRegionIndex(),
 		largeRegionIndex: newLargeRegionIndex(),
@@ -384,7 +383,7 @@ func newRuleIndex() rulesIndex {
 }
 
 func (i rulesIndex) bucket(ruleID string) *ruleBucket {
-	return i[uint(fnv32(ruleID))%uint(ruleBucketCount)]
+	return i[bucket(ruleID, numBucket)]
 }
 
 func (i rulesIndex) set(rule *Rule) {
@@ -410,18 +409,6 @@ func (i rulesIndex) get(ruleID string) (*Rule, error) {
 		return nil, fmt.Errorf("georule: rule %s not found", ruleID)
 	}
 	return rule, nil
-}
-
-const prime32 = uint32(16777619)
-
-func fnv32(key string) uint32 {
-	hash := uint32(977723666)
-	kl := len(key)
-	for i := 0; i < kl; i++ {
-		hash *= prime32
-		hash ^= uint32(key[i])
-	}
-	return hash
 }
 
 type ruleSmallRegion struct {

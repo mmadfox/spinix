@@ -15,9 +15,7 @@ import (
 	"github.com/uber/h3-go"
 )
 
-const minDistMeters = 50
-
-var ErrDeviceNotFound = errors.New("spinix/devices: not found")
+var ErrDeviceNotFound = errors.New("spinix/devices: device not found")
 
 type Devices interface {
 	Lookup(ctx context.Context, deviceID string) (*Device, error)
@@ -27,7 +25,7 @@ type Devices interface {
 }
 
 type Device struct {
-	IMEI          string     `json:"emei"`
+	IMEI          string     `json:"imei"`
 	Owner         string     `json:"owner"`
 	Brand         string     `json:"brand"`
 	Model         string     `json:"model"`
@@ -53,7 +51,7 @@ type devices struct {
 	mu      sync.RWMutex
 }
 
-func NewDevices() Devices {
+func NewMemoryDevices() Devices {
 	return &devices{
 		regions: make(map[h3.H3Index]*deviceRegion),
 		index:   newDeviceIndex(),
@@ -225,11 +223,9 @@ type deviceBucket struct {
 	index map[string]*Device
 }
 
-const deviceBucketCount = 32
-
 func newDeviceIndex() deviceIndex {
-	buckets := make([]*deviceBucket, deviceBucketCount)
-	for i := 0; i < deviceBucketCount; i++ {
+	buckets := make([]*deviceBucket, numBucket)
+	for i := 0; i < numBucket; i++ {
 		buckets[i] = &deviceBucket{
 			index: make(map[string]*Device),
 		}
@@ -238,7 +234,7 @@ func newDeviceIndex() deviceIndex {
 }
 
 func (i deviceIndex) bucket(deviceID string) *deviceBucket {
-	return i[uint(fnv32(deviceID))%uint(deviceBucketCount)]
+	return i[bucket(deviceID, numBucket)]
 }
 
 func (i deviceIndex) set(device *Device) {
@@ -261,7 +257,7 @@ func (i deviceIndex) get(deviceID string) (*Device, error) {
 	defer bucket.RUnlock()
 	device, ok := bucket.index[deviceID]
 	if !ok {
-		return nil, fmt.Errorf("georule: device %s not found", deviceID)
+		return nil, fmt.Errorf("%w - %s", ErrDeviceNotFound, deviceID)
 	}
 	return device, nil
 }

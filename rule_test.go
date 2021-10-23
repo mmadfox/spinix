@@ -14,7 +14,7 @@ package spinix
 //)
 //
 //func TestRulesInsertDeleteConcurrent(t *testing.T) {
-//	rules := NewRules()
+//	rules := NewMemoryRules()
 //	var wait sync.WaitGroup
 //	for i := 0; i < 100; i++ {
 //		wait.Add(1)
@@ -47,7 +47,7 @@ package spinix
 //}
 //
 //func TestRulesWalk(t *testing.T) {
-//	rules := NewRules()
+//	rules := NewMemoryRules()
 //	ctx := context.Background()
 //	testCases := []struct {
 //		radius   float64
@@ -118,7 +118,7 @@ package spinix
 
 //func BenchmarkRulesWalk(b *testing.B) {
 //	ctx := context.Background()
-//	rules := NewRules()
+//	rules := NewMemoryRules()
 //	max := 100000
 //	items := make([]*Rule, max)
 //	for i := 0; i < max; i++ {

@@ -9,7 +9,7 @@ import (
 	"github.com/tidwall/geojson"
 )
 
-var ErrObjectNotFound = errors.New("spinix/objects: not found")
+var ErrObjectNotFound = errors.New("spinix/objects: object not found")
 
 type Objects interface {
 	Lookup(ctx context.Context, objectID string) (geojson.Object, error)
@@ -17,14 +17,14 @@ type Objects interface {
 	Delete(ctx context.Context, objectID string) error
 }
 
-type objects struct {
-	index objectIndex
-}
-
-func NewObjects() Objects {
+func NewMemoryObjects() Objects {
 	return &objects{
 		index: newObjectIndex(),
 	}
+}
+
+type objects struct {
+	index objectIndex
 }
 
 func (o *objects) Lookup(_ context.Context, objectID string) (geojson.Object, error) {
@@ -48,11 +48,9 @@ type objectBucket struct {
 	index map[string]geojson.Object
 }
 
-const objectBucketCount = 32
-
 func newObjectIndex() objectIndex {
-	buckets := make([]*objectBucket, objectBucketCount)
-	for i := 0; i < objectBucketCount; i++ {
+	buckets := make([]*objectBucket, numBucket)
+	for i := 0; i < numBucket; i++ {
 		buckets[i] = &objectBucket{
 			index: make(map[string]geojson.Object),
 		}
@@ -80,11 +78,11 @@ func (i objectIndex) get(objectID string) (geojson.Object, error) {
 	defer bucket.RUnlock()
 	object, ok := bucket.index[objectID]
 	if !ok {
-		return nil, fmt.Errorf("georule: object %s not found", objectID)
+		return nil, fmt.Errorf("spinix: object %s not found", objectID)
 	}
 	return object, nil
 }
 
 func (i objectIndex) bucket(objectID string) *objectBucket {
-	return i[uint(fnv32(objectID))%uint(objectBucketCount)]
+	return i[bucket(objectID, numBucket)]
 }

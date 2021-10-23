@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"math"
 	"strings"
 	"time"
@@ -15,14 +16,23 @@ import (
 	"github.com/uber/h3-go"
 )
 
+const (
+	// Minimum distance in meters.
+	// Used to round off the distance to avoid noise.
+	minDistMeters = 50
+
+	numBucket = 256
+)
+
 type evaluater interface {
-	evaluate(ctx context.Context, d *Device, ref reference) (Match, error)
+	evaluate(ctx context.Context, device *Device, state *State, ref reference) (Match, error)
 }
 
 type reference struct {
 	rules   Rules
 	objects Objects
 	devices Devices
+	states  States
 }
 
 type Match struct {
@@ -40,9 +50,10 @@ type Decl struct {
 
 func defaultRefs() reference {
 	return reference{
-		devices: NewDevices(),
-		objects: NewObjects(),
-		rules:   NewRules(),
+		devices: NewMemoryDevices(),
+		objects: NewMemoryObjects(),
+		rules:   NewMemoryRules(),
+		states:  NewMemoryState(),
 	}
 }
 
@@ -50,6 +61,7 @@ type spec struct {
 	nodes []evaluater
 	ops   []Token
 	pos   Pos
+	sf    bool // stateful
 }
 
 func specFromString(s string) (*spec, error) {
@@ -60,7 +72,7 @@ func specFromString(s string) (*spec, error) {
 	return exprToSpec(expr)
 }
 
-func (s *spec) evaluate(ctx context.Context, d *Device, r reference) (matches []Match, ok bool, err error) {
+func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r reference) (matches []Match, ok bool, err error) {
 	if d == nil {
 		return matches, false, nil
 	}
@@ -69,10 +81,31 @@ func (s *spec) evaluate(ctx context.Context, d *Device, r reference) (matches []
 		return
 	}
 
+	var st *State
+	if s.sf {
+		sid := StateID{IMEI: d.IMEI, RuleID: ruleID}
+		st, err = r.states.Lookup(ctx, sid)
+		if err != nil {
+			if errors.Is(err, ErrStateNotFound) {
+				if st, err = r.states.Make(ctx, sid); err != nil {
+					return
+				}
+				err = nil
+			} else {
+				return
+			}
+		}
+	}
+
 	if len(s.nodes) == 1 {
-		match, err := s.nodes[0].evaluate(ctx, d, r)
+		match, err := s.nodes[0].evaluate(ctx, d, st, r)
 		if err != nil {
 			return nil, false, err
+		}
+		if s.sf {
+			if err = r.states.Update(ctx, st); err != nil {
+				return nil, false, err
+			}
 		}
 		if match.Ok {
 			return []Match{match}, true, nil
@@ -101,7 +134,7 @@ func (s *spec) evaluate(ctx context.Context, d *Device, r reference) (matches []
 			}
 		}
 
-		right, err = s.nodes[index].evaluate(ctx, d, r)
+		right, err = s.nodes[index].evaluate(ctx, d, st, r)
 		if err != nil {
 			return nil, false, err
 		}
@@ -129,6 +162,9 @@ func (s *spec) evaluate(ctx context.Context, d *Device, r reference) (matches []
 			matches = append(matches, right)
 		}
 		index++
+	}
+	if s.sf {
+		err = r.states.Update(ctx, st)
 	}
 	return
 }
@@ -167,13 +203,33 @@ func walkExpr(
 	return expr, nil
 }
 
+func isStateful(e Expr) bool {
+	switch expr := e.(type) {
+	case *ObjectLit:
+		switch expr.DurTyp {
+		case DURATION, AFTER:
+			if expr.DurVal > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func exprToSpec(e Expr) (*spec, error) {
-	s := &spec{
-		ops:   make([]Token, 0, 2),
-		nodes: make([]evaluater, 0, 2),
+	s := &spec{ops: make([]Token, 0, 2), nodes: make([]evaluater, 0, 2)}
+	if specExpr, ok := e.(*SpecExpr); ok {
+		s.sf = true
+		e = specExpr.Expr
 	}
 	_, err := walkExpr(e,
 		func(a, b Expr, op Token) error {
+			if isStateful(a) {
+				s.sf = true
+			}
+			if isStateful(b) {
+				s.sf = true
+			}
 			node, err := makeOp(a, b, op)
 			if err != nil {
 				return err
@@ -904,7 +960,7 @@ type nearOp struct {
 	pos Pos
 }
 
-func (n nearOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
 	// device
 	var (
 		meters       float64
@@ -1100,7 +1156,7 @@ type rangeDateTimeOp struct {
 	not     bool
 }
 
-func (n rangeDateTimeOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+func (n rangeDateTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	ts := values.dateTime()
 	if n.not {
@@ -1128,7 +1184,7 @@ type rangeTimeOp struct {
 	not     bool
 }
 
-func (n rangeTimeOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+func (n rangeTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	ts := values.dateTime()
 	d1 := time.Date(ts.Year(), ts.Month(), ts.Day(), n.begin.h, n.begin.m, 0, 0, ts.Location())
@@ -1154,7 +1210,7 @@ type rangeIntOp struct {
 	not     bool
 }
 
-func (n rangeIntOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+func (n rangeIntOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	v := values.intVal(n.keyword)
 	if n.not {
@@ -1179,7 +1235,7 @@ type rangeFloatOp struct {
 	not     bool
 }
 
-func (n rangeFloatOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+func (n rangeFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	v := values.floatVal(n.keyword)
 	if n.not {
@@ -1202,7 +1258,7 @@ type inFloatOp struct {
 	not     bool
 }
 
-func (n inFloatOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+func (n inFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	value := mapper{device: d}.floatVal(n.keyword)
 	_, found := n.values[value]
 	match.Left.Keyword = n.keyword
@@ -1225,7 +1281,7 @@ type intersectsObjectOp struct {
 	not   bool
 }
 
-func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
 	op := INTERSECTS
 	if n.not {
 		op = NINTERSECTS
@@ -1300,7 +1356,7 @@ type intersectsDevicesOp struct {
 	not   bool
 }
 
-func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
 	op := INTERSECTS
 	if n.not {
 		op = NINTERSECTS
@@ -1428,7 +1484,7 @@ type inObjectOp struct {
 	not    bool
 }
 
-func (n inObjectOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n inObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
 	match.Left.Keyword = DEVICE
 	match.Right.Keyword = n.object.Kind
 	match.Pos = n.pos
@@ -1487,7 +1543,7 @@ type inIntOp struct {
 	not     bool
 }
 
-func (n inIntOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+func (n inIntOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	value := mapper{device: d}.intVal(n.keyword)
 	_, found := n.values[value]
 	match.Left.Keyword = n.keyword
@@ -1510,7 +1566,7 @@ type inStringOp struct {
 	not     bool
 }
 
-func (n inStringOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+func (n inStringOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	value := mapper{device: d}.stringVal(n.keyword)
 	_, found := n.values[value]
 	match.Left.Keyword = n.keyword
@@ -1533,7 +1589,7 @@ type equalObjectOp struct {
 	pos   Pos
 }
 
-func (n equalObjectOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n equalObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
 	match.Left.Keyword = DEVICE
 	match.Right.Keyword = n.right.Kind
 	match.Pos = n.pos
@@ -1552,7 +1608,7 @@ func (n equalObjectOp) evaluate(ctx context.Context, d *Device, ref reference) (
 			d.Latitude,
 			d.Longitude,
 			center.X,
-			center.Y), 50)
+			center.Y), minDistMeters)
 		switch n.op {
 		case EQ:
 			match.Ok = distance == n.left.meters()
@@ -1587,7 +1643,7 @@ type equalDevicesOp struct {
 	pos   Pos
 }
 
-func (n equalDevicesOp) evaluate(ctx context.Context, d *Device, ref reference) (match Match, err error) {
+func (n equalDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
 	match.Left.Keyword = DEVICE
 	match.Right.Keyword = DEVICES
 	match.Pos = n.pos
@@ -1605,7 +1661,7 @@ func (n equalDevicesOp) evaluate(ctx context.Context, d *Device, ref reference) 
 			d.Latitude,
 			d.Longitude,
 			other.Latitude,
-			other.Longitude), 50)
+			other.Longitude), minDistMeters)
 		switch n.op {
 		case EQ:
 			match.Ok = distance == n.left.meters()
@@ -1640,7 +1696,7 @@ type equalTimeOp struct {
 	pos     Pos
 }
 
-func (n equalTimeOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+func (n equalTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	ts := values.dateTime()
 	right := time.Date(ts.Year(), ts.Month(), ts.Day(), n.value.h, n.value.m, 0, 0, ts.Location())
@@ -1672,7 +1728,7 @@ type equalStrOp struct {
 	pos     Pos
 }
 
-func (n equalStrOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+func (n equalStrOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	switch n.op {
 	case EQ:
@@ -1702,7 +1758,7 @@ type equalIntOp struct {
 	pos     Pos
 }
 
-func (n equalIntOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+func (n equalIntOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	switch n.op {
 	case EQ:
@@ -1732,7 +1788,7 @@ type equalFloatOp struct {
 	pos     Pos
 }
 
-func (n equalFloatOp) evaluate(_ context.Context, d *Device, _ reference) (match Match, err error) {
+func (n equalFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	switch n.op {
 	case EQ:
@@ -2066,4 +2122,13 @@ func (m mapper) intVal(keyword Token) (v int) {
 
 func round(v, unit float64) float64 {
 	return math.Round(v/unit) * unit
+}
+
+func bucket(s string, numBuckets int) int {
+	if numBuckets == 1 {
+		return 0
+	}
+	hash := fnv.New64a()
+	_, _ = hash.Write([]byte(s))
+	return int(hash.Sum64() % uint64(numBuckets))
 }

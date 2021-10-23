@@ -1,91 +1,90 @@
 package spinix
 
-//import (
-//	"context"
-//	"fmt"
-//	"time"
-//
-//	"github.com/rs/xid"
-//)
-//
-//type Detector interface {
-//	Detect(ctx context.Context, device *Device) ([]Event, error)
-//}
-//
-//type Option func(*Engine)
-//
-//type Engine struct {
-//	rules      Rules
-//	objects    Objects
-//	geospatial Geospatial
-//	devices    Devices
-//}
-//
-//func New(opts ...Option) *Engine {
-//	e := &Engine{
-//		rules:      NewRules(),
-//		devices:    NewDevices(),
-//		objects:    NewObjects(),
-//		geospatial: DefaultGeospatial(),
-//	}
-//	for _, f := range opts {
-//		f(e)
-//	}
-//	return e
-//}
-//
-//func WithObjects(o Objects) Option {
-//	return func(e *Engine) {
-//		e.objects = o
-//	}
-//}
-//
-//func WithDevices(d Devices) Option {
-//	return func(e *Engine) {
-//		e.devices = d
-//	}
-//}
-//
-//func WithRules(r Rules) Option {
-//	return func(e *Engine) {
-//		e.rules = r
-//	}
-//}
-//
-//func WithGeospatial(g Geospatial) Option {
-//	return func(e *Engine) {
-//		e.geospatial = g
-//	}
-//}
-//
-//type Event struct {
-//	ID       string       `json:"id"`
-//	Device   Device       `json:"device"`
-//	DateTime int64        `json:"dateTime"`
-//	Rule     RuleSnapshot `json:"rule"`
-//}
-//
-//func MakeEvent(d *Device, r *Rule) Event {
-//	return Event{
-//		ID:       xid.New().String(),
-//		Device:   *d,
-//		Rule:     TakeRuleSnapshot(r),
-//		DateTime: time.Now().Unix(),
-//	}
-//}
-//
-//func (e *Engine) Map() Objects {
-//	return e.objects
-//}
-//
-//func (e *Engine) Devices() Devices {
-//	return e.devices
-//}
-//
-//func (e *Engine) Rules() Rules {
-//	return e.rules
-//}
-//
+import (
+	"context"
+	"time"
+
+	"github.com/rs/xid"
+)
+
+type Detector interface {
+	Detect(ctx context.Context, device *Device) ([]Event, error)
+}
+
+type Option func(*Engine)
+
+type Engine struct {
+	refs reference
+}
+
+func New(opts ...Option) *Engine {
+	e := &Engine{refs: defaultRefs()}
+	for _, f := range opts {
+		f(e)
+	}
+	return e
+}
+
+func WithObjectsStorage(o Objects) Option {
+	return func(e *Engine) {
+		e.refs.objects = o
+	}
+}
+
+func WithDevicesStorage(d Devices) Option {
+	return func(e *Engine) {
+		e.refs.devices = d
+	}
+}
+
+func WithRulesStorage(r Rules) Option {
+	return func(e *Engine) {
+		e.refs.rules = r
+	}
+}
+
+func WithStatesStorage(s States) Option {
+	return func(e *Engine) {
+		e.refs.states = s
+	}
+}
+
+type Event struct {
+	ID       string       `json:"id"`
+	Device   Device       `json:"device"`
+	DateTime int64        `json:"dateTime"`
+	Rule     RuleSnapshot `json:"rule"`
+}
+
+func MakeEvent(d *Device, r *Rule) Event {
+	return Event{
+		ID:       xid.New().String(),
+		Device:   *d,
+		Rule:     TakeRuleSnapshot(r),
+		DateTime: time.Now().Unix(),
+	}
+}
+
+func (e *Engine) Objects() Objects {
+	return e.refs.objects
+}
+
+func (e *Engine) Rules() Rules {
+	return e.refs.rules
+}
+
+func (e *Engine) Devices() Devices {
+	return e.refs.devices
+}
+
+func (e *Engine) States() States {
+	return e.refs.states
+}
+
+func (e *Engine) Detect(ctx context.Context, device *Device) ([]Event, error) {
+	return nil, nil
+}
+
 //func (e *Engine) Detect(ctx context.Context, device *Device) ([]Event, error) {
 //	prevState, err := e.devices.Lookup(ctx, device.IMEI)
 //	if err != nil {
