@@ -16,6 +16,7 @@ const (
 	dateTokenGroup   = 3
 	timeTokenGroup   = 4
 	objectTokenGroup = 5
+	propsTokenGroup  = 6
 )
 
 const (
@@ -54,6 +55,7 @@ const (
 	DATE           // date
 	DATETIME       // dateTime
 	TRIGGER        // trigger
+	RESET          // reset
 	literalEnd
 
 	operatorBegin
@@ -163,8 +165,10 @@ var tokens = [...]string{
 	RBRACE: "}",
 	COLON:  ":",
 
+	TRIGGER: ":trigger",
+	RESET:   ":reset",
+
 	DEVICE:         "device",
-	TRIGGER:        ":trigger",
 	VAR_IDENT:      "@",
 	DEVICES:        "devices",
 	OBJECTS:        "objects",
@@ -285,6 +289,11 @@ var objectToken = map[Token]struct{}{
 	FUT_COLLECTION: {},
 }
 
+var propsToken = map[Token]struct{}{
+	TRIGGER: {},
+	RESET:   {},
+}
+
 var dateToken = map[Token]struct{}{
 	DATE:     {},
 	DATETIME: {},
@@ -301,6 +310,11 @@ func isNumberToken(op Token) bool {
 
 func isObjectToken(op Token) bool {
 	_, found := objectToken[op]
+	return found
+}
+
+func isPropsToken(op Token) bool {
+	_, found := propsToken[op]
 	return found
 }
 

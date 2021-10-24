@@ -63,12 +63,6 @@ type (
 		Kind Token
 	}
 
-	// A UnaryExpr nodes represents a unary expression.
-	UnaryExpr struct {
-		Op Token // operator
-		X  Expr  // operand
-	}
-
 	// A BinaryExpr nodes represents a binary expression.
 	BinaryExpr struct {
 		LHS Expr  // left operand
@@ -81,9 +75,9 @@ type (
 		Expr Expr // parenthesized expression
 	}
 
-	SpecExpr struct {
-		Expr    Expr // expression
-		Trigger Expr // indexByID expression
+	PropExpr struct {
+		Expr Expr
+		List []Expr
 	}
 
 	DeviceLit struct {
@@ -118,19 +112,18 @@ type (
 		Pos      Pos
 	}
 
+	ResetLit struct {
+		Kind  Token
+		Pos   Pos
+		After time.Duration
+	}
+
 	// A ListLit represents a list of int or float or string type.
 	ListLit struct {
 		Items []Expr
 		Pos   Pos
 		Kind  Token
 		Typ   Token
-	}
-
-	// A DistanceUnitLit represents a distance unit type.
-	DistanceUnitLit struct {
-		Value float64
-		Op    Token
-		Unit  DistanceUnit
 	}
 
 	// A StringLit nodes represents a literal of string type.
@@ -224,10 +217,6 @@ func (e *BooleanLit) String() string {
 	} else {
 		return "false"
 	}
-}
-
-func (e *DistanceUnitLit) String() string {
-	return fmt.Sprintf("%.1f%s", e.Value, e.Unit)
 }
 
 func (e *DeviceLit) String() string {
@@ -363,20 +352,43 @@ func (e *DevicesLit) String() string {
 }
 
 func (e *TriggerLit) String() string {
+	var sb strings.Builder
+	sb.WriteString(TRIGGER.String())
+	sb.WriteString(" ")
 	switch e.Repeat {
 	case RepeatTimes:
-		return fmt.Sprintf("%d times internval %s", e.Times, e.Interval)
+		sb.WriteString(strconv.Itoa(e.Times))
+		sb.WriteString(" ")
+		sb.WriteString("times")
+		sb.WriteString(" ")
+		sb.WriteString("interval")
+		sb.WriteString(" ")
+		sb.WriteString(e.Interval.String())
 	case RepeatEvery:
-		return fmt.Sprintf("every %s", e.Value)
+		sb.WriteString("every")
+		sb.WriteString(" ")
+		sb.WriteString(e.Value.String())
 	case RepeatOnce:
-		return "once"
+		sb.WriteString("once")
 	default:
-		return "once"
+		sb.WriteString("once")
 	}
+	return sb.String()
 }
 
-func (e *SpecExpr) String() string {
-	return e.Expr.String() + " :trigger " + e.Trigger.String()
+func (e *PropExpr) String() string {
+	var sb strings.Builder
+	sb.WriteString(e.Expr.String())
+	sb.WriteString(" ")
+	for i := 0; i < len(e.List); i++ {
+		sb.WriteString(e.List[i].String())
+		sb.WriteString(" ")
+	}
+	return sb.String()
+}
+
+func (e *ResetLit) String() string {
+	return fmt.Sprintf("%s after %s", RESET, e.After)
 }
 
 func (_ *ParenExpr) expr()  {}
@@ -386,15 +398,12 @@ func (_ *IntLit) expr()     {}
 func (_ *FloatLit) expr()   {}
 func (_ *VarLit) expr()     {}
 func (_ *BooleanLit) expr() {}
-
-func (_ *DistanceUnitLit) expr() {} // deprecated
-
-//
 func (_ *DeviceLit) expr()  {}
 func (_ *ObjectLit) expr()  {}
 func (_ *IdentLit) expr()   {}
 func (_ *ListLit) expr()    {}
 func (_ *DevicesLit) expr() {}
 func (_ *TimeLit) expr()    {}
+func (_ *PropExpr) expr()   {}
 func (_ *TriggerLit) expr() {}
-func (_ *SpecExpr) expr()   {}
+func (_ *ResetLit) expr()   {}

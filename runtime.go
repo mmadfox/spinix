@@ -59,10 +59,15 @@ func defaultRefs() reference {
 }
 
 type spec struct {
-	nodes []evaluater
-	ops   []Token
-	pos   Pos
-	sf    bool // stateful
+	nodes      []evaluater
+	ops        []Token
+	pos        Pos
+	isStateful bool
+	reset      time.Duration
+	times      int
+	repeat     RepeatMode
+	interval   time.Duration
+	delay      time.Duration
 }
 
 func specFromString(s string) (*spec, error) {
@@ -83,7 +88,7 @@ func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r referen
 	}
 
 	var st *State
-	if s.sf {
+	if s.isStateful {
 		sid := StateID{IMEI: d.IMEI, RuleID: ruleID}
 		st, err = r.states.Lookup(ctx, sid)
 		if err != nil {
@@ -103,7 +108,7 @@ func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r referen
 		if err != nil {
 			return nil, false, err
 		}
-		if s.sf {
+		if s.isStateful {
 			if err = r.states.Update(ctx, st); err != nil {
 				return nil, false, err
 			}
@@ -164,7 +169,7 @@ func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r referen
 		}
 		index++
 	}
-	if s.sf {
+	if s.isStateful {
 		err = r.states.Update(ctx, st)
 	}
 	return
@@ -217,19 +222,37 @@ func isStateful(e Expr) bool {
 	return false
 }
 
+func setupProps(s *spec, expr *PropExpr) {
+	s.isStateful = true
+	for i := 0; i < len(expr.List); i++ {
+		switch prop := expr.List[i].(type) {
+		case *ResetLit:
+			s.reset = prop.After
+		case *TriggerLit:
+			s.repeat = prop.Repeat
+			s.delay = prop.Value
+			s.times = prop.Times
+			s.interval = prop.Interval
+		}
+	}
+	if s.reset == 0 {
+		s.reset = 24 * time.Hour
+	}
+}
+
 func exprToSpec(e Expr) (*spec, error) {
 	s := &spec{ops: make([]Token, 0, 2), nodes: make([]evaluater, 0, 2)}
-	if specExpr, ok := e.(*SpecExpr); ok {
-		s.sf = true
-		e = specExpr.Expr
+	if propExpr, ok := e.(*PropExpr); ok {
+		setupProps(s, propExpr)
+		e = propExpr.Expr
 	}
 	_, err := walkExpr(e,
 		func(a, b Expr, op Token) error {
 			if isStateful(a) {
-				s.sf = true
+				s.isStateful = true
 			}
 			if isStateful(b) {
-				s.sf = true
+				s.isStateful = true
 			}
 			node, err := makeOp(a, b, op)
 			if err != nil {

@@ -12,6 +12,9 @@ func TestParser(t *testing.T) {
 		isErr bool
 	}{
 		// successfully
+		{spec: `device :radius 4km intersects polygon(@id) :reset after 24h :trigger 25 times interval 10s`},
+		{spec: `device :radius 4km intersects polygon(@id) :trigger once :reset after 24h`},
+		{spec: `device :radius 4km intersects polygon(@id) :reset after 24h :trigger every 10s`},
 		{spec: `device :radius 4km intersects polygon(@id)`},
 		{spec: `device intersects polygon(@id)`},
 		{spec: `device :radius 4km in polygon(@id)`},

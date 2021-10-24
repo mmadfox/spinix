@@ -73,9 +73,12 @@ func (s *Scanner) Next() (tok Token, lit string) {
 	case ':':
 		tok = COLON
 		st, sl = s.Scan()
-		if strings.ToLower(sl) == "trigger" {
+		switch strings.ToLower(sl) {
+		case "trigger":
 			tok = TRIGGER
-		} else {
+		case "reset":
+			tok = RESET
+		default:
 			s.Reset()
 		}
 	case scanner.Float:
@@ -104,6 +107,8 @@ func (s *Scanner) Next() (tok Token, lit string) {
 				tok = EQ
 			case "trigger":
 				tok = TRIGGER
+			case "reset":
+				tok = RESET
 			case "date":
 				tok = DATE
 			case "datetime":

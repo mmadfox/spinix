@@ -42,16 +42,10 @@ func (p *Parser) parse() (Expr, error) {
 			return nil, fmt.Errorf("spinix/parser: ILLEGAL %s", literal)
 		}
 
-		if operator == TRIGGER {
+		// props
+		if isPropsToken(operator) {
 			p.s.Reset()
-			rhs, err := p.parseExpr()
-			if err != nil {
-				return nil, err
-			}
-			return &SpecExpr{
-				Expr:    expr,
-				Trigger: rhs,
-			}, nil
+			return p.parseProps(expr)
 		}
 
 		if (!operator.IsOperator() && !operator.IsKeyword()) || operator == EOF {
@@ -83,13 +77,105 @@ func (p *Parser) parse() (Expr, error) {
 	}
 }
 
+func (p *Parser) parseProps(expr Expr) (Expr, error) {
+	props, ok := expr.(*PropExpr)
+	if !ok {
+		props = &PropExpr{
+			Expr: expr,
+			List: make([]Expr, 0, 2),
+		}
+	}
+	for {
+		tok, lit := p.s.Next()
+		if tok == EOF {
+			break
+		}
+		switch tok {
+		case TRIGGER:
+			prop, err := p.parseTriggerProp()
+			if err != nil {
+				return nil, err
+			}
+			props.List = append(props.List, prop)
+		case RESET:
+			prop, err := p.parseResetProp()
+			if err != nil {
+				return nil, err
+			}
+			props.List = append(props.List, prop)
+		default:
+			return nil, p.error(tok, lit, "ILLEGAL")
+		}
+	}
+	return props, nil
+}
+
+func (p *Parser) parseTriggerProp() (Expr, error) {
+	tok, lit := p.s.Next()
+	triggerExpr := &TriggerLit{}
+	switch tok {
+	case INT:
+		// 25 times interval 10s
+		times, err := strconv.Atoi(lit)
+		if err != nil {
+			return nil, p.error(TRIGGER, lit, err.Error())
+		}
+		if lit := p.s.NextLit(); lit != "times" {
+			return nil, p.error(TRIGGER, lit, fmt.Sprintf("got %s, expected times", lit))
+		}
+		if lit := p.s.NextLit(); lit != "interval" {
+			return nil, p.error(TRIGGER, lit, fmt.Sprintf("got %s, expected interval", lit))
+		}
+		dur, err := p.parseDur()
+		if err != nil {
+			return nil, err
+		}
+		triggerExpr.Repeat = RepeatTimes
+		triggerExpr.Interval = dur
+		triggerExpr.Times = times
+	case ILLEGAL:
+		// every 10s, once
+		if lit == "once" {
+			triggerExpr.Repeat = RepeatOnce
+		}
+		if lit == "every" {
+			triggerExpr.Repeat = RepeatEvery
+			dur, err := p.parseDur()
+			if err != nil {
+				return nil, err
+			}
+			triggerExpr.Value = dur
+		}
+	default:
+		return nil, p.error(tok, lit, "ILLEGAL")
+	}
+
+	triggerExpr.Pos = p.s.Offset()
+
+	return triggerExpr, nil
+}
+
+func (p *Parser) parseResetProp() (Expr, error) {
+	tok := p.s.NextTok()
+	if tok != AFTER {
+		return nil, p.error(RESET, ":reset", "invalid expr, expected [:reset after 24h]")
+	}
+	dur, err := p.parseDur()
+	if err != nil {
+		return nil, err
+	}
+	return &ResetLit{
+		Kind:  RESET,
+		Pos:   p.s.Offset(),
+		After: dur,
+	}, nil
+}
+
 func (p *Parser) parseExpr() (Expr, error) {
 	tok, lit := p.s.Next()
 	switch tok {
 	case LPAREN:
 		return p.parseParenExpr()
-	case TRIGGER:
-		return p.parseTriggerLit()
 	case INT:
 		return p.parseIntOrTimeLit(lit)
 	case FLOAT:
@@ -126,47 +212,47 @@ func (p *Parser) parseParenExpr() (Expr, error) {
 	return &ParenExpr{Expr: expr}, nil
 }
 
-func (p *Parser) parseTriggerLit() (Expr, error) {
-	tok, lit := p.s.Next()
-	lowlit := strings.ToLower(lit)
-	if tok == ILLEGAL && lowlit == "every" {
-		dur, err := p.parseDur()
-		if err != nil {
-			return nil, p.error(TRIGGER, "every", err.Error())
-		}
-		eof := p.s.NextTok()
-		if eof != EOF {
-			return nil, p.error(TRIGGER, "eof", "literal must be at the end of the specStr")
-		}
-		return &TriggerLit{Repeat: RepeatEvery, Value: dur}, nil
-	} else if tok == ILLEGAL && lowlit == "once" {
-		return &TriggerLit{Repeat: RepeatOnce}, nil
-	} else if tok == INT {
-		v, err := strconv.Atoi(lit)
-		if err != nil {
-			return nil, p.error(TRIGGER, lit, err.Error())
-		}
-		times := strings.ToLower(p.s.NextLit())
-		if times != "times" {
-			return nil, p.error(TRIGGER, "times", "missing times literal")
-		}
-		interval := strings.ToLower(p.s.NextLit())
-		if interval != "interval" {
-			return nil, p.error(TRIGGER, "interval", "missing interval literal")
-		}
-		dur, err := p.parseDur()
-		if err != nil {
-			return nil, p.error(TRIGGER, "times", err.Error())
-		}
-		eof := p.s.NextTok()
-		if eof != EOF {
-			return nil, p.error(TRIGGER, "eof", "literal must be at the end of the specStr")
-		}
-		return &TriggerLit{Repeat: RepeatTimes, Times: v, Interval: dur}, nil
-	} else {
-		return nil, p.error(TRIGGER, lit, "missing trigger literal")
-	}
-}
+//func (p *Parser) parseTriggerLit() (Expr, error) {
+//	tok, lit := p.s.Next()
+//	lowlit := strings.ToLower(lit)
+//	if tok == ILLEGAL && lowlit == "every" {
+//		dur, err := p.parseDur()
+//		if err != nil {
+//			return nil, p.error(TRIGGER, "every", err.Error())
+//		}
+//		eof := p.s.NextTok()
+//		if eof != EOF {
+//			return nil, p.error(TRIGGER, "eof", "literal must be at the end of the specStr")
+//		}
+//		return &TriggerLit{Repeat: RepeatEvery, Value: dur}, nil
+//	} else if tok == ILLEGAL && lowlit == "once" {
+//		return &TriggerLit{Repeat: RepeatOnce}, nil
+//	} else if tok == INT {
+//		v, err := strconv.Atoi(lit)
+//		if err != nil {
+//			return nil, p.error(TRIGGER, lit, err.Error())
+//		}
+//		times := strings.ToLower(p.s.NextLit())
+//		if times != "times" {
+//			return nil, p.error(TRIGGER, "times", "missing times literal")
+//		}
+//		interval := strings.ToLower(p.s.NextLit())
+//		if interval != "interval" {
+//			return nil, p.error(TRIGGER, "interval", "missing interval literal")
+//		}
+//		dur, err := p.parseDur()
+//		if err != nil {
+//			return nil, p.error(TRIGGER, "times", err.Error())
+//		}
+//		eof := p.s.NextTok()
+//		if eof != EOF {
+//			return nil, p.error(TRIGGER, "eof", "literal must be at the end of the specStr")
+//		}
+//		return &TriggerLit{Repeat: RepeatTimes, Times: v, Interval: dur}, nil
+//	} else {
+//		return nil, p.error(TRIGGER, lit, "missing trigger literal")
+//	}
+//}
 
 func (p *Parser) parseDevicesLit() (Expr, error) {
 	expr, err := p.parseObjectLit(DEVICES)
