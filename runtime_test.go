@@ -54,7 +54,7 @@ func TestNearOpDeviceObjectWithoutRadius(t *testing.T) {
 			t.Fatal(err)
 		}
 		if hasMatches(matches) != tc.ok {
-			t.Fatalf("spec: %v => have %v, want %v", tc, hasMatches(matches), tc.ok)
+			t.Fatalf("specStr: %v => have %v, want %v", tc, hasMatches(matches), tc.ok)
 		}
 	}
 }
@@ -98,7 +98,7 @@ func TestNearOpDeviceObjectWithRadius100meters(t *testing.T) {
 			t.Fatal(err)
 		}
 		if hasMatches(matches) != tc.ok {
-			t.Fatalf("spec: %v => have %v, want %v", tc, hasMatches(matches), tc.ok)
+			t.Fatalf("specStr: %v => have %v, want %v", tc, hasMatches(matches), tc.ok)
 		}
 	}
 }
@@ -141,7 +141,7 @@ func TestNearOpDeviceObjectWithBBox2kilometers(t *testing.T) {
 			t.Fatal(err)
 		}
 		if have, want := hasMatches(matches), tc.ok; have != want {
-			t.Fatalf("spec: %v => have %v, want %v", tc, have, want)
+			t.Fatalf("specStr: %v => have %v, want %v", tc, have, want)
 		}
 	}
 }
@@ -193,7 +193,7 @@ func TestNearOpDeviceDevicesWithoutRadius(t *testing.T) {
 			t.Fatal(err)
 		}
 		if have, want := deviceLatLon[i].near, hasMatches(matches); have != want {
-			t.Fatalf("spec: %v => have %v, want %v", spec, have, want)
+			t.Fatalf("specStr: %v => have %v, want %v", spec, have, want)
 		}
 	}
 }

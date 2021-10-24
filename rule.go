@@ -5,20 +5,20 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/btree"
+
 	"github.com/rs/xid"
 
 	"github.com/tidwall/rtree"
 
 	"github.com/uber/h3-go"
 
-	"github.com/google/btree"
-
 	"github.com/tidwall/geojson/geometry"
 )
 
 const (
-	smallLevel        = 2
-	largeLevel        = 0
+	smallCellSize     = 2
+	largeCellSize     = 0
 	minRadiusInMeters = 500
 	maxRadiusInMeters = 100000
 )
@@ -37,131 +37,164 @@ type RulesFilter struct {
 }
 
 type Rule struct {
-	ruleID       string
-	name         string
-	expr         Expr
-	spec         string
-	meters       float64
-	bbox         geometry.Rect
-	referenceIDs []string
-	regionIDs    []h3.H3Index
-	regionLevel  int
-	searchRadius []geometry.Point
-	center       geometry.Point
+	ruleID         string
+	owner          string
+	name           string
+	spec           *spec
+	descr          string
+	meters         float64
+	bbox           geometry.Rect
+	regionIDs      []h3.H3Index
+	regionCellSize int
+	circle         radiusRing
+	center         geometry.Point
+}
+
+func (r *Rule) calc(meters float64) {
+	steps := getSteps(meters)
+	regionLevel := getLevel(meters)
+	circle, bbox := newCircle(r.center.X, r.center.Y, meters, steps)
+	regionIDs := cover(meters, regionLevel, circle)
+	if len(r.regionIDs) != len(regionIDs) {
+		r.regionIDs = make([]h3.H3Index, len(regionIDs))
+	}
+	r.circle = radiusRing{
+		points: circle,
+		rect:   bbox,
+	}
+	r.regionIDs = regionIDs
+	r.bbox = bbox
+	r.regionCellSize = regionLevel
+	r.meters = meters
+}
+
+func (r *Rule) Circle() geometry.Series {
+	return r.circle
+}
+
+func (r *Rule) Owner() string {
+	return r.owner
+}
+
+func (r *Rule) Bounding() geometry.Rect {
+	return r.bbox
+}
+
+func (r *Rule) Center() geometry.Point {
+	return r.center
+}
+
+func (r *Rule) ID() string {
+	return r.ruleID
+}
+
+func (r *Rule) Less(b btree.Item) bool {
+	return r.ruleID < b.(*Rule).ruleID
+}
+
+func (r *Rule) RefIDs() (refs map[string]Token) {
+	for _, n := range r.spec.nodes {
+		nodeRef := n.refIDs()
+		if nodeRef == nil {
+			continue
+		}
+		if refs == nil {
+			refs = make(map[string]Token)
+		}
+		for k, v := range nodeRef {
+			refs[k] = v
+		}
+	}
+	return refs
 }
 
 func (r *Rule) validate() error {
 	if len(r.ruleID) == 0 {
-		return fmt.Errorf("georule/rule: id not specified")
+		return fmt.Errorf("spinix/rule: id not specified")
 	}
 	if len(r.name) == 0 {
-		return fmt.Errorf("georule/rule: %s name not specified", r.ruleID)
-	}
-	if r.expr == nil || len(r.spec) == 0 {
-		return fmt.Errorf("georule/rule: %s spec not specified", r.ruleID)
+		return fmt.Errorf("spinix/rule: %s name not specified", r.ruleID)
 	}
 	if r.meters < minRadiusInMeters {
-		return fmt.Errorf("georule/rule: %s search radius is less than %d meters",
+		return fmt.Errorf("spinix/rule: %s search radius is less than %d meters",
 			r.ruleID, minRadiusInMeters)
 	}
 	if len(r.regionIDs) == 0 {
-		return fmt.Errorf("georule/rule: %s regionIDs not specified", r.ruleID)
+		return fmt.Errorf("spinix/rule: %s region not specified", r.ruleID)
 	}
 	return nil
 }
 
 func NewRule(
 	name string,
+	owner string,
 	spec string,
-	centerLat float64,
-	centerLon float64,
-	radiusInMeters float64,
+	lat float64, lon float64,
+	meters float64,
 ) (*Rule, error) {
 	if len(spec) == 0 {
-		return nil, fmt.Errorf("georule: specification too short")
+		return nil, fmt.Errorf("spinix/rule: specification too short")
 	}
 	if len(spec) > 1024 {
-		return nil, fmt.Errorf("georule: specification too long")
+		return nil, fmt.Errorf("spinix/rule: specification too long")
 	}
-
 	if len(name) == 0 {
-		return nil, fmt.Errorf("georule: name too short")
+		return nil, fmt.Errorf("spinix/rule: name too short")
 	}
 	if len(name) > 180 {
-		return nil, fmt.Errorf("georule: name too long")
+		return nil, fmt.Errorf("spinix/rule: name too long")
 	}
-	if radiusInMeters < minRadiusInMeters {
-		radiusInMeters = minRadiusInMeters
+	if meters < minRadiusInMeters {
+		meters = minRadiusInMeters
 	}
-	if radiusInMeters > 100000000 {
-		radiusInMeters = 100000000
+	if meters > 100000000 {
+		meters = 100000000
 	}
 
-	expr, err := ParseSpec(spec)
+	nodes, err := specFromString(spec)
 	if err != nil {
 		return nil, err
 	}
 
-	steps := getSteps(radiusInMeters)
-	regionLevel := getLevel(radiusInMeters)
-	circle, bbox := newCircle(centerLat, centerLon, radiusInMeters, steps)
-	regionIDs := cover(radiusInMeters, regionLevel, circle)
+	rule := &Rule{
+		ruleID: xid.New().String(),
+		name:   name,
+		owner:  owner,
+		descr:  spec,
+		spec:   nodes,
+		center: geometry.Point{X: lat, Y: lon},
+	}
+	rule.calc(meters)
+	return rule, nil
 
-	return &Rule{
-		ruleID:      xid.New().String(),
-		name:        name,
-		expr:        expr,
-		spec:        spec,
-		center:      geometry.Point{X: centerLat, Y: centerLon},
-		meters:      radiusInMeters,
-		bbox:        bbox,
-		regionIDs:   regionIDs,
-		regionLevel: regionLevel,
-	}, nil
 }
 
 type RuleSnapshot struct {
 	RuleID       string   `json:"ruleID"`
 	Name         string   `json:"name"`
-	Spec         string   `json:"spec"`
+	Spec         string   `json:"specStr"`
 	Latitude     float64  `json:"lat"`
 	Longitude    float64  `json:"lon"`
 	RadiusMeters float64  `json:"radiusMeters"`
 	RegionIDs    []uint64 `json:"regionIDs"`
-	RegionLevel  int      `json:"regionLevel"`
+	RegionLevel  int      `json:"regionCellSize"`
 }
 
-func TakeRuleSnapshot(r *Rule) RuleSnapshot {
+func Snapshot(r *Rule) RuleSnapshot {
 	snapshot := RuleSnapshot{
 		RuleID:       r.ruleID,
 		Name:         r.name,
-		Spec:         r.spec,
+		Spec:         r.descr,
 		Latitude:     r.center.X,
 		Longitude:    r.center.Y,
 		RadiusMeters: r.meters,
-		RegionLevel:  r.regionLevel,
+		RegionLevel:  r.regionCellSize,
 		RegionIDs:    make([]uint64, len(r.regionIDs)),
 	}
 	for i := 0; i < len(r.regionIDs); i++ {
 		snapshot.RegionIDs[i] = uint64(r.regionIDs[i])
 	}
 	return snapshot
-}
-
-func (r Rule) ID() string {
-	return r.ruleID
-}
-
-func (r Rule) Expr() Expr {
-	return r.expr
-}
-
-func (r Rule) Bounds() geometry.Rect {
-	return r.bbox
-}
-
-func (r Rule) Less(b btree.Item) bool {
-	return r.ruleID < b.(*Rule).ruleID
 }
 
 type Stats struct {
@@ -187,13 +220,13 @@ func (r *rules) Walk(ctx context.Context, device *Device, fn WalkRuleFunc) (err 
 }
 
 func (r *rules) Insert(_ context.Context, rule *Rule) (err error) {
-	switch rule.regionLevel {
-	case smallLevel:
+	switch rule.regionCellSize {
+	case smallCellSize:
 		err = r.insertToSmallRegion(rule)
-	case largeLevel:
+	case largeCellSize:
 		err = r.insertToLargeRegion(rule)
 	default:
-		err = fmt.Errorf("georule/rules: region level %d not defined", rule.regionLevel)
+		err = fmt.Errorf("georule/rules: region level %d not defined", rule.regionCellSize)
 	}
 	if err == nil {
 		r.ruleIndex.set(rule)
@@ -207,8 +240,8 @@ func (r *rules) Delete(_ context.Context, ruleID string) error {
 		return err
 	}
 	for _, regionID := range rule.regionIDs {
-		switch rule.regionLevel {
-		case smallLevel:
+		switch rule.regionCellSize {
+		case smallCellSize:
 			region, ok := r.smallRegionIndex.find(regionID)
 			if !ok {
 				continue
@@ -217,7 +250,7 @@ func (r *rules) Delete(_ context.Context, ruleID string) error {
 			if region.isEmpty() {
 				r.smallRegionIndex.delete(regionID)
 			}
-		case largeLevel:
+		case largeCellSize:
 			region, ok := r.largeRegionIndex.find(regionID)
 			if !ok {
 				continue
@@ -256,7 +289,7 @@ func (r *rules) insertToSmallRegion(rule *Rule) error {
 
 func (r *rules) walkSmallRegion(ctx context.Context, device *Device, fn WalkRuleFunc) error {
 	cord := h3.GeoCoord{Latitude: device.Latitude, Longitude: device.Longitude}
-	regionID := h3.FromGeo(cord, smallLevel)
+	regionID := h3.FromGeo(cord, smallCellSize)
 	region, ok := r.smallRegionIndex.find(regionID)
 	if !ok {
 		return nil
@@ -266,7 +299,7 @@ func (r *rules) walkSmallRegion(ctx context.Context, device *Device, fn WalkRule
 
 func (r *rules) walkLargeRegion(ctx context.Context, device *Device, fn WalkRuleFunc) error {
 	cord := h3.GeoCoord{Latitude: device.Latitude, Longitude: device.Longitude}
-	regionID := h3.FromGeo(cord, largeLevel)
+	regionID := h3.FromGeo(cord, largeCellSize)
 	region, ok := r.largeRegionIndex.find(regionID)
 	if !ok {
 		return nil
@@ -365,16 +398,14 @@ func newSmallRegionIndex() *smallRegionIndex {
 
 type rulesIndex []*ruleBucket
 
-const ruleBucketCount = 32
-
 type ruleBucket struct {
 	sync.RWMutex
 	index map[string]*Rule
 }
 
 func newRuleIndex() rulesIndex {
-	buckets := make([]*ruleBucket, ruleBucketCount)
-	for i := 0; i < ruleBucketCount; i++ {
+	buckets := make([]*ruleBucket, numBucket)
+	for i := 0; i < numBucket; i++ {
 		buckets[i] = &ruleBucket{
 			index: make(map[string]*Rule),
 		}
@@ -447,7 +478,7 @@ func (r *ruleSmallRegion) delete(rule *Rule) {
 func (r *ruleSmallRegion) insertRule(rule *Rule) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	bbox := rule.Bounds()
+	bbox := rule.Bounding()
 	r.counter++
 	r.index.Insert(
 		[2]float64{bbox.Min.X, bbox.Min.Y},

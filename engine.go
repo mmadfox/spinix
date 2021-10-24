@@ -2,7 +2,12 @@ package spinix
 
 import (
 	"context"
+	"fmt"
 	"time"
+
+	"github.com/tidwall/geojson/geometry"
+
+	"github.com/tidwall/geojson"
 
 	"github.com/rs/xid"
 )
@@ -54,15 +59,19 @@ type Event struct {
 	Device   Device       `json:"device"`
 	DateTime int64        `json:"dateTime"`
 	Rule     RuleSnapshot `json:"rule"`
+	Match    []Match      `json:"match"`
 }
 
-func MakeEvent(d *Device, r *Rule) Event {
-	return Event{
+func MakeEvent(d *Device, r *Rule, m []Match) Event {
+	event := Event{
 		ID:       xid.New().String(),
 		Device:   *d,
-		Rule:     TakeRuleSnapshot(r),
+		Rule:     Snapshot(r),
 		DateTime: time.Now().Unix(),
+		Match:    make([]Match, len(m)),
 	}
+	copy(event.Match, m)
+	return event
 }
 
 func (e *Engine) Objects() Objects {
@@ -81,155 +90,103 @@ func (e *Engine) States() States {
 	return e.refs.states
 }
 
-func (e *Engine) Detect(ctx context.Context, device *Device) ([]Event, error) {
-	return nil, nil
+func (e *Engine) AddObject(ctx context.Context, objectID string, object geojson.Object) error {
+	if object == nil {
+		return fmt.Errorf("spinix/engine: object %s is not defined", objectID)
+	}
+	return e.refs.objects.Add(ctx, objectID, object)
 }
 
-//func (e *Engine) Detect(ctx context.Context, device *Device) ([]Event, error) {
-//	prevState, err := e.devices.Lookup(ctx, device.IMEI)
-//	if err != nil {
-//		err = nil
-//		prevState = device
-//	}
-//	events := make([]Event, 0, 4)
-//	if err := e.rules.Walk(ctx, device,
-//		func(ctx context.Context, rule *Rule, err error) error {
-//			if err != nil {
-//				return err
-//			}
-//			nodes, err := e.invokeSpec(ctx, rule.nodes, prevState, device)
-//			if err != nil {
-//				return err
-//			}
-//			switch n := nodes.(type) {
-//			case *BooleanLit:
-//				if !n.Value {
-//					return nil
-//				}
-//				events = append(events, MakeEvent(device, rule))
-//			default:
-//				return fmt.Errorf("georule: unexpected result of the root expression: %#v", nodes)
-//			}
-//			return nil
-//		}); err != nil {
-//		return nil, err
-//	}
-//	if err := e.devices.InsertOrReplace(ctx, device); err != nil {
-//		return nil, err
-//	}
-//	return events, nil
-//}
-//
-//func (e *Engine) FindRule(ctx context.Context, ruleID string) (*Rule, error) {
-//	return e.rules.FindOne(ctx, ruleID)
-//}
-//
-//func (e *Engine) HasRule(ctx context.Context, ruleID string) bool {
-//	rule, err := e.rules.FindOne(ctx, ruleID)
-//	if err == nil && rule != nil {
-//		return true
-//	}
-//	return false
-//}
-//
-//func (e *Engine) RemoveRule(ctx context.Context, ruleID string) error {
-//	return e.rules.Delete(ctx, ruleID)
-//}
-//
-//func (e *Engine) InsertRule(ctx context.Context, rule *Rule) error {
-//	if err := rule.validate(); err != nil {
-//		return err
-//	}
-//	refIDs := getRefVars(rule.nodes)
-//	for _, rid := range refIDs {
-//		object, err := e.objects.Lookup(ctx, rid)
-//		if err != nil {
-//			return err
-//		}
-//		if !rule.bbox.ContainsRect(object.Rect()) {
-//			return fmt.Errorf("georule: the radius of the rule %.2f does not cover the object %s",
-//				rule.meters, rid)
-//		}
-//	}
-//	if err := e.rules.Insert(ctx, rule); err != nil {
-//		return err
-//	}
-//	return nil
-//}
-//
-//func (e *Engine) InvokeSpec(ctx context.Context, nodes Expr, device *Device) (Expr, error) {
-//	return e.invokeSpec(ctx, nodes, device, device)
-//}
-//
-//func (e *Engine) invokeSpec(ctx context.Context, nodes Expr, prevState, currentState *Device) (Expr, error) {
-//	var (
-//		err    error
-//		lv, rv Expr
-//	)
-//
-//	switch n := nodes.(type) {
-//	case *ParenExpr:
-//		return e.invokeSpec(ctx, nodes, prevState, currentState)
-//	case *BinaryExpr:
-//		lv, err = e.invokeSpec(ctx, n.LHS, prevState, currentState)
-//		if err != nil {
-//			return falseExpr, err
-//		}
-//		rv, err = e.invokeSpec(ctx, n.RHS, prevState, currentState)
-//		if err != nil {
-//			return falseExpr, err
-//		}
-//		return e.applyOperator(ctx, n.Op, lv, rv, prevState, currentState)
-//	case *VarLit:
-//		switch n.Value {
-//		case VAR_SPEED:
-//			return &FloatLit{Value: currentState.Speed}, nil
-//		case VAR_BATTERY:
-//			return &FloatLit{Value: currentState.BatteryCharge}, nil
-//		case VAR_TEMPERATURE:
-//			return &FloatLit{Value: currentState.Temperature}, nil
-//		case VAR_HUMIDITY:
-//			return &FloatLit{Value: currentState.Humidity}, nil
-//		case VAR_LUMONOSITY:
-//			return &FloatLit{Value: currentState.Luminosity}, nil
-//		case VAR_PRESSURE:
-//			return &FloatLit{Value: currentState.Pressure}, nil
-//		case VAR_FUELLEVEL:
-//			return &FloatLit{Value: currentState.FuelLevel}, nil
-//		case VAR_MODEL:
-//			return &StringLit{Value: currentState.Model}, nil
-//		case VAR_BRAND:
-//			return &StringLit{Value: currentState.Brand}, nil
-//		case VAR_OWNER:
-//			return &StringLit{Value: currentState.Owner}, nil
-//		case VAR_EMEI:
-//			return &StringLit{Value: currentState.IMEI}, nil
-//		case VAR_STATUS:
-//			return &IntLit{Value: currentState.Status}, nil
-//		}
-//	case *CallExpr:
-//		_ = n
-//	default:
-//		_ = n
-//	}
-//	return nodes, nil
-//}
-//
-//func getRefVars(nodes Expr) []string {
-//	vars := make([]string, 0, 2)
-//	WalkFunc(nodes, func(nodes Expr) {
-//		switch typ := nodes.(type) {
-//		case *CallExpr:
-//			if typ.Fun.IsGeospatial() {
-//				for _, arg := range typ.Args {
-//					lit, ok := arg.(*StringLit)
-//					if !ok {
-//						continue
-//					}
-//					vars = append(vars, lit.Value[1:])
-//				}
-//			}
-//		}
-//	})
-//	return vars
-//}
+func (e *Engine) AddRule(ctx context.Context, name string, owner string, spec string, lat float64, lon float64, meters float64) (*Rule, error) {
+	if meters <= 0 {
+		meters = 3000
+	}
+	rule, err := NewRule(name, owner, spec, lat, lon, meters)
+	if err != nil {
+		return nil, err
+	}
+	refs := rule.RefIDs()
+	var ok bool
+	if refs != nil {
+		for i := 0; i < 10; i++ {
+			var bbox geometry.Rect
+			circle := &geometry.Poly{Exterior: rule.Circle()}
+			for refID, tok := range refs {
+				if !isObjectToken(tok) || tok == DEVICES {
+					continue
+				}
+				object, err := e.refs.objects.Lookup(ctx, refID)
+				if err != nil {
+					return nil, err
+				}
+				bbox = e.calcBounding(bbox, object.Rect())
+			}
+			if circle.ContainsRect(bbox) {
+				ok = true
+				break
+			}
+			rule.calc(rule.meters * 2)
+		}
+		if !ok {
+			return nil, fmt.Errorf("spinix/engine: the radius of the rule does not cover geoobjects")
+		}
+	}
+	if err := e.refs.rules.Insert(ctx, rule); err != nil {
+		return nil, err
+	}
+	return rule, nil
+}
+
+func (e *Engine) Detect(ctx context.Context, device *Device) (events []Event, err error) {
+	err = e.refs.rules.Walk(ctx, device,
+		func(ctx context.Context, rule *Rule, err error) error {
+			if err != nil {
+				return err
+			}
+			match, ok, err := rule.spec.evaluate(ctx, rule.ruleID, device, e.refs)
+			if err != nil {
+				return err
+			}
+			if ok {
+				if events == nil {
+					events = make([]Event, 0, 2)
+				}
+				events = append(events, MakeEvent(device, rule, match))
+			}
+			return nil
+		})
+	if err == nil {
+		if err := e.refs.devices.InsertOrReplace(ctx, device); err != nil {
+			return nil, err
+		}
+	}
+	return
+}
+
+func (e *Engine) calcBounding(a, b geometry.Rect) (bbox geometry.Rect) {
+	if a.Min.X == 0 && a.Min.Y == 0 &&
+		a.Max.X == 0 && a.Max.Y == 0 {
+		return b
+	}
+	if b.Min.X < a.Min.X {
+		bbox.Min.X = b.Min.X
+	} else {
+		bbox.Min.X = a.Min.X
+	}
+	if b.Max.X > a.Max.X {
+		bbox.Max.X = b.Max.X
+	} else {
+		bbox.Max.X = a.Max.X
+	}
+	if b.Min.Y < a.Min.Y {
+		bbox.Min.Y = b.Min.Y
+	} else {
+		bbox.Min.Y = a.Min.Y
+	}
+	if b.Max.Y > a.Max.Y {
+		bbox.Max.Y = b.Max.Y
+	} else {
+		bbox.Max.Y = a.Max.Y
+	}
+	return
+}

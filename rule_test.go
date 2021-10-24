@@ -62,7 +62,7 @@ package spinix
 //			lat:     42.932296,
 //			lon:     -72.2525488,
 //			radius:  120000, // meters
-//			level:   largeLevel,
+//			level:   largeCellSize,
 //			objects: 1,
 //		},
 //		{
@@ -71,7 +71,7 @@ package spinix
 //			lat:     42.9339633,
 //			lon:     -72.3872273,
 //			radius:  8000, // meters
-//			level:   smallLevel,
+//			level:   smallCellSize,
 //			objects: 2, // large + small
 //		},
 //		{
@@ -80,21 +80,21 @@ package spinix
 //			lat:     42.7576506,
 //			lon:     -72.0906276,
 //			radius:  800, // meters
-//			level:   smallLevel,
+//			level:   smallCellSize,
 //			objects: 2, // large + small
 //		},
 //	}
 //	for _, tc := range testCases {
 //		circle, bbox := newCircle(tc.lat, tc.lon, tc.radius, getSteps(tc.radius))
-//		regionLevel := getLevel(tc.radius)
-//		regionIDs := cover(tc.radius, regionLevel, circle)
+//		regionCellSize := getLevel(tc.radius)
+//		regionIDs := cover(tc.radius, regionCellSize, circle)
 //		if err := rules.Insert(ctx, &Rule{
 //			ruleID:      xid.New().String(),
 //			bbox:        bbox,
 //			name:        tc.name,
 //			center:      geometry.Point{X: tc.lat, Y: tc.lon},
 //			meters:      tc.radius,
-//			regionLevel: regionLevel,
+//			regionCellSize: regionCellSize,
 //			regionIDs:   regionIDs,
 //		}); err != nil {
 //			t.Fatal(err)

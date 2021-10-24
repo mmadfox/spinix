@@ -42,7 +42,7 @@ type Device struct {
 	Pressure      float64    `json:"pressure"`
 	FuelLevel     float64    `json:"fuelLevel"`
 	RegionID      h3.H3Index `json:"regionID"`
-	RegionLevel   int        `json:"regionLevel"`
+	RegionLevel   int        `json:"regionCellSize"`
 }
 
 type devices struct {
@@ -131,7 +131,7 @@ func (d *devices) Nearby(
 	lat, lon, meters float64,
 	fn func(ctx context.Context, d *Device) error) (err error) {
 	points, bbox := newCircle(lat, lon, meters, 6)
-	regionIDs := cover(meters, smallLevel, points)
+	regionIDs := cover(meters, smallCellSize, points)
 	next := true
 	for _, regionID := range regionIDs {
 		d.mu.RLock()
@@ -168,7 +168,7 @@ func (d *devices) Nearby(
 }
 
 func (d *devices) identify(device *Device) {
-	device.RegionLevel = smallLevel
+	device.RegionLevel = smallCellSize
 	device.RegionID = h3.FromGeo(h3.GeoCoord{
 		Latitude:  device.Latitude,
 		Longitude: device.Longitude,

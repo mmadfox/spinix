@@ -1,6 +1,7 @@
 package spinix
 
 import (
+	"context"
 	"strconv"
 	"strings"
 	"testing"
@@ -10,184 +11,83 @@ import (
 	"github.com/tidwall/geojson/geometry"
 )
 
-//func TestInvokeSpecWithNearbyPolygon(t *testing.T) {
-//	engine := New()
-//	device := &Device{
-//		Latitude:  42.9236482,
-//		Longitude: -72.2793631,
-//	}
-//	ctx := context.Background()
-//	poly1 := polyFromString(`
-//-72.2801948, 42.9242649
-//-72.2781879, 42.9241588
-//-72.2781611, 42.9235500
-//-72.2784401, 42.9228154
-//-72.2797280, 42.9227368
-//-72.2803397, 42.9228782
-//-72.2806133, 42.9232278
-//-72.2805328, 42.9237542
-//-72.2801894, 42.9242688
-//`)
-//	poly2 := polyFromString(`
-//-72.2800882, 42.9299351
-//-72.2798950, 42.9290200
-//-72.2788326, 42.9290671
-//-72.2786233, 42.9294442
-//-72.2787521, 42.9298527
-//-72.2790848, 42.9299901
-//-72.2800989, 42.9299391
-//-72.2800882, 42.9299351
-//`)
-//	if err := engine.Map().Add(ctx, "poly1", poly1); err != nil {
-//		t.Fatal(err)
-//	}
-//	if err := engine.Map().Add(ctx, "poly2", poly2); err != nil {
-//		t.Fatal(err)
-//	}
-//	spec, err := ParseSpec(`device(@) nearby polygon(@poly1, @poly2) on distance 400`)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	nodes, err := engine.InvokeSpec(ctx, spec, device)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	assertSpec(t, nodes, spec.String())
-//}
-//
-//func TestInvokeSpecWithNearbyDevices(t *testing.T) {
-//	engine := New()
-//	ctx := context.Background()
-//	devices := []*Device{
-//		{
-//			IMEI:      "device1",
-//			Latitude:  42.9294049,
-//			Longitude: -72.2791384,
-//		},
-//		{
-//			IMEI:      "device2",
-//			Latitude:  42.929291,
-//			Longitude: -72.2790794,
-//		},
-//		{
-//			IMEI:      "device3",
-//			Latitude:  42.9290475,
-//			Longitude: -72.2794335,
-//		},
-//	}
-//	for _, device := range devices {
-//		if err := engine.Devices().InsertOrReplace(ctx, device); err != nil {
-//			t.Fatal(err)
-//		}
-//	}
-//
-//	spec, err := ParseSpec(`device(@) nearby device(device1, device2) on distance 400`)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	nodes, err := engine.InvokeSpec(ctx, spec, devices[0])
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	assertSpec(t, nodes, spec.String())
-//
-//	spec, err = ParseSpec(`device(device1, device2) nearby device(device3) on distance 1400`)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	nodes, err = engine.InvokeSpec(ctx, spec, devices[0])
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	assertSpec(t, nodes, spec.String())
-//}
-//
-//func BenchmarkInvokeSpecWithNearbyPolygon(b *testing.B) {
-//	engine := New()
-//	device := &Device{
-//		Latitude:  42.9236482,
-//		Longitude: -72.2793631,
-//	}
-//	ctx := context.Background()
-//	poly1 := polyFromString(`
-//-72.2801948, 42.9242649
-//-72.2781879, 42.9241588
-//-72.2781611, 42.9235500
-//-72.2784401, 42.9228154
-//-72.2797280, 42.9227368
-//-72.2803397, 42.9228782
-//-72.2806133, 42.9232278
-//-72.2805328, 42.9237542
-//-72.2801894, 42.9242688
-//`)
-//	poly2 := polyFromString(`
-//-72.2800882, 42.9299351
-//-72.2798950, 42.9290200
-//-72.2788326, 42.9290671
-//-72.2786233, 42.9294442
-//-72.2787521, 42.9298527
-//-72.2790848, 42.9299901
-//-72.2800989, 42.9299391
-//-72.2800882, 42.9299351
-//`)
-//	if err := engine.Map().Add(ctx, "poly1", poly1); err != nil {
-//		b.Fatal(err)
-//	}
-//	if err := engine.Map().Add(ctx, "poly2", poly2); err != nil {
-//		b.Fatal(err)
-//	}
-//	spec, err := ParseSpec(`device(@) nearby polygon(@poly1, @poly2) on distance 400`)
-//	if err != nil {
-//		b.Fatal(err)
-//	}
-//	b.ResetTimer()
-//
-//	for i := 0; i < b.N; i++ {
-//		_, err := engine.InvokeSpec(ctx, spec, device)
-//		if err != nil {
-//			b.Fatal(err)
-//		}
-//	}
-//}
-//
-//func BenchmarkInvokeSpecWithNearbyDevices(b *testing.B) {
-//	engine := New()
-//	ctx := context.Background()
-//	devices := []*Device{
-//		{
-//			IMEI:      "device1",
-//			Latitude:  42.9294049,
-//			Longitude: -72.2791384,
-//		},
-//		{
-//			IMEI:      "device2",
-//			Latitude:  42.929291,
-//			Longitude: -72.2790794,
-//		},
-//		{
-//			IMEI:      "device3",
-//			Latitude:  42.9290475,
-//			Longitude: -72.2794335,
-//		},
-//	}
-//	for _, device := range devices {
-//		if err := engine.Devices().InsertOrReplace(ctx, device); err != nil {
-//			b.Fatal(err)
-//		}
-//	}
-//
-//	spec, err := ParseSpec(`device(device1, device2) nearby device(device3) on distance 1400`)
-//	if err != nil {
-//		b.Fatal(err)
-//	}
-//	b.ResetTimer()
-//	for i := 0; i < b.N; i++ {
-//		_, err := engine.InvokeSpec(ctx, spec, devices[0])
-//		if err != nil {
-//			b.Fatal(err)
-//		}
-//	}
-//}
+func TestEngineAddRule(t *testing.T) {
+	poly1 := polyFromString(`
+-72.2863612, 42.9269489
+-72.2864041, 42.9256605
+-72.2844090, 42.9256134
+-72.2843018, 42.9271532
+-72.2863397, 42.9269646
+-72.2863612, 42.9269489
+`)
+	poly2 := polyFromString(`
+-72.2809119, 42.9210564
+-72.2786809, 42.9195165
+-72.2774581, 42.9205536
+-72.2808905, 42.9210721
+-72.2809119, 42.9210564
+`)
+
+	engine := New()
+	ctx := context.Background()
+
+	if err := engine.AddObject(ctx, "poly1", poly1); err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.AddObject(ctx, "poly2", poly2); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := engine.AddRule(
+		ctx,
+		"some name",
+		"id",
+		`device intersects polygon(@poly1) or device intersects polygon(@poly2)`,
+		42.9284992,
+		-72.2775902,
+		100,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	events, err := engine.Detect(ctx, &Device{Latitude: 42.9262625, Longitude: -72.2848860})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = events
+}
+
+func TestEngineDetect(t *testing.T) {
+	testCases := []struct {
+		name     string
+		spec     string
+		lat, lon float64
+		meters   float64
+		match    []Match
+	}{
+		{
+			name:   "rule-1",
+			spec:   `device intersects polygon(@poly1)`,
+			lat:    42.9284835,
+			lon:    -72.2775688,
+			meters: 1000,
+		},
+	}
+
+	engine := New()
+	ctx := context.Background()
+	owner := "owner"
+	for _, tc := range testCases {
+		rule, err := NewRule(tc.name, owner, tc.spec, tc.lat, tc.lon, tc.meters)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := engine.Rules().Insert(ctx, rule); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
 
 func assertSpec(t *testing.T, expr Expr, spec string) {
 	switch typ := expr.(type) {

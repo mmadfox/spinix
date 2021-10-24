@@ -25,6 +25,7 @@ const (
 )
 
 type evaluater interface {
+	refIDs() map[string]Token
 	evaluate(ctx context.Context, device *Device, state *State, ref reference) (Match, error)
 }
 
@@ -36,11 +37,11 @@ type reference struct {
 }
 
 type Match struct {
-	Ok       bool
-	Left     Decl
-	Right    Decl
-	Operator Token
-	Pos      Pos
+	Ok       bool  `json:"ok"`
+	Left     Decl  `json:"left"`
+	Right    Decl  `json:"right"`
+	Operator Token `json:"operator"`
+	Pos      Pos   `json:"pos"`
 }
 
 type Decl struct {
@@ -906,7 +907,7 @@ func e2near(left, right Expr) (evaluater, error) {
 				node.device.Value = 1000
 			}
 		default:
-			return node, fmt.Errorf("spinix/runtime: invalid spec => %s NEAR %s, pos=%v",
+			return node, fmt.Errorf("spinix/runtime: invalid specStr => %s NEAR %s, pos=%v",
 				lhs, rhs, lhs.Pos)
 		}
 	case *ObjectLit:
@@ -916,7 +917,7 @@ func e2near(left, right Expr) (evaluater, error) {
 			node.device = rhs
 			node.pos = rhs.Pos
 		default:
-			return node, fmt.Errorf("spinix/runtime: invalid spec => %s NEAR %s, pos=%v",
+			return node, fmt.Errorf("spinix/runtime: invalid specStr => %s NEAR %s, pos=%v",
 				lhs, rhs, lhs.Pos)
 		}
 	case *DevicesLit:
@@ -926,23 +927,23 @@ func e2near(left, right Expr) (evaluater, error) {
 			node.device = rhs
 			node.pos = rhs.Pos
 		default:
-			return node, fmt.Errorf("spinix/runtime: invalid spec => %s NEAR %s, pos=%v",
+			return node, fmt.Errorf("spinix/runtime: invalid specStr => %s NEAR %s, pos=%v",
 				lhs, rhs, lhs.Pos)
 		}
 	default:
-		return node, fmt.Errorf("spinix/runtime: invalid spec => %s NEAR %s",
+		return node, fmt.Errorf("spinix/runtime: invalid specStr => %s NEAR %s",
 			left, right)
 	}
 
 	switch node.device.Unit {
 	case DistanceMeters, DistanceKilometers:
 		if node.device.Value <= 0 {
-			return node, fmt.Errorf("spinix/runtime: invalid distance value in spec => %s, operator=%v, pos=%v",
+			return node, fmt.Errorf("spinix/runtime: invalid distance value in specStr => %s, operator=%v, pos=%v",
 				node.device, NEAR, node.device.Pos)
 		}
 	}
 	if node.devices != nil && node.object != nil && node.other != nil {
-		return node, fmt.Errorf("spinix/runtime: invalid spec => %s NEAR %s",
+		return node, fmt.Errorf("spinix/runtime: invalid specStr => %s NEAR %s",
 			left, right)
 	}
 	return node, nil
@@ -958,6 +959,22 @@ type nearOp struct {
 	other   *DeviceLit
 
 	pos Pos
+}
+
+func (n nearOp) refIDs() (refs map[string]Token) {
+	if n.object != nil && len(n.object.Ref) > 0 {
+		refs = make(map[string]Token)
+		for i := 0; i < len(n.object.Ref); i++ {
+			refs[n.object.Ref[i]] = n.object.Kind
+		}
+	}
+	if n.devices != nil && len(n.devices.Ref) > 0 {
+		refs = make(map[string]Token)
+		for i := 0; i < len(n.devices.Ref); i++ {
+			refs[n.devices.Ref[i]] = n.devices.Kind
+		}
+	}
+	return
 }
 
 func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
@@ -1156,6 +1173,8 @@ type rangeDateTimeOp struct {
 	not     bool
 }
 
+func (n rangeDateTimeOp) refIDs() (refs map[string]Token) { return }
+
 func (n rangeDateTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	ts := values.dateTime()
@@ -1184,6 +1203,8 @@ type rangeTimeOp struct {
 	not     bool
 }
 
+func (n rangeTimeOp) refIDs() (refs map[string]Token) { return }
+
 func (n rangeTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	ts := values.dateTime()
@@ -1210,6 +1231,8 @@ type rangeIntOp struct {
 	not     bool
 }
 
+func (n rangeIntOp) refIDs() (refs map[string]Token) { return }
+
 func (n rangeIntOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	v := values.intVal(n.keyword)
@@ -1235,6 +1258,8 @@ type rangeFloatOp struct {
 	not     bool
 }
 
+func (n rangeFloatOp) refIDs() (refs map[string]Token) { return }
+
 func (n rangeFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	v := values.floatVal(n.keyword)
@@ -1258,6 +1283,8 @@ type inFloatOp struct {
 	not     bool
 }
 
+func (n inFloatOp) refIDs() (refs map[string]Token) { return }
+
 func (n inFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	value := mapper{device: d}.floatVal(n.keyword)
 	_, found := n.values[value]
@@ -1279,6 +1306,16 @@ type intersectsObjectOp struct {
 	right *ObjectLit
 	pos   Pos
 	not   bool
+}
+
+func (n intersectsObjectOp) refIDs() (refs map[string]Token) {
+	if n.right != nil && len(n.right.Ref) > 0 {
+		refs = make(map[string]Token)
+		for i := 0; i < len(n.right.Ref); i++ {
+			refs[n.right.Ref[i]] = n.right.Kind
+		}
+	}
+	return
 }
 
 func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
@@ -1354,6 +1391,16 @@ type intersectsDevicesOp struct {
 	right *DevicesLit
 	pos   Pos
 	not   bool
+}
+
+func (n intersectsDevicesOp) refIDs() (refs map[string]Token) {
+	if n.right != nil && len(n.right.Ref) > 0 {
+		refs = make(map[string]Token)
+		for i := 0; i < len(n.right.Ref); i++ {
+			refs[n.right.Ref[i]] = n.right.Kind
+		}
+	}
+	return
 }
 
 func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
@@ -1484,6 +1531,16 @@ type inObjectOp struct {
 	not    bool
 }
 
+func (n inObjectOp) refIDs() (refs map[string]Token) {
+	if n.object != nil && len(n.object.Ref) > 0 {
+		refs = make(map[string]Token)
+		for i := 0; i < len(n.object.Ref); i++ {
+			refs[n.object.Ref[i]] = n.object.Kind
+		}
+	}
+	return
+}
+
 func (n inObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
 	match.Left.Keyword = DEVICE
 	match.Right.Keyword = n.object.Kind
@@ -1543,6 +1600,8 @@ type inIntOp struct {
 	not     bool
 }
 
+func (n inIntOp) refIDs() (refs map[string]Token) { return }
+
 func (n inIntOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	value := mapper{device: d}.intVal(n.keyword)
 	_, found := n.values[value]
@@ -1566,6 +1625,8 @@ type inStringOp struct {
 	not     bool
 }
 
+func (n inStringOp) refIDs() (refs map[string]Token) { return }
+
 func (n inStringOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	value := mapper{device: d}.stringVal(n.keyword)
 	_, found := n.values[value]
@@ -1587,6 +1648,16 @@ type equalObjectOp struct {
 	left  *DeviceLit
 	right *ObjectLit
 	pos   Pos
+}
+
+func (n equalObjectOp) refIDs() (refs map[string]Token) {
+	if n.right != nil && len(n.right.Ref) > 0 {
+		refs = make(map[string]Token)
+		for i := 0; i < len(n.right.Ref); i++ {
+			refs[n.right.Ref[i]] = n.right.Kind
+		}
+	}
+	return
 }
 
 func (n equalObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
@@ -1643,6 +1714,16 @@ type equalDevicesOp struct {
 	pos   Pos
 }
 
+func (n equalDevicesOp) refIDs() (refs map[string]Token) {
+	if n.right != nil && len(n.right.Ref) > 0 {
+		refs = make(map[string]Token)
+		for i := 0; i < len(n.right.Ref); i++ {
+			refs[n.right.Ref[i]] = n.right.Kind
+		}
+	}
+	return
+}
+
 func (n equalDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
 	match.Left.Keyword = DEVICE
 	match.Right.Keyword = DEVICES
@@ -1696,6 +1777,8 @@ type equalTimeOp struct {
 	pos     Pos
 }
 
+func (n equalTimeOp) refIDs() (refs map[string]Token) { return }
+
 func (n equalTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	ts := values.dateTime()
@@ -1728,6 +1811,8 @@ type equalStrOp struct {
 	pos     Pos
 }
 
+func (n equalStrOp) refIDs() (refs map[string]Token) { return }
+
 func (n equalStrOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	switch n.op {
@@ -1758,6 +1843,8 @@ type equalIntOp struct {
 	pos     Pos
 }
 
+func (n equalIntOp) refIDs() (refs map[string]Token) { return }
+
 func (n equalIntOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
 	switch n.op {
@@ -1787,6 +1874,8 @@ type equalFloatOp struct {
 	op      Token
 	pos     Pos
 }
+
+func (n equalFloatOp) refIDs() (refs map[string]Token) { return }
 
 func (n equalFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
 	values := mapper{device: d}
@@ -1824,9 +1913,9 @@ func getSteps(meters float64) (steps int) {
 }
 
 func getLevel(meters float64) (level int) {
-	level = smallLevel
+	level = smallCellSize
 	if !isSmallRadius(meters) {
-		level = largeLevel
+		level = largeCellSize
 	}
 	return
 }

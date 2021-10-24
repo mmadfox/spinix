@@ -136,7 +136,7 @@ func (p *Parser) parseTriggerLit() (Expr, error) {
 		}
 		eof := p.s.NextTok()
 		if eof != EOF {
-			return nil, p.error(TRIGGER, "eof", "literal must be at the end of the spec")
+			return nil, p.error(TRIGGER, "eof", "literal must be at the end of the specStr")
 		}
 		return &TriggerLit{Repeat: RepeatEvery, Value: dur}, nil
 	} else if tok == ILLEGAL && lowlit == "once" {
@@ -160,7 +160,7 @@ func (p *Parser) parseTriggerLit() (Expr, error) {
 		}
 		eof := p.s.NextTok()
 		if eof != EOF {
-			return nil, p.error(TRIGGER, "eof", "literal must be at the end of the spec")
+			return nil, p.error(TRIGGER, "eof", "literal must be at the end of the specStr")
 		}
 		return &TriggerLit{Repeat: RepeatTimes, Times: v, Interval: dur}, nil
 	} else {
