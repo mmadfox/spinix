@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 )
 
 var ErrStateNotFound = errors.New("spinix/states: state not found")
@@ -115,11 +114,15 @@ func (s StateID) String() string {
 }
 
 type State struct {
-	id         StateID
-	LastSeen   int64
-	NumOfHits  int
-	TriggerDur time.Duration
-	ObjectDur  map[string]time.Duration
+	id        StateID
+	LastSeen  int64
+	NumOfHits int
+	Objects   map[string]int64
+}
+
+func (s *State) Reset() {
+	s.LastSeen = 0
+	s.NumOfHits = 0
 }
 
 func (s *State) ID() StateID {
@@ -128,8 +131,8 @@ func (s *State) ID() StateID {
 
 func NewState(id StateID) *State {
 	return &State{
-		id:        id,
-		ObjectDur: make(map[string]time.Duration),
+		id:      id,
+		Objects: make(map[string]int64),
 	}
 }
 

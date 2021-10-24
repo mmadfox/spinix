@@ -78,6 +78,36 @@ func specFromString(s string) (*spec, error) {
 	return exprToSpec(expr)
 }
 
+func (s *spec) changeState(state *State, device *Device) {
+	state.LastSeen = device.DateTime
+	switch s.repeat {
+	case RepeatTimes, RepeatOnce:
+		state.NumOfHits++
+	}
+}
+
+func (s *spec) testTrigger(state *State, device *Device) bool {
+	switch s.repeat {
+	case RepeatEvery:
+		if state.LastSeen == 0 {
+			return true
+		}
+		currTime := mapper{device: device}.dateTime()
+		dur := currTime.Unix() - state.LastSeen
+		return dur > int64(s.delay.Seconds())
+	case RepeatTimes:
+		currTime := mapper{device: device}.dateTime()
+		dur := currTime.Unix() - state.LastSeen
+		if dur < int64(s.interval.Seconds()) {
+			return false
+		}
+		return state.NumOfHits < s.times
+	case RepeatOnce:
+		return state.NumOfHits == 0
+	}
+	return true
+}
+
 func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r reference) (matches []Match, ok bool, err error) {
 	if d == nil {
 		return matches, false, nil
@@ -101,6 +131,10 @@ func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r referen
 				return
 			}
 		}
+
+		if ok := s.testTrigger(st, d); !ok {
+			return nil, false, nil
+		}
 	}
 
 	if len(s.nodes) == 1 {
@@ -109,6 +143,7 @@ func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r referen
 			return nil, false, err
 		}
 		if s.isStateful {
+			s.changeState(st, d)
 			if err = r.states.Update(ctx, st); err != nil {
 				return nil, false, err
 			}
@@ -170,6 +205,7 @@ func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r referen
 		index++
 	}
 	if s.isStateful {
+		s.changeState(st, d)
 		err = r.states.Update(ctx, st)
 	}
 	return

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"testing"
+	"time"
 )
 
 var poly = polyFromString(`
@@ -14,6 +15,35 @@ var poly = polyFromString(`
 -72.2808218, 42.9280226
 -72.2808218, 42.9279834
 `)
+
+func TestTriggerRepeatEvery(t *testing.T) {
+	t.Skip()
+	ctx := context.Background()
+	refs := defaultRefs()
+	_ = refs.objects.Add(ctx, "poly", poly)
+	spec, err := specFromString(`device intersects objects(@poly) :trigger every 2s`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var trigger int
+	for i := 0; i < 7; i++ {
+		_, ok, err := spec.evaluate(ctx, "test", &Device{
+			IMEI:      "one",
+			Latitude:  42.927457,
+			DateTime:  time.Now().Unix(),
+			Longitude: -72.2798688}, refs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ok {
+			trigger++
+		}
+		time.Sleep(time.Second)
+	}
+	if trigger != 3 {
+		t.Fatalf("got %d, expected 3", trigger)
+	}
+}
 
 func TestNearOpDeviceObjectWithoutRadius(t *testing.T) {
 	ctx := context.Background()
