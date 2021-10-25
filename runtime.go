@@ -59,15 +59,15 @@ func defaultRefs() reference {
 }
 
 type spec struct {
-	nodes      []evaluater
-	ops        []Token
-	pos        Pos
-	isStateful bool
-	reset      time.Duration
-	times      int
-	repeat     RepeatMode
-	interval   time.Duration
-	delay      time.Duration
+	nodes         []evaluater
+	ops           []Token
+	pos           Pos
+	isStateful    bool
+	resetInterval time.Duration
+	times         int
+	repeat        RepeatMode
+	interval      time.Duration
+	delay         time.Duration
 }
 
 func specFromString(s string) (*spec, error) {
@@ -78,32 +78,32 @@ func specFromString(s string) (*spec, error) {
 	return exprToSpec(expr)
 }
 
-func (s *spec) changeState(state *State, device *Device) {
-	state.LastSeen = device.DateTime
+func (s *spec) changeState(state *State) {
+	state.UpdateLastSeenTime()
 	switch s.repeat {
 	case RepeatTimes, RepeatOnce:
-		state.NumOfHits++
+		state.HitIncr()
 	}
 }
 
-func (s *spec) testTrigger(state *State, device *Device) bool {
+func (s *spec) checkTrigger(state *State, device *Device) bool {
 	switch s.repeat {
 	case RepeatEvery:
-		if state.LastSeen == 0 {
+		if state.lastSeenTime == 0 {
 			return true
 		}
 		currTime := mapper{device: device}.dateTime()
-		dur := currTime.Unix() - state.LastSeen
+		dur := currTime.Unix() - state.LastResetTime()
 		return dur > int64(s.delay.Seconds())
 	case RepeatTimes:
 		currTime := mapper{device: device}.dateTime()
-		dur := currTime.Unix() - state.LastSeen
+		dur := currTime.Unix() - state.LastSeenTime()
 		if dur < int64(s.interval.Seconds()) {
 			return false
 		}
-		return state.NumOfHits < s.times
+		return state.Hits() < s.times
 	case RepeatOnce:
-		return state.NumOfHits == 0
+		return state.hits == 0
 	}
 	return true
 }
@@ -117,13 +117,13 @@ func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r referen
 		return
 	}
 
-	var st *State
+	var currState *State
 	if s.isStateful {
 		sid := StateID{IMEI: d.IMEI, RuleID: ruleID}
-		st, err = r.states.Lookup(ctx, sid)
+		currState, err = r.states.Lookup(ctx, sid)
 		if err != nil {
 			if errors.Is(err, ErrStateNotFound) {
-				if st, err = r.states.Make(ctx, sid); err != nil {
+				if currState, err = r.states.Make(ctx, sid); err != nil {
 					return
 				}
 				err = nil
@@ -132,19 +132,26 @@ func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r referen
 			}
 		}
 
-		if ok := s.testTrigger(st, d); !ok {
+		currState.SetTime(time.Now().Unix())
+
+		if currState.NeedReset(s.resetInterval) {
+			currState.Reset()
+			currState.UpdateLastResetTime()
+		}
+
+		if ok := s.checkTrigger(currState, d); !ok {
 			return nil, false, nil
 		}
 	}
 
 	if len(s.nodes) == 1 {
-		match, err := s.nodes[0].evaluate(ctx, d, st, r)
+		match, err := s.nodes[0].evaluate(ctx, d, currState, r)
 		if err != nil {
 			return nil, false, err
 		}
-		if s.isStateful {
-			s.changeState(st, d)
-			if err = r.states.Update(ctx, st); err != nil {
+		if s.isStateful && currState != nil {
+			s.changeState(currState)
+			if err = r.states.Update(ctx, currState); err != nil {
 				return nil, false, err
 			}
 		}
@@ -175,7 +182,7 @@ func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r referen
 			}
 		}
 
-		right, err = s.nodes[index].evaluate(ctx, d, st, r)
+		right, err = s.nodes[index].evaluate(ctx, d, currState, r)
 		if err != nil {
 			return nil, false, err
 		}
@@ -204,9 +211,9 @@ func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r referen
 		}
 		index++
 	}
-	if s.isStateful {
-		s.changeState(st, d)
-		err = r.states.Update(ctx, st)
+	if s.isStateful && currState != nil {
+		s.changeState(currState)
+		err = r.states.Update(ctx, currState)
 	}
 	return
 }
@@ -263,7 +270,7 @@ func setupProps(s *spec, expr *PropExpr) {
 	for i := 0; i < len(expr.List); i++ {
 		switch prop := expr.List[i].(type) {
 		case *ResetLit:
-			s.reset = prop.After
+			s.resetInterval = prop.After
 		case *TriggerLit:
 			s.repeat = prop.Repeat
 			s.delay = prop.Value
@@ -271,8 +278,8 @@ func setupProps(s *spec, expr *PropExpr) {
 			s.interval = prop.Interval
 		}
 	}
-	if s.reset == 0 {
-		s.reset = 24 * time.Hour
+	if s.resetInterval == 0 {
+		s.resetInterval = 24 * time.Hour
 	}
 }
 

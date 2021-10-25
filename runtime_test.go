@@ -214,7 +214,7 @@ func TestNearOpDeviceDevicesWithoutRadius(t *testing.T) {
 			Latitude:  deviceOtherLatLon[i].lat,
 			Longitude: deviceOtherLatLon[i].lon,
 		}
-		if err := refs.devices.InsertOrReplace(ctx, deviceOther); err != nil {
+		if _, err := refs.devices.InsertOrReplace(ctx, deviceOther); err != nil {
 			t.Fatal(err)
 		}
 
@@ -271,7 +271,7 @@ func TestNearOpDeviceDevicesWithRadius100meters(t *testing.T) {
 			Latitude:  deviceOtherLatLon[i].lat,
 			Longitude: deviceOtherLatLon[i].lon,
 		}
-		if err := refs.devices.InsertOrReplace(ctx, deviceOther); err != nil {
+		if _, err := refs.devices.InsertOrReplace(ctx, deviceOther); err != nil {
 			t.Fatal(err)
 		}
 
@@ -302,7 +302,7 @@ func TestNearOpDeviceDeviceWithRadius100meters(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := refs.devices.InsertOrReplace(ctx, &Device{
+	if _, err := refs.devices.InsertOrReplace(ctx, &Device{
 		IMEI:      "one",
 		Latitude:  42.9328852,
 		Longitude: -72.2764333,
@@ -310,7 +310,7 @@ func TestNearOpDeviceDeviceWithRadius100meters(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := refs.devices.InsertOrReplace(ctx, &Device{
+	if _, err := refs.devices.InsertOrReplace(ctx, &Device{
 		IMEI:      "two",
 		Latitude:  42.9326731,
 		Longitude: -72.2755318,
@@ -535,7 +535,7 @@ func TestIntersectsOp(t *testing.T) {
 	ctx := context.Background()
 	refs := defaultRefs()
 	_ = refs.objects.Add(ctx, "poly1", poly)
-	_ = refs.devices.InsertOrReplace(ctx, &Device{IMEI: "other", Latitude: 42.9287184, Longitude: -72.2778048})
+	_, _ = refs.devices.InsertOrReplace(ctx, &Device{IMEI: "other", Latitude: 42.9287184, Longitude: -72.2778048})
 
 	for _, tc := range testCases {
 		spec, err := specFromString(tc.spec)

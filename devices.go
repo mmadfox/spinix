@@ -19,7 +19,7 @@ var ErrDeviceNotFound = errors.New("spinix/devices: device not found")
 
 type Devices interface {
 	Lookup(ctx context.Context, deviceID string) (*Device, error)
-	InsertOrReplace(ctx context.Context, device *Device) error
+	InsertOrReplace(ctx context.Context, device *Device) (bool, error)
 	Delete(ctx context.Context, deviceID string) error
 	Nearby(ctx context.Context, lat, lon, meters float64, fn func(ctx context.Context, d *Device) error) error
 }
@@ -62,7 +62,7 @@ func (d *devices) Lookup(_ context.Context, deviceID string) (*Device, error) {
 	return d.index.get(deviceID)
 }
 
-func (d *devices) InsertOrReplace(_ context.Context, device *Device) error {
+func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced bool, err error) {
 	d.identify(device)
 
 	prevState, err := d.index.get(device.IMEI)
@@ -75,15 +75,16 @@ func (d *devices) InsertOrReplace(_ context.Context, device *Device) error {
 		)
 		if dist <= minDistMeters {
 			d.index.set(device)
-			return nil
+			replaced = true
+			return
 		}
 	}
-
 	if err == nil {
 		d.mu.RLock()
 		region, ok := d.regions[prevState.RegionID]
 		d.mu.RUnlock()
 		if ok {
+			replaced = true
 			region.delete(prevState)
 			if region.isEmpty() {
 				d.mu.Lock()
@@ -91,6 +92,10 @@ func (d *devices) InsertOrReplace(_ context.Context, device *Device) error {
 				d.mu.Unlock()
 			}
 		}
+	}
+	// prev state not found
+	if errors.Is(err, ErrDeviceNotFound) {
+		err = nil
 	}
 	d.index.set(device)
 	d.mu.RLock()
@@ -103,7 +108,7 @@ func (d *devices) InsertOrReplace(_ context.Context, device *Device) error {
 		d.mu.Unlock()
 	}
 	region.insert(device)
-	return nil
+	return
 }
 
 func (d *devices) Delete(_ context.Context, deviceID string) error {

@@ -125,7 +125,7 @@ func (s *Scanner) Next() (tok Token, lit string) {
 				tok = HOUR
 			case "time":
 				tok = TIME
-			case "radius", "distance":
+			case "radius":
 				tok = RADIUS
 			case "bbox":
 				tok = BBOX

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 func populateStates(t *testing.T) (States, []StateID) {
@@ -29,6 +30,31 @@ func populateStates(t *testing.T) (States, []StateID) {
 		}
 	}
 	return storage, ids
+}
+
+func TestResetState(t *testing.T) {
+	minutes := 300
+	want := minutes / 5
+	state := NewState(StateID{IMEI: "one", RuleID: "one"})
+	startTime := time.Now().Add(-time.Duration(minutes) * time.Minute)
+	fiveMin := 5 * time.Minute
+	var have int
+	for i := 0; i < minutes; i++ {
+		startTime = startTime.Add(time.Minute)
+		state.SetTime(startTime.Unix())
+		if state.NeedReset(fiveMin) {
+			have++
+			state.UpdateLastResetTime()
+		}
+		state.UpdateLastSeenTime()
+		state.HitIncr()
+	}
+	if have != want {
+		t.Fatalf("state.NeedReset(%v) => %d, want %d", fiveMin, have, want)
+	}
+	if have, want := state.Hits(), minutes; have != want {
+		t.Fatalf("state.Hits() => %d, want %d", have, want)
+	}
 }
 
 func TestMemoryStateLookup(t *testing.T) {

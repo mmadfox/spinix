@@ -197,19 +197,12 @@ func Snapshot(r *Rule) RuleSnapshot {
 	return snapshot
 }
 
-type Stats struct {
-}
-
 func NewMemoryRules() Rules {
 	return &rules{
 		smallRegionIndex: newSmallRegionIndex(),
 		largeRegionIndex: newLargeRegionIndex(),
 		ruleIndex:        newRuleIndex(),
 	}
-}
-
-func (r *rules) Stats() (Stats, error) {
-	return Stats{}, nil
 }
 
 func (r *rules) Walk(ctx context.Context, device *Device, fn WalkRuleFunc) (err error) {

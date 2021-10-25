@@ -2,9 +2,11 @@ package spinix
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 )
 
 var ErrStateNotFound = errors.New("spinix/states: state not found")
@@ -114,25 +116,130 @@ func (s StateID) String() string {
 }
 
 type State struct {
-	id        StateID
-	LastSeen  int64
-	NumOfHits int
-	Objects   map[string]int64
+	id            StateID
+	now           int64
+	lastSeenTime  int64
+	lastResetTime int64
+	hits          int
+	objectsVisits map[string]int64
+}
+
+type StateSnapshot struct {
+	ID            StateID          `json:"id"`
+	Now           int64            `json:"now"`
+	LastSeenTime  int64            `json:"lastSeenTime"`
+	LastResetTime int64            `json:"lastResetTime"`
+	Hits          int              `json:"hits"`
+	ObjectsVisits map[string]int64 `json:"objectsVisits"`
+}
+
+func (s StateSnapshot) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s)
+}
+
+func (s *StateSnapshot) UnmarshalJSON(data []byte) error {
+	return json.Unmarshal(data, s)
+}
+
+func (s *State) FromSnapshot(snap StateSnapshot) {
+	s.id = snap.ID
+	s.now = snap.Now
+	s.lastSeenTime = snap.LastSeenTime
+	s.lastResetTime = snap.LastResetTime
+	s.hits = snap.Hits
+	s.objectsVisits = make(map[string]int64)
+	for k, v := range snap.ObjectsVisits {
+		s.objectsVisits[k] = v
+	}
+}
+
+func (s *State) Snapshot() StateSnapshot {
+	snapshot := StateSnapshot{
+		ID:            s.id,
+		Now:           s.now,
+		LastSeenTime:  s.lastSeenTime,
+		LastResetTime: s.lastResetTime,
+		Hits:          s.hits,
+		ObjectsVisits: make(map[string]int64),
+	}
+	for k, v := range s.objectsVisits {
+		snapshot.ObjectsVisits[k] = v
+	}
+	return snapshot
+}
+
+func (s *State) SetTime(now int64) {
+	if now <= 0 {
+		return
+	}
+	s.now = now
 }
 
 func (s *State) Reset() {
-	s.LastSeen = 0
-	s.NumOfHits = 0
+	s.lastResetTime = 0
+	s.lastSeenTime = 0
+	s.hits = 0
+	s.objectsVisits = make(map[string]int64)
 }
 
 func (s *State) ID() StateID {
 	return s.id
 }
 
+func (s *State) NeedReset(interval time.Duration) bool {
+	if interval.Seconds() == 0 {
+		return true
+	}
+	if s.lastResetTime == 0 {
+		return true
+	}
+	if s.now == 0 {
+		s.now = time.Now().Unix()
+	}
+	diff := s.now - s.lastResetTime
+	return diff >= int64(interval.Seconds())
+}
+
+func (s *State) LastResetTime() int64 {
+	return s.lastResetTime
+}
+
+func (s *State) LastSeenTime() int64 {
+	return s.lastSeenTime
+}
+
+func (s *State) Hits() int {
+	return s.hits
+}
+
+func (s *State) HitIncr() {
+	s.hits++
+}
+
+func (s *State) UpdateLastSeenTime() {
+	s.lastSeenTime = s.now
+}
+
+func (s *State) UpdateLastResetTime() {
+	s.lastResetTime = s.now
+}
+
+func (s *State) LastVisit(objectID string) int64 {
+	visit, found := s.objectsVisits[objectID]
+	if found {
+		return visit
+	}
+	return 0
+}
+
+func (s *State) SetLastVisit(objectID string, visit int64) {
+	s.objectsVisits[objectID] = visit
+}
+
 func NewState(id StateID) *State {
 	return &State{
-		id:      id,
-		Objects: make(map[string]int64),
+		id:            id,
+		objectsVisits: make(map[string]int64),
 	}
 }
 
