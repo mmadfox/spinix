@@ -172,6 +172,9 @@ func (r *rules) Walk(ctx context.Context, device *Device, fn WalkRuleFunc) error
 }
 
 func (r *rules) Insert(_ context.Context, rule *Rule) error {
+	if rule == nil {
+		return fmt.Errorf("spinix/rule: rule is nil pointer")
+	}
 	var region *regionCell
 	var found bool
 	for _, regionID := range rule.regions {
@@ -199,6 +202,10 @@ func (r *rules) Insert(_ context.Context, rule *Rule) error {
 				r.Unlock()
 			}
 		}
+		if region != nil && found {
+			region.insert(rule)
+		}
+		region = nil
 	}
 	return r.indexByRules.set(rule)
 }
@@ -263,8 +270,8 @@ func (i ruleIndex) set(rule *Rule) error {
 	bucket := i.bucket(rule.ID())
 	bucket.Lock()
 	defer bucket.Unlock()
-	rule, ok := bucket.index[rule.ID()]
-	if !ok {
+	_, ok := bucket.index[rule.ID()]
+	if ok {
 		return fmt.Errorf("spinix/rule: rule %s already exists", rule.ID())
 	}
 	bucket.index[rule.ID()] = rule
