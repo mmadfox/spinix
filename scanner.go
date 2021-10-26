@@ -64,6 +64,8 @@ func (s *Scanner) Next() (tok Token, lit string) {
 		tok = COMMA
 	case '[':
 		tok = LBRACK
+	case '-':
+		tok = SUB
 	case ']':
 		tok = RBRACK
 	case '{':
@@ -76,8 +78,14 @@ func (s *Scanner) Next() (tok Token, lit string) {
 		switch strings.ToLower(sl) {
 		case "trigger":
 			tok = TRIGGER
+		case "expire":
+			tok = EXPIRE
+		case "center":
+			tok = CENTER
 		case "reset":
 			tok = RESET
+		case "radius":
+			tok = RADIUS
 		default:
 			s.Reset()
 		}
@@ -107,6 +115,10 @@ func (s *Scanner) Next() (tok Token, lit string) {
 				tok = EQ
 			case "trigger":
 				tok = TRIGGER
+			case "center":
+				tok = CENTER
+			case "expire":
+				tok = EXPIRE
 			case "reset":
 				tok = RESET
 			case "date":

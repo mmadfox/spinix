@@ -55,6 +55,8 @@ const (
 	DATE           // date
 	DATETIME       // dateTime
 	TRIGGER        // trigger
+	CENTER         // center
+	EXPIRE         // expire
 	RESET          // reset
 	literalEnd
 
@@ -71,6 +73,7 @@ const (
 	INTERSECTS  // INTERSECTS
 	NINTERSECTS // NOT INTERSECTS
 
+	SUB // -
 	EQ  // eq  i.e. ==
 	LT  // lt  i.e. <
 	GT  // gt  i.e. >
@@ -94,17 +97,17 @@ const (
 
 	// GEOSPATIAL
 	keywordGeospatialBegin
-	DEVICES        // devices(@id)
-	OBJECTS        // object(@id, @id1)
-	POLY           // polygon(@id1, @id2, @id3), poly(@id)
+	DEVICES        // devices(@regionFromLatLon)
+	OBJECTS        // object(@regionFromLatLon, @id1)
+	POLY           // polygon(@id1, @id2, @id3), poly(@regionFromLatLon)
 	MULTI_POLY     // multiPolygon(@id1, @id2)
 	LINE           // line(@id1, @id2)
 	MULTI_LINE     // multiLine(@id1, @id2)
-	POINT          // point(@id)
-	MULTI_POINT    // multiPoint(@id)
-	RECT           // rect(@id)
-	CIRCLE         // circle(@id)
-	COLLECTION     // collection(@id)
+	POINT          // point(@regionFromLatLon)
+	MULTI_POINT    // multiPoint(@regionFromLatLon)
+	RECT           // rect(@regionFromLatLon)
+	CIRCLE         // circle(@regionFromLatLon)
+	COLLECTION     // collection(@regionFromLatLon)
 	FUT_COLLECTION // featureCollection(@id1, @id2, @id3)
 	keywordGeospatialEnd
 	keywordEnd
@@ -153,6 +156,7 @@ var tokens = [...]string{
 	NE:  "ne",
 	LTE: "lte",
 	GTE: "gte",
+	SUB: "-",
 
 	LPAREN: "(",
 	LBRACK: "[",
@@ -165,8 +169,11 @@ var tokens = [...]string{
 	RBRACE: "}",
 	COLON:  ":",
 
-	TRIGGER: ":trigger",
-	RESET:   ":reset",
+	TRIGGER: "trigger",
+	RESET:   "reset",
+	CENTER:  "center",
+	EXPIRE:  "expire",
+	RADIUS:  "radius",
 
 	DEVICE:         "device",
 	VAR_IDENT:      "@",
@@ -290,8 +297,13 @@ var objectToken = map[Token]struct{}{
 }
 
 var propsToken = map[Token]struct{}{
+	LBRACE:  {},
+	RBRACE:  {},
 	TRIGGER: {},
 	RESET:   {},
+	EXPIRE:  {},
+	CENTER:  {},
+	RADIUS:  {},
 }
 
 var dateToken = map[Token]struct{}{
@@ -336,6 +348,11 @@ func isTimeToken(op Token) bool {
 func group2str(group int) string {
 	var res []string
 	switch group {
+	case propsTokenGroup:
+		res = make([]string, 0, len(propsToken))
+		for tok := range propsToken {
+			res = append(res, tok.String())
+		}
 	case objectTokenGroup:
 		res = make([]string, 0, len(objectToken))
 		for tok := range objectToken {

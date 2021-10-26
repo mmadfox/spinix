@@ -63,6 +63,12 @@ type (
 		Kind Token
 	}
 
+	BaseLit struct {
+		Kind Token
+		Expr Expr
+		Pos  Pos
+	}
+
 	// A BinaryExpr nodes represents a binary expression.
 	BinaryExpr struct {
 		LHS Expr  // left operand
@@ -118,6 +124,12 @@ type (
 		After time.Duration
 	}
 
+	PointLit struct {
+		Lat, Lon float64
+		Pos      Pos
+		Kind     Token
+	}
+
 	// A ListLit represents a list of int or float or string type.
 	ListLit struct {
 		Items []Expr
@@ -149,6 +161,18 @@ type (
 		Hour   int
 		Minute int
 		Pos    Pos
+	}
+
+	DistanceLit struct {
+		Unit  DistanceUnit
+		Value float64
+		Pos   Pos
+	}
+
+	DurationLit struct {
+		Kind  Token
+		Value time.Duration
+		Pos   Pos
 	}
 
 	// A VarLit represents a variable literal.
@@ -379,11 +403,13 @@ func (e *TriggerLit) String() string {
 func (e *PropExpr) String() string {
 	var sb strings.Builder
 	sb.WriteString(e.Expr.String())
-	sb.WriteString(" ")
+	sb.WriteString(" { ")
 	for i := 0; i < len(e.List); i++ {
+		sb.WriteString(":")
 		sb.WriteString(e.List[i].String())
 		sb.WriteString(" ")
 	}
+	sb.WriteString(" }")
 	return sb.String()
 }
 
@@ -391,19 +417,39 @@ func (e *ResetLit) String() string {
 	return fmt.Sprintf("%s after %s", RESET, e.After)
 }
 
-func (_ *ParenExpr) expr()  {}
-func (_ *BinaryExpr) expr() {}
-func (_ *StringLit) expr()  {}
-func (_ *IntLit) expr()     {}
-func (_ *FloatLit) expr()   {}
-func (_ *VarLit) expr()     {}
-func (_ *BooleanLit) expr() {}
-func (_ *DeviceLit) expr()  {}
-func (_ *ObjectLit) expr()  {}
-func (_ *IdentLit) expr()   {}
-func (_ *ListLit) expr()    {}
-func (_ *DevicesLit) expr() {}
-func (_ *TimeLit) expr()    {}
-func (_ *PropExpr) expr()   {}
-func (_ *TriggerLit) expr() {}
-func (_ *ResetLit) expr()   {}
+func (e *PointLit) String() string {
+	return fmt.Sprintf("%s %f %f", e.Kind, e.Lat, e.Lon)
+}
+
+func (e *DistanceLit) String() string {
+	return fmt.Sprintf("%.2f%s", e.Value, e.Unit)
+}
+
+func (e *BaseLit) String() string {
+	return fmt.Sprintf("%s %s", e.Kind, e.Expr)
+}
+
+func (e *DurationLit) String() string {
+	return "duration todo"
+}
+
+func (_ *ParenExpr) expr()   {}
+func (_ *BinaryExpr) expr()  {}
+func (_ *StringLit) expr()   {}
+func (_ *IntLit) expr()      {}
+func (_ *FloatLit) expr()    {}
+func (_ *VarLit) expr()      {}
+func (_ *BooleanLit) expr()  {}
+func (_ *DeviceLit) expr()   {}
+func (_ *ObjectLit) expr()   {}
+func (_ *IdentLit) expr()    {}
+func (_ *ListLit) expr()     {}
+func (_ *DevicesLit) expr()  {}
+func (_ *TimeLit) expr()     {}
+func (_ *PropExpr) expr()    {}
+func (_ *TriggerLit) expr()  {}
+func (_ *ResetLit) expr()    {}
+func (_ *PointLit) expr()    {}
+func (_ *DistanceLit) expr() {}
+func (_ *DurationLit) expr() {}
+func (_ *BaseLit) expr()     {}

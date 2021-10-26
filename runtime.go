@@ -13,7 +13,6 @@ import (
 
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
-	"github.com/uber/h3-go"
 )
 
 const (
@@ -68,6 +67,9 @@ type spec struct {
 	repeat        RepeatMode
 	interval      time.Duration
 	delay         time.Duration
+	center        geometry.Point
+	expire        time.Duration
+	radius        float64
 }
 
 func specFromString(s string) (*spec, error) {
@@ -269,6 +271,29 @@ func setupProps(s *spec, expr *PropExpr) {
 	s.isStateful = true
 	for i := 0; i < len(expr.List); i++ {
 		switch prop := expr.List[i].(type) {
+		case *PointLit:
+			switch prop.Kind {
+			case CENTER:
+				s.center = geometry.Point{X: prop.Lat, Y: prop.Lon}
+			}
+		case *BaseLit:
+			switch prop.Kind {
+			case RADIUS:
+				distLit, ok := prop.Expr.(*DistanceLit)
+				if !ok {
+					continue
+				}
+				if distLit.Unit == DistanceKilometers {
+					distLit.Value *= 1000
+				}
+				s.radius = distLit.Value
+			case EXPIRE:
+				durLit, ok := prop.Expr.(*DurationLit)
+				if !ok {
+					continue
+				}
+				s.expire = durLit.Value
+			}
 		case *ResetLit:
 			s.resetInterval = prop.After
 		case *TriggerLit:
@@ -1966,106 +1991,6 @@ func (n equalFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ referen
 	return
 }
 
-func isSmallRadius(meters float64) bool {
-	return meters < maxRadiusInMeters
-}
-
-func getSteps(meters float64) (steps int) {
-	steps = 16
-	if !isSmallRadius(meters) {
-		steps = 8
-	}
-	return
-}
-
-func getLevel(meters float64) (level int) {
-	level = smallCellSize
-	if !isSmallRadius(meters) {
-		level = largeCellSize
-	}
-	return
-}
-
-func cover(meters float64, level int, points []geometry.Point) []h3.H3Index {
-	smallSearchRadius := isSmallRadius(meters)
-	steps := getSteps(meters)
-	visits := make(map[h3.H3Index]struct{})
-	res := make([]h3.H3Index, 0, 2)
-	half := steps / 2
-	for i, p := range points {
-		idx := h3.FromGeo(h3.GeoCoord{Latitude: p.X, Longitude: p.Y}, level)
-		_, visit := visits[idx]
-		if !visit {
-			res = append(res, idx)
-			visits[idx] = struct{}{}
-		}
-		if smallSearchRadius {
-			continue
-		}
-		if i <= half {
-			p1 := points[i+half]
-			b := geo.BearingTo(p.X, p.Y, p1.X, p1.Y)
-			d := geo.DistanceTo(p.X, p.Y, p1.X, p1.Y)
-			s := d / float64(steps)
-			for i := float64(0); i <= d; i += s {
-				lat, lng := geo.DestinationPoint(p.X, p.Y, i, b)
-				idx := h3.FromGeo(h3.GeoCoord{Latitude: lat, Longitude: lng}, level)
-				_, visit := visits[idx]
-				if !visit {
-					res = append(res, idx)
-					visits[idx] = struct{}{}
-				}
-			}
-		}
-	}
-	return res
-}
-
-func newCircle(lat, lng float64, meters float64, steps int) (points []geometry.Point, bbox geometry.Rect) {
-	meters = geo.NormalizeDistance(meters)
-	points = make([]geometry.Point, 0, steps+1)
-	for i := 0; i < steps; i++ {
-		b := (i * -360) / steps
-		lat, lng := geo.DestinationPoint(lat, lng, meters, float64(b))
-		point := geometry.Point{X: lat, Y: lng}
-		points = append(points, point)
-		if i == 0 {
-			bbox.Min = point
-			bbox.Max = point
-		} else {
-			if point.X < bbox.Min.X {
-				bbox.Min.X = point.X
-			} else if point.X > bbox.Max.X {
-				bbox.Max.X = point.X
-			}
-			if point.Y < bbox.Min.Y {
-				bbox.Min.Y = point.Y
-			} else if points[i].Y > bbox.Max.Y {
-				bbox.Max.Y = points[i].Y
-			}
-		}
-	}
-	points = append(points, points[0])
-	return
-}
-
-func contains(p geometry.Point, points []geometry.Point) bool {
-	for i := 0; i < len(points); i++ {
-		var seg geometry.Segment
-		seg.A = points[i]
-		if i == len(points)-1 {
-			seg.B = points[0]
-		} else {
-			seg.B = points[i+1]
-		}
-		res := seg.Raycast(p)
-		if res.In {
-			return true
-		}
-	}
-	return false
-}
-
 type radiusRing struct {
 	rect   geometry.Rect
 	points []geometry.Point
@@ -2073,7 +1998,7 @@ type radiusRing struct {
 
 func makeRadiusRing(lat, lng float64, meters float64, steps int) radiusRing {
 	rr := radiusRing{}
-	rr.points, rr.rect = newCircle(lat, lng, meters, steps)
+	rr.points, rr.rect = makeCircle(lat, lng, meters, steps)
 	return rr
 }
 

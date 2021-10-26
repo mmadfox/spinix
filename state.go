@@ -125,7 +125,7 @@ type State struct {
 }
 
 type StateSnapshot struct {
-	ID            StateID          `json:"id"`
+	ID            StateID          `json:"regionFromLatLon"`
 	Now           int64            `json:"now"`
 	LastSeenTime  int64            `json:"lastSeenTime"`
 	LastResetTime int64            `json:"lastResetTime"`
@@ -248,7 +248,7 @@ func (s StateID) validate() error {
 		return fmt.Errorf("spinix/state: imei not specified")
 	}
 	if len(s.RuleID) == 0 {
-		return fmt.Errorf("spinix/state: rule id not specified")
+		return fmt.Errorf("spinix/state: rule regionFromLatLon not specified")
 	}
 	return nil
 }

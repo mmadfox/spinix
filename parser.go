@@ -42,8 +42,8 @@ func (p *Parser) parse() (Expr, error) {
 			return nil, fmt.Errorf("spinix/parser: ILLEGAL %s", literal)
 		}
 
-		// props
-		if isPropsToken(operator) {
+		// props { ... }
+		if operator == LBRACE {
 			p.s.Reset()
 			return p.parseProps(expr)
 		}
@@ -87,10 +87,31 @@ func (p *Parser) parseProps(expr Expr) (Expr, error) {
 	}
 	for {
 		tok, lit := p.s.Next()
-		if tok == EOF {
+		if tok == LBRACE {
+			continue
+		}
+		if tok == EOF || tok == RBRACE {
 			break
 		}
 		switch tok {
+		case EXPIRE:
+			prop, err := p.parseExpireProp()
+			if err != nil {
+				return nil, err
+			}
+			props.List = append(props.List, prop)
+		case RADIUS:
+			prop, err := p.parseRadiusProp()
+			if err != nil {
+				return nil, err
+			}
+			props.List = append(props.List, prop)
+		case CENTER:
+			prop, err := p.parseCenterProp()
+			if err != nil {
+				return nil, err
+			}
+			props.List = append(props.List, prop)
 		case TRIGGER:
 			prop, err := p.parseTriggerProp()
 			if err != nil {
@@ -110,6 +131,103 @@ func (p *Parser) parseProps(expr Expr) (Expr, error) {
 	return props, nil
 }
 
+func (p *Parser) parseExpireProp() (Expr, error) {
+	dur, err := p.parseTimeDuration()
+	if err != nil {
+		return nil, p.error(EXPIRE, ":expire", err.Error())
+	}
+	return &BaseLit{
+		Kind: EXPIRE,
+		Expr: &DurationLit{
+			Kind:  DURATION,
+			Value: dur,
+			Pos:   p.s.Offset(),
+		},
+		Pos: p.s.Offset(),
+	}, nil
+}
+
+func (p *Parser) parseRadiusProp() (Expr, error) {
+	dist, err := p.parseDistanceLit()
+	if err != nil {
+		return nil, err
+	}
+	return &BaseLit{
+		Kind: RADIUS,
+		Expr: dist,
+		Pos:  p.s.Offset(),
+	}, nil
+}
+
+func (p *Parser) parseDistanceLit() (Expr, error) {
+	tok, valstr := p.s.Next()
+	if tok != INT {
+		return nil, p.error(tok, valstr, fmt.Sprintf("got %v, expected %v", tok, INT))
+	}
+	tok, unitstr := p.s.Next()
+	if tok != ILLEGAL {
+		return nil, p.error(tok, unitstr, fmt.Sprintf("got %v, expected %v", tok, ILLEGAL))
+	}
+	value, err := strconv.ParseFloat(valstr, 64)
+	if err != nil {
+		return nil, p.error(tok, valstr, err.Error())
+	}
+	var unit DistanceUnit
+	switch strings.ToLower(unitstr) {
+	case "km":
+		unit = DistanceKilometers
+	case "m":
+		unit = DistanceMeters
+	default:
+		return nil, p.error(tok, unitstr, fmt.Sprintf("got %s, expected [km, m]", unitstr))
+	}
+	return &DistanceLit{
+		Unit:  unit,
+		Pos:   p.s.Offset(),
+		Value: value,
+	}, nil
+}
+
+func (p *Parser) parseCenterProp() (Expr, error) {
+	var lat, lon string
+	for i := 0; i < 2; i++ {
+		tok, lit := p.s.Next()
+		if tok != FLOAT && tok != SUB {
+			return nil, p.error(tok, lit, "ILLEGAL")
+		}
+		if tok == SUB {
+			tok, value := p.s.Next()
+			if tok != FLOAT {
+				return nil, p.error(tok, lit, "ILLEGAL")
+			}
+			lit = "-" + value
+		}
+		switch i {
+		case 0:
+			lat = lit
+		case 1:
+			lon = lit
+		}
+	}
+	if len(lat) == 0 || len(lon) == 0 {
+		return nil, p.error(CENTER, ":center", "coordinate parsing error")
+	}
+	latf, err := strconv.ParseFloat(lat, 64)
+	if err != nil {
+		return nil, p.error(CENTER, ":center", err.Error())
+	}
+	lonf, err := strconv.ParseFloat(lon, 64)
+	if err != nil {
+		return nil, p.error(CENTER, ":center", err.Error())
+	}
+	return &PointLit{
+		Lat:  latf,
+		Lon:  lonf,
+		Pos:  p.s.Offset(),
+		Kind: CENTER,
+	}, nil
+}
+
 func (p *Parser) parseTriggerProp() (Expr, error) {
 	tok, lit := p.s.Next()
 	triggerExpr := &TriggerLit{}
@@ -126,7 +244,7 @@ func (p *Parser) parseTriggerProp() (Expr, error) {
 		if lit := p.s.NextLit(); lit != "interval" {
 			return nil, p.error(TRIGGER, lit, fmt.Sprintf("got %s, expected interval", lit))
 		}
-		dur, err := p.parseDur()
+		dur, err := p.parseTimeDuration()
 		if err != nil {
 			return nil, err
 		}
@@ -140,7 +258,7 @@ func (p *Parser) parseTriggerProp() (Expr, error) {
 		}
 		if lit == "every" {
 			triggerExpr.Repeat = RepeatEvery
-			dur, err := p.parseDur()
+			dur, err := p.parseTimeDuration()
 			if err != nil {
 				return nil, err
 			}
@@ -160,7 +278,7 @@ func (p *Parser) parseResetProp() (Expr, error) {
 	if tok != AFTER {
 		return nil, p.error(RESET, ":reset", "invalid expr, expected [:reset after 24h]")
 	}
-	dur, err := p.parseDur()
+	dur, err := p.parseTimeDuration()
 	if err != nil {
 		return nil, err
 	}
@@ -211,48 +329,6 @@ func (p *Parser) parseParenExpr() (Expr, error) {
 	}
 	return &ParenExpr{Expr: expr}, nil
 }
-
-//func (p *Parser) parseTriggerLit() (Expr, error) {
-//	tok, lit := p.s.Next()
-//	lowlit := strings.ToLower(lit)
-//	if tok == ILLEGAL && lowlit == "every" {
-//		dur, err := p.parseDur()
-//		if err != nil {
-//			return nil, p.error(TRIGGER, "every", err.Error())
-//		}
-//		eof := p.s.NextTok()
-//		if eof != EOF {
-//			return nil, p.error(TRIGGER, "eof", "literal must be at the end of the specStr")
-//		}
-//		return &TriggerLit{Repeat: RepeatEvery, Value: dur}, nil
-//	} else if tok == ILLEGAL && lowlit == "once" {
-//		return &TriggerLit{Repeat: RepeatOnce}, nil
-//	} else if tok == INT {
-//		v, err := strconv.Atoi(lit)
-//		if err != nil {
-//			return nil, p.error(TRIGGER, lit, err.Error())
-//		}
-//		times := strings.ToLower(p.s.NextLit())
-//		if times != "times" {
-//			return nil, p.error(TRIGGER, "times", "missing times literal")
-//		}
-//		interval := strings.ToLower(p.s.NextLit())
-//		if interval != "interval" {
-//			return nil, p.error(TRIGGER, "interval", "missing interval literal")
-//		}
-//		dur, err := p.parseDur()
-//		if err != nil {
-//			return nil, p.error(TRIGGER, "times", err.Error())
-//		}
-//		eof := p.s.NextTok()
-//		if eof != EOF {
-//			return nil, p.error(TRIGGER, "eof", "literal must be at the end of the specStr")
-//		}
-//		return &TriggerLit{Repeat: RepeatTimes, Times: v, Interval: dur}, nil
-//	} else {
-//		return nil, p.error(TRIGGER, lit, "missing trigger literal")
-//	}
-//}
 
 func (p *Parser) parseDevicesLit() (Expr, error) {
 	expr, err := p.parseObjectLit(DEVICES)
@@ -418,7 +494,7 @@ func (p *Parser) parseObjectLit(kind Token) (expr Expr, err error) {
 		lastTok = tok
 		if tok == IDENT || tok == INT || tok == FLOAT || tok == STRING {
 			if len(lit) > 64 {
-				return nil, p.error(tok, lit, "id too long")
+				return nil, p.error(tok, lit, "regionFromLatLon too long")
 			}
 			if unique == nil {
 				unique = make(map[string]struct{})
@@ -435,22 +511,17 @@ func (p *Parser) parseObjectLit(kind Token) (expr Expr, err error) {
 
 func (p *Parser) parseDeviceLit() (expr Expr, err error) {
 	device := &DeviceLit{}
-
 	tok := p.s.NextTok()
-	if tok != COLON {
-		device.Pos = p.s.Offset()
-		expr = device
-		p.s.Reset()
-		return device, err
-	}
-
-	switch p.s.NextTok() {
+	switch tok {
 	case BBOX:
 		device.Kind = BBOX
 	case RADIUS:
 		device.Kind = RADIUS
 	default:
-		return nil, p.error(DEVICE, ":", "missing radius literal")
+		device.Kind = DEVICE
+		device.Pos = p.s.Offset()
+		p.s.Reset()
+		return device, nil
 	}
 	device.Unit, device.Value, err = p.parseDistanceUnit()
 	if err != nil {
@@ -460,7 +531,7 @@ func (p *Parser) parseDeviceLit() (expr Expr, err error) {
 	return device, err
 }
 
-func (p *Parser) parseDur() (time.Duration, error) {
+func (p *Parser) parseTimeDuration() (time.Duration, error) {
 	var str string
 exit:
 	for {

@@ -65,7 +65,7 @@ func WithStatesStorage(s States) Option {
 }
 
 type Event struct {
-	ID       string       `json:"id"`
+	ID       string       `json:"regionFromLatLon"`
 	Device   Device       `json:"device"`
 	DateTime int64        `json:"dateTime"`
 	Rule     RuleSnapshot `json:"rule"`
@@ -128,11 +128,8 @@ func (e *Engine) Stats() Stats {
 	return e.stats.Stats()
 }
 
-func (e *Engine) AddRule(ctx context.Context, name string, owner string, spec string, lat float64, lon float64, meters float64) (*Rule, error) {
-	if meters <= 0 {
-		meters = 3000
-	}
-	rule, err := NewRule(name, owner, spec, lat, lon, meters)
+func (e *Engine) AddRule(ctx context.Context, spec string) (*Rule, error) {
+	rule, err := NewRule(spec)
 	if err != nil {
 		return nil, err
 	}
@@ -156,10 +153,13 @@ func (e *Engine) AddRule(ctx context.Context, name string, owner string, spec st
 				ok = true
 				break
 			}
-			rule.calc(rule.meters * 2)
+			rule.spec.radius *= 2
+			if err := rule.calc(); err != nil {
+				return nil, err
+			}
 		}
 		if !ok {
-			return nil, fmt.Errorf("spinix/engine: the radius of the rule does not cover geoobjects")
+			return nil, fmt.Errorf("spinix/engine: the radius of the rule does not regionIDs geoobjects")
 		}
 	}
 	if err := e.refs.rules.Insert(ctx, rule); err != nil {

@@ -4,6 +4,7 @@ import (
 	"sync/atomic"
 )
 
+// TODO: by each region
 type StatsCollector struct {
 	totalRules   uint64
 	totalDevices uint64

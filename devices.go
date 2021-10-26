@@ -7,12 +7,8 @@ import (
 	"sync"
 
 	"github.com/tidwall/geojson/geo"
-
 	"github.com/tidwall/geojson/geometry"
-
 	"github.com/tidwall/rtree"
-
-	"github.com/uber/h3-go"
 )
 
 var ErrDeviceNotFound = errors.New("spinix/devices: device not found")
@@ -25,35 +21,34 @@ type Devices interface {
 }
 
 type Device struct {
-	IMEI          string     `json:"imei"`
-	Owner         string     `json:"owner"`
-	Brand         string     `json:"brand"`
-	Model         string     `json:"model"`
-	Latitude      float64    `json:"lat"`
-	Longitude     float64    `json:"lon"`
-	Altitude      float64    `json:"alt"`
-	Speed         float64    `json:"speed"`
-	DateTime      int64      `json:"dateTime"`
-	Status        int        `json:"status"`
-	BatteryCharge float64    `json:"batteryCharge"`
-	Temperature   float64    `json:"temperature"`
-	Humidity      float64    `json:"humidity"`
-	Luminosity    float64    `json:"luminosity"`
-	Pressure      float64    `json:"pressure"`
-	FuelLevel     float64    `json:"fuelLevel"`
-	RegionID      h3.H3Index `json:"regionID"`
-	RegionLevel   int        `json:"regionCellSize"`
+	IMEI          string   `json:"imei"`
+	Owner         string   `json:"owner"`
+	Brand         string   `json:"brand"`
+	Model         string   `json:"model"`
+	Latitude      float64  `json:"lat"`
+	Longitude     float64  `json:"lon"`
+	Altitude      float64  `json:"alt"`
+	Speed         float64  `json:"speed"`
+	DateTime      int64    `json:"dateTime"`
+	Status        int      `json:"status"`
+	BatteryCharge float64  `json:"batteryCharge"`
+	Temperature   float64  `json:"temperature"`
+	Humidity      float64  `json:"humidity"`
+	Luminosity    float64  `json:"luminosity"`
+	Pressure      float64  `json:"pressure"`
+	FuelLevel     float64  `json:"fuelLevel"`
+	regionID      RegionID `json:"regionID"`
 }
 
 type devices struct {
-	regions map[h3.H3Index]*deviceRegion
+	regions map[RegionID]*deviceRegion
 	index   deviceIndex
 	mu      sync.RWMutex
 }
 
 func NewMemoryDevices() Devices {
 	return &devices{
-		regions: make(map[h3.H3Index]*deviceRegion),
+		regions: make(map[RegionID]*deviceRegion),
 		index:   newDeviceIndex(),
 	}
 }
@@ -63,7 +58,7 @@ func (d *devices) Lookup(_ context.Context, deviceID string) (*Device, error) {
 }
 
 func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced bool, err error) {
-	d.identify(device)
+	device.regionID = regionFromLatLon(device.Latitude, device.Longitude, smallRegionSize)
 
 	prevState, err := d.index.get(device.IMEI)
 	if prevState != nil && err == nil {
@@ -81,30 +76,29 @@ func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced b
 	}
 	if err == nil {
 		d.mu.RLock()
-		region, ok := d.regions[prevState.RegionID]
+		region, ok := d.regions[prevState.regionID]
 		d.mu.RUnlock()
 		if ok {
 			replaced = true
 			region.delete(prevState)
 			if region.isEmpty() {
 				d.mu.Lock()
-				delete(d.regions, prevState.RegionID)
+				delete(d.regions, prevState.regionID)
 				d.mu.Unlock()
 			}
 		}
 	}
-	// prev state not found
 	if errors.Is(err, ErrDeviceNotFound) {
 		err = nil
 	}
 	d.index.set(device)
 	d.mu.RLock()
-	region, ok := d.regions[device.RegionID]
+	region, ok := d.regions[device.regionID]
 	d.mu.RUnlock()
 	if !ok {
-		region = newDeviceRegion()
+		region = newDeviceRegion(device.regionID, smallRegionSize)
 		d.mu.Lock()
-		d.regions[device.RegionID] = region
+		d.regions[device.regionID] = region
 		d.mu.Unlock()
 	}
 	region.insert(device)
@@ -117,7 +111,7 @@ func (d *devices) Delete(_ context.Context, deviceID string) error {
 		return err
 	}
 	d.mu.RLock()
-	region, ok := d.regions[prevState.RegionID]
+	region, ok := d.regions[prevState.regionID]
 	d.mu.RUnlock()
 	if !ok {
 		return nil
@@ -125,7 +119,7 @@ func (d *devices) Delete(_ context.Context, deviceID string) error {
 	region.delete(prevState)
 	if region.isEmpty() {
 		d.mu.Lock()
-		delete(d.regions, prevState.RegionID)
+		delete(d.regions, prevState.regionID)
 		d.mu.Unlock()
 	}
 	return nil
@@ -135,8 +129,8 @@ func (d *devices) Nearby(
 	ctx context.Context,
 	lat, lon, meters float64,
 	fn func(ctx context.Context, d *Device) error) (err error) {
-	points, bbox := newCircle(lat, lon, meters, 6)
-	regionIDs := cover(meters, smallCellSize, points)
+	points, bbox := makeCircle(lat, lon, meters, steps)
+	regionIDs := regionIDs(points, smallRegionSize)
 	next := true
 	for _, regionID := range regionIDs {
 		d.mu.RLock()
@@ -172,23 +166,17 @@ func (d *devices) Nearby(
 	return
 }
 
-func (d *devices) identify(device *Device) {
-	device.RegionLevel = smallCellSize
-	device.RegionID = h3.FromGeo(h3.GeoCoord{
-		Latitude:  device.Latitude,
-		Longitude: device.Longitude,
-	}, device.RegionLevel)
-}
-
 type deviceRegion struct {
-	id      h3.H3Index
-	mu      sync.RWMutex
-	index   *rtree.RTree
-	counter uint64
+	id    RegionID
+	size  RegionSize
+	mu    sync.RWMutex
+	index *rtree.RTree
 }
 
-func newDeviceRegion() *deviceRegion {
+func newDeviceRegion(regionID RegionID, size RegionSize) *deviceRegion {
 	return &deviceRegion{
+		id:    regionID,
+		size:  size,
 		index: &rtree.RTree{},
 	}
 }
@@ -196,7 +184,7 @@ func newDeviceRegion() *deviceRegion {
 func (r *deviceRegion) isEmpty() bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.counter == 0
+	return r.index.Len() == 0
 }
 
 func (r *deviceRegion) insert(device *Device) {
@@ -205,7 +193,6 @@ func (r *deviceRegion) insert(device *Device) {
 		[2]float64{device.Latitude, device.Longitude},
 		[2]float64{device.Latitude, device.Longitude},
 		device)
-	r.counter++
 	r.mu.Unlock()
 }
 
@@ -215,9 +202,6 @@ func (r *deviceRegion) delete(device *Device) {
 		[2]float64{device.Latitude, device.Longitude},
 		[2]float64{device.Latitude, device.Longitude},
 		device)
-	if r.counter > 0 {
-		r.counter--
-	}
 	r.mu.Unlock()
 }
 
