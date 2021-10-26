@@ -1,13 +1,53 @@
 package spinix
 
 import (
+	"context"
 	"strconv"
 	"strings"
+	"testing"
 
 	"github.com/tidwall/geojson"
 
 	"github.com/tidwall/geojson/geometry"
 )
+
+func TestEngineDetectOneTimes(t *testing.T) {
+	poly1 := polyFromString(`
+-72.2368648, 42.3367342
+-72.2353846, 42.3363298
+-72.2350414, 42.3368453
+-72.2367468, 42.3372973
+-72.2368970, 42.3367660
+-72.2368648, 42.3367342
+`)
+	devicePath := []geometry.Point{
+		{X: 42.3372894, Y: -72.2353417},
+		{X: 42.3367501, Y: -72.2359424},
+		{X: 42.3362267, Y: -72.2362534},
+	}
+
+	ctx := context.Background()
+	engine := New()
+
+	_ = engine.AddObject(ctx, "poly", poly1)
+
+	_, _ = engine.AddRule(ctx, `device intersects polygon(@poly) { :center 42.3351401 -72.236779 :radius 5km }`)
+
+	var match int
+	for _, p := range devicePath {
+		device := &Device{IMEI: "test", Latitude: p.X, Longitude: p.Y}
+		events, err := engine.Detect(ctx, device)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(events) > 0 {
+			match++
+		}
+	}
+	if match != 1 {
+		t.Fatalf("have %d, want 1", match)
+	}
+}
 
 func pointsFromString(s string) []geometry.Point {
 	lines := strings.Split(s, "\n")
