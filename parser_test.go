@@ -12,6 +12,9 @@ func TestParser(t *testing.T) {
 		isErr bool
 	}{
 		{
+			spec: `devices(@my) :radius 100m near devices(@other1, @other2, @other2) :radius 100m { :trigger every 10s }`,
+		},
+		{
 			spec: `device :radius 100m near devices(@other1, @other2, @other2) :radius 100m { :trigger every 10s }`,
 		},
 		// successfully

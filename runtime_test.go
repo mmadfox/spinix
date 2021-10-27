@@ -1,19 +1,74 @@
 package spinix
 
-//var poly = polyFromString(`
-//-72.2808218, 42.9279834
-//-72.2805106, 42.9266950
-//-72.2789867, 42.9268207
-//-72.2792657, 42.9282269
-//-72.2808218, 42.9280226
-//-72.2808218, 42.9279834
-//`)
-//
+var polytest = polyFromString(`
+-72.2808218, 42.9279834
+-72.2805106, 42.9266950
+-72.2789867, 42.9268207
+-72.2792657, 42.9282269
+-72.2808218, 42.9280226
+-72.2808218, 42.9279834
+`)
+
+//func TestRuntimeIntersects(t *testing.T) {
+//	testCases := []struct {
+//		spec string
+//		d    *Device
+//		o    []*Device
+//		m    []Match
+//		p    *geometry.Poly
+//		rid  string
+//		err  bool
+//	}{
+//		{
+//			spec: `devices(@my) :radius 100m intersects devices(@other) :radius 100m { :center 42.9284788 72.2776118 }`,
+//			d:    &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
+//			m:    []Match{match(DEVICES, DEVICES, INTERSECTS)},
+//			o:    []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
+//			rid:  "ruleID",
+//		},
+//	}
+//	ctx := context.Background()
+//	refs := defaultRefs()
+//	for _, tc := range testCases {
+//		spec, err := specFromString(tc.spec)
+//		if err != nil {
+//			if tc.err {
+//				continue
+//			} else {
+//				t.Fatalf("parseSpec(%s) => %v", tc.spec, err)
+//			}
+//		} else if tc.err {
+//			t.Fatalf("parseSpec(%s) => got nil, expected err", tc.spec)
+//		}
+//		matches, _, err := spec.evaluate(ctx, tc.rid, tc.d, refs)
+//		if err != nil {
+//			t.Fatal(err)
+//		}
+//		if have, want := len(matches), len(tc.m); have != want {
+//			t.Fatalf("parseSpec(%s) => got %v, expected %v", tc.spec, have, want)
+//		}
+//		for i, m := range matches {
+//			if have, want := m.Ok, tc.m[i].Ok; have != want {
+//				t.Fatalf("parseSpec(%s) => got %v, expected %v", tc.spec, have, want)
+//			}
+//			if have, want := m.Left.Keyword, tc.m[i].Left.Keyword; have != want {
+//				t.Fatalf("parseSpec(%s) => got %v, expected %v", tc.spec, have, want)
+//			}
+//			if have, want := m.Right.Keyword, tc.m[i].Right.Keyword; have != want {
+//				t.Fatalf("parseSpec(%s) => got %v, expected %v", tc.spec, have, want)
+//			}
+//			if have, want := m.Operator, tc.m[i].Operator; have != want {
+//				t.Fatalf("parseSpec(%s) => got %v, expected %v", tc.spec, have, want)
+//			}
+//		}
+//	}
+//}
+
 //func TestTriggerRepeatEvery(t *testing.T) {
 //	t.Skip()
 //	ctx := context.Background()
 //	refs := defaultRefs()
-//	_ = refs.objects.Add(ctx, "poly", poly)
+//	_ = refs.objects.Add(ctx, "poly", polyOne)
 //	spec, err := specFromString(`device intersects objects(@poly) :trigger every 2s`)
 //	if err != nil {
 //		t.Fatal(err)
@@ -41,7 +96,7 @@ package spinix
 //func TestNearOpDeviceObjectWithoutRadius(t *testing.T) {
 //	ctx := context.Background()
 //	refs := defaultRefs()
-//	if err := refs.objects.Add(ctx, "poly", poly); err != nil {
+//	if err := refs.objects.Add(ctx, "poly", polyOne); err != nil {
 //		t.Fatal(err)
 //	}
 //
@@ -86,7 +141,7 @@ package spinix
 //	ctx := context.Background()
 //	refs := defaultRefs()
 //
-//	if err := refs.objects.Add(ctx, "poly", poly); err != nil {
+//	if err := refs.objects.Add(ctx, "poly", polyOne); err != nil {
 //		t.Fatal(err)
 //	}
 //
@@ -129,7 +184,7 @@ package spinix
 //func TestNearOpDeviceObjectWithBBox2kilometers(t *testing.T) {
 //	ctx := context.Background()
 //	refs := defaultRefs()
-//	if err := refs.objects.Add(ctx, "poly", poly); err != nil {
+//	if err := refs.objects.Add(ctx, "poly", polyOne); err != nil {
 //		t.Fatal(err)
 //	}
 //
@@ -326,19 +381,19 @@ package spinix
 //	ctx := context.Background()
 //	refs := defaultRefs()
 //
-//	if err := refs.objects.Add(ctx, "poly1", poly); err != nil {
+//	if err := refs.objects.Add(ctx, "poly1", polyOne); err != nil {
 //		t.Fatal(err)
 //	}
-//	if err := refs.objects.Add(ctx, "poly2", poly); err != nil {
+//	if err := refs.objects.Add(ctx, "poly2", polyOne); err != nil {
 //		t.Fatal(err)
 //	}
-//	if err := refs.objects.Add(ctx, "poly3", poly); err != nil {
+//	if err := refs.objects.Add(ctx, "poly3", polyOne); err != nil {
 //		t.Fatal(err)
 //	}
 //
 //	spec, err := specFromString(`
-//     (device :radius 10m near objects(@poly1) AND device :radius 10m near objects(@poly2))
-//     OR (device :radius 1km near objects(@poly3))
+//    (device :radius 10m near objects(@poly1) AND device :radius 10m near objects(@poly2))
+//    OR (device :radius 1km near objects(@poly3))
 //`)
 //	if err != nil {
 //		t.Fatal(err)
@@ -527,7 +582,7 @@ package spinix
 //
 //	ctx := context.Background()
 //	refs := defaultRefs()
-//	_ = refs.objects.Add(ctx, "poly1", poly)
+//	_ = refs.objects.Add(ctx, "poly1", polyOne)
 //	_, _ = refs.devices.InsertOrReplace(ctx, &Device{IMEI: "other", Latitude: 42.9287184, Longitude: -72.2778048})
 //
 //	for _, tc := range testCases {
@@ -660,9 +715,9 @@ package spinix
 //		},
 //		{
 //			spec: `
-//              (model in [one]) or (brand in ["one-one"]) or
-//              (owner in ["40c34e6c-c3c1-4226-bfea-7995336c9a9e"]) or
-//              (imei in ["40c34e6c-c3c1-4226-bfea-7995336c9a9e"])`,
+//             (model in [one]) or (brand in ["one-one"]) or
+//             (owner in ["40c34e6c-c3c1-4226-bfea-7995336c9a9e"]) or
+//             (imei in ["40c34e6c-c3c1-4226-bfea-7995336c9a9e"])`,
 //			d: &Device{Model: "one", Brand: "one-one", Owner: "40c34e6c-c3c1-4226-bfea-7995336c9a9e", IMEI: "40c34e6c-c3c1-4226-bfea-7995336c9a9e"},
 //			m: []Match{_mm(MODEL, STRING, IN), _mm(BRAND, STRING, IN), _mm(OWNER, STRING, IN), _mm(IMEI, STRING, IN)},
 //		},
@@ -732,7 +787,7 @@ package spinix
 //
 //	ctx := context.Background()
 //	refs := defaultRefs()
-//	_ = refs.objects.Add(ctx, "poly1", poly)
+//	_ = refs.objects.Add(ctx, "poly1", polyOne)
 //
 //	for _, tc := range testCases {
 //		spec, err := specFromString(tc.spec)
@@ -895,12 +950,12 @@ package spinix
 //		}
 //	}
 //}
-//
-//func _mm(left, right, op Token) Match {
-//	return Match{
-//		Ok:       true,
-//		Left:     Decl{Keyword: left},
-//		Right:    Decl{Keyword: right},
-//		Operator: op,
-//	}
-//}
+
+func match(left, right, op Token) Match {
+	return Match{
+		Ok:       true,
+		Left:     Decl{Keyword: left},
+		Right:    Decl{Keyword: right},
+		Operator: op,
+	}
+}

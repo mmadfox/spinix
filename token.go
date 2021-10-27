@@ -97,17 +97,17 @@ const (
 
 	// GEOSPATIAL
 	keywordGeospatialBegin
-	DEVICES        // devices(@regionFromLatLon)
-	OBJECTS        // object(@regionFromLatLon, @id1)
-	POLY           // polygon(@id1, @id2, @id3), poly(@regionFromLatLon)
+	DEVICES        // devices(@id)
+	OBJECTS        // object(@id, @id1)
+	POLY           // polygon(@id1, @id2, @id3), poly(@id)
 	MULTI_POLY     // multiPolygon(@id1, @id2)
 	LINE           // line(@id1, @id2)
 	MULTI_LINE     // multiLine(@id1, @id2)
-	POINT          // point(@regionFromLatLon)
-	MULTI_POINT    // multiPoint(@regionFromLatLon)
-	RECT           // rect(@regionFromLatLon)
-	CIRCLE         // circle(@regionFromLatLon)
-	COLLECTION     // collection(@regionFromLatLon)
+	POINT          // point(@id)
+	MULTI_POINT    // multiPoint(@id)
+	RECT           // rect(@id)
+	CIRCLE         // circle(@id)
+	COLLECTION     // collection(@id)
 	FUT_COLLECTION // featureCollection(@id1, @id2, @id3)
 	keywordGeospatialEnd
 	keywordEnd

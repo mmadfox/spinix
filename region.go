@@ -68,7 +68,7 @@ type RegionID uint64
 
 func RegionIDFromString(id string) (RegionID, error) {
 	if len(id) == 0 {
-		return 0, fmt.Errorf("spinix/rule: got empty region id")
+		return 0, fmt.Errorf("spinix/region: got empty region id")
 	}
 	return RegionID(h3.FromString(id)), nil
 }

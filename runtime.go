@@ -310,10 +310,16 @@ func setupProps(s *spec, expr *PropExpr) {
 
 func exprToSpec(e Expr) (*spec, error) {
 	s := &spec{ops: make([]Token, 0, 2), nodes: make([]evaluater, 0, 2)}
-	if propExpr, ok := e.(*PropExpr); ok {
-		setupProps(s, propExpr)
-		e = propExpr.Expr
+
+	propExpr, ok := e.(*PropExpr)
+	if !ok {
+		return nil, fmt.Errorf("spinix/runtime: rule properties not specified. got(%s) expected(%s { :center lat lon })",
+			e.String(), e.String())
 	}
+
+	setupProps(s, propExpr)
+	e = propExpr.Expr
+
 	_, err := walkExpr(e,
 		func(a, b Expr, op Token) error {
 			if isStateful(a) {
@@ -334,11 +340,13 @@ func exprToSpec(e Expr) (*spec, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	errInvalidSpec := fmt.Errorf("spinix/runtime: invalid specification %s", e)
 	if len(s.nodes) == 0 {
-		return nil, fmt.Errorf("spinix/runtime: specification not defined")
+		return nil, errInvalidSpec
 	}
 	if len(s.nodes)-1 != len(s.ops) {
-		return nil, fmt.Errorf("spinix/runtime: invalid specification %s", e)
+		return nil, errInvalidSpec
 	}
 	return s, nil
 }
@@ -372,7 +380,7 @@ func makeOp(left, right Expr, op Token) (evaluater, error) {
 	case GTE:
 		return e2equal(left, right, GTE)
 	}
-	return nil, fmt.Errorf("spinix/runtime: illegal %v %v %v", left, op, right)
+	return nil, fmt.Errorf("spinix/runtime: illegal expression %v %v %v", left, op, right)
 }
 
 func e2intersects(left, right Expr, not bool) (evaluater, error) {
@@ -384,6 +392,7 @@ func e2intersects(left, right Expr, not bool) (evaluater, error) {
 	// device -> objects(polygon, circle, rect, ...)
 	// object -> device
 	// devices -> device
+	// devices -> devices
 	switch lhs := left.(type) {
 	case *DeviceLit:
 		switch rhs := right.(type) {
@@ -434,6 +443,13 @@ func e2intersects(left, right Expr, not bool) (evaluater, error) {
 		}
 	case *DevicesLit:
 		switch rhs := right.(type) {
+		case *DevicesLit:
+			return intersectsDDevicesOp{
+				left:  rhs,
+				right: lhs,
+				pos:   rhs.Pos,
+				not:   not,
+			}, nil
 		case *DeviceLit:
 			return intersectsDevicesOp{
 				left:  rhs,
@@ -1252,7 +1268,6 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 		}
 		return match, nil
 	}
-
 	return
 }
 
@@ -1475,6 +1490,78 @@ func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, _ *State, r
 		match.Right.Keyword = n.right.Kind
 	}
 	return
+}
+
+type intersectsDDevicesOp struct {
+	left  *DevicesLit
+	right *DevicesLit
+	pos   Pos
+	not   bool
+}
+
+func (n intersectsDDevicesOp) refIDs() (refs map[string]Token) {
+	if len(n.right.Ref) > 0 || len(n.left.Ref) > 0 {
+		refs = make(map[string]Token)
+		for i := 0; i < len(n.right.Ref); i++ {
+			refs[n.right.Ref[i]] = n.right.Kind
+		}
+		for i := 0; i < len(n.left.Ref); i++ {
+			refs[n.left.Ref[i]] = n.left.Kind
+		}
+	}
+	return
+}
+
+// devices(my) intersects devices(others) - OK
+// devices(others) intersects devices(my) - OK
+// devices(my) intersects devices(my) - BAD
+// devices(others) intersects devices(others) - BAD
+func (n intersectsDDevicesOp) evaluate(ctx context.Context, device *Device, state *State, ref reference) (match Match, err error) {
+	leftOk := n.exists(device.IMEI, n.left.Ref)
+	rightOk := n.exists(device.IMEI, n.right.Ref)
+	if leftOk && rightOk {
+		return
+	}
+	if !leftOk && !rightOk {
+		return
+	}
+
+	var op intersectsDevicesOp
+
+	// left -> right
+	if leftOk {
+		op = intersectsDevicesOp{
+			left: &DeviceLit{
+				Unit:  n.left.Unit,
+				Value: n.left.Value,
+				Kind:  DEVICE,
+				Pos:   n.left.Pos,
+			},
+			right: n.right,
+		}
+	}
+	// right -> left
+	if rightOk {
+		op = intersectsDevicesOp{
+			left: &DeviceLit{
+				Unit:  n.right.Unit,
+				Value: n.right.Value,
+				Kind:  DEVICE,
+				Pos:   n.right.Pos,
+			},
+			right: n.left,
+		}
+	}
+	return op.evaluate(ctx, device, state, ref)
+}
+
+func (n intersectsDDevicesOp) exists(target string, list []string) bool {
+	for _, deviceID := range list {
+		if target == deviceID {
+			return true
+		}
+	}
+	return false
 }
 
 type intersectsDevicesOp struct {

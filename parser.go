@@ -494,7 +494,7 @@ func (p *Parser) parseObjectLit(kind Token) (expr Expr, err error) {
 		lastTok = tok
 		if tok == IDENT || tok == INT || tok == FLOAT || tok == STRING {
 			if len(lit) > 64 {
-				return nil, p.error(tok, lit, "regionFromLatLon too long")
+				return nil, p.error(tok, lit, "literal too long")
 			}
 			if unique == nil {
 				unique = make(map[string]struct{})

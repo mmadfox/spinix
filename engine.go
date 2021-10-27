@@ -72,7 +72,7 @@ func WithStatesStorage(s States) Option {
 }
 
 type Event struct {
-	ID       string       `json:"regionFromLatLon"`
+	ID       string       `json:"id"`
 	Device   Device       `json:"device"`
 	DateTime int64        `json:"dateTime"`
 	Rule     RuleSnapshot `json:"rule"`

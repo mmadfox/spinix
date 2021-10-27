@@ -315,6 +315,16 @@ func (e *TimeLit) String() string {
 	return str
 }
 
+func (e *DevicesLit) steps() (steps int) {
+	switch e.Kind {
+	case RADIUS:
+		steps = 12
+	case BBOX:
+		steps = 4
+	}
+	return
+}
+
 func (e *DeviceLit) steps() (steps int) {
 	switch e.Kind {
 	case RADIUS:
@@ -336,7 +346,33 @@ func (e *DeviceLit) meters() float64 {
 	}
 }
 
+func (e *DevicesLit) meters() float64 {
+	switch e.Unit {
+	case DistanceMeters:
+		return e.Value
+	case DistanceKilometers:
+		return e.Value * 1000
+	default:
+		return 0
+	}
+}
+
 func (e *DeviceLit) hasRadius() bool {
+	switch e.Kind {
+	case RADIUS, BBOX:
+	default:
+		return false
+	}
+	switch e.Unit {
+	case DistanceMeters, DistanceKilometers:
+		if e.Value > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func (e *DevicesLit) hasRadius() bool {
 	switch e.Kind {
 	case RADIUS, BBOX:
 	default:
