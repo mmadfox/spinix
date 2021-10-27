@@ -2,6 +2,7 @@ package spinix
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -30,6 +31,50 @@ type Rule struct {
 	regions    []RegionID
 	regionSize RegionSize
 	circle     radiusRing
+}
+
+func (r *Rule) MarshalJSON() ([]byte, error) {
+	return json.Marshal(r.Snapshot())
+}
+
+func (r *Rule) UnmarshalJSON(data []byte) error {
+	var snap RuleSnapshot
+	if err := json.Unmarshal(data, &snap); err != nil {
+		return err
+	}
+	expr, err := ParseSpec(snap.Spec)
+	if err != nil {
+		return err
+	}
+	ruleSpec, err := exprToSpec(expr)
+	if err != nil {
+		return err
+	}
+	if ruleSpec.radius < 1000 {
+		ruleSpec.radius = 1000
+	}
+	if ruleSpec.radius > largeRegionThreshold {
+		ruleSpec.radius = largeRegionThreshold
+	}
+	if ruleSpec.center.X == 0 && ruleSpec.center.Y == 0 {
+		return fmt.Errorf("spinix/rule: center coordinates of the rule is not specified")
+	}
+	r.regions = make([]RegionID, len(snap.RegionIDs))
+	for i := 0; i < len(snap.RegionIDs); i++ {
+		rid, err := RegionIDFromString(snap.RegionIDs[i])
+		if err != nil {
+			return err
+		}
+		r.regions[i] = rid
+	}
+	r.ruleID = snap.RuleID
+	r.regionSize = RegionSize(snap.RegionSize)
+	r.specStr = expr.String()
+	r.spec = ruleSpec
+	if err := r.calc(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *Rule) calc() error {
@@ -102,10 +147,14 @@ func NewRule(spec string) (*Rule, error) {
 	if len(spec) == 0 {
 		return nil, fmt.Errorf("spinix/rule: specification too short")
 	}
-	if len(spec) > 1024 {
+	if len(spec) > 2048 {
 		return nil, fmt.Errorf("spinix/rule: specification too long")
 	}
-	ruleSpec, err := specFromString(spec)
+	expr, err := ParseSpec(spec)
+	if err != nil {
+		return nil, err
+	}
+	ruleSpec, err := exprToSpec(expr)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +170,7 @@ func NewRule(spec string) (*Rule, error) {
 	rule := &Rule{
 		ruleID:  xid.New().String(),
 		spec:    ruleSpec,
-		specStr: spec,
+		specStr: expr.String(),
 	}
 	if err := rule.calc(); err != nil {
 		return nil, err
@@ -133,13 +182,15 @@ type RuleSnapshot struct {
 	RuleID     string   `json:"ruleID"`
 	Spec       string   `json:"spec"`
 	RegionIDs  []string `json:"regionIDs"`
-	RegionSize int      `json:"regionCellSize"`
+	RegionSize int      `json:"regionSize"`
 }
 
-func Snapshot(r *Rule) RuleSnapshot {
+func (r *Rule) Snapshot() RuleSnapshot {
 	snapshot := RuleSnapshot{
-		RuleID:    r.ruleID,
-		RegionIDs: make([]string, len(r.regions)),
+		RuleID:     r.ruleID,
+		Spec:       r.specStr,
+		RegionIDs:  make([]string, len(r.regions)),
+		RegionSize: r.regionSize.Value(),
 	}
 	for i := 0; i < len(r.regions); i++ {
 		snapshot.RegionIDs[i] = r.regions[i].String()

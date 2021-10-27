@@ -325,7 +325,7 @@ func (p *Parser) parseParenExpr() (Expr, error) {
 		return nil, err
 	}
 	if tok, _ := p.s.Next(); tok != RPAREN {
-		return nil, fmt.Errorf("georule/parser: missing )")
+		return nil, fmt.Errorf("spinix/parser: missing )")
 	}
 	return &ParenExpr{Expr: expr}, nil
 }

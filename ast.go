@@ -222,7 +222,11 @@ func (e *ListLit) String() string {
 	li := len(e.Items) - 1
 	sb.WriteString("[")
 	for i, expr := range e.Items {
-		sb.WriteString(expr.String())
+		if _, ok := expr.(*StringLit); ok {
+			sb.WriteString(`"` + expr.String() + `"`)
+		} else {
+			sb.WriteString(expr.String())
+		}
 		if i != li {
 			if e.Kind == RANGE {
 				sb.WriteString(" .. ")

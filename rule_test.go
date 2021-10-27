@@ -13,6 +13,59 @@ var poly = polyFromString(`
 -72.4276075, 43.8662180
 `)
 
+func TestRuleMarshalUnmarshalJSON(t *testing.T) {
+	wantSpec := `
+       device :radius 5km near devices(@imei1, @imei2, @imei3) 
+       OR datetime range ["2012-10-01T22:08:41+00:00" .. "2012-11-01T22:08:41+00:00"]
+       { 
+          :center 43.9295499 -72.4276075 
+          :reset after 3h
+          :trigger every 20m
+       }`
+
+	rule, err := NewRule(wantSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := rule.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rule2 := new(Rule)
+	if err := rule2.UnmarshalJSON(data); err != nil {
+		t.Fatal(err)
+	}
+	if have, want := rule.Specification(), rule2.Specification(); have != want {
+		t.Fatalf("have %s, want %s specification", have, want)
+	}
+	if have, want := rule.ID(), rule2.ID(); have != want {
+		t.Fatalf("have %s, want %s rule id", have, want)
+	}
+	if have, want := len(rule.RegionIDs()), len(rule2.RegionIDs()); want != have {
+		t.Fatalf("have %d, want %d regionIDs", have, want)
+	}
+	r1regionIDs := rule.RegionIDs()
+	r2regionIDs := rule2.RegionIDs()
+	for i := 0; i < len(r1regionIDs); i++ {
+		want := r1regionIDs[i]
+		have := r2regionIDs[i]
+		if have != want {
+			t.Fatalf("have %d, want %d", have, want)
+		}
+	}
+	if have, want := rule.RegionSize(), rule2.RegionSize(); want != have {
+		t.Fatalf("have %d, want %d regionSize", have, want)
+	}
+
+	// fails
+	if err := rule2.UnmarshalJSON([]byte(`{}`)); err == nil {
+		t.Fatalf("have nil, want error")
+	}
+	if err := rule2.UnmarshalJSON([]byte(`{"spec":"device near device"}`)); err == nil {
+		t.Fatalf("have nil, want error")
+	}
+}
+
 func TestRulesInsert(t *testing.T) {
 	ctx := context.Background()
 	refs := defaultRefs()

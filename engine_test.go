@@ -29,8 +29,9 @@ func TestEngineDetectOneTimes(t *testing.T) {
 	ctx := context.Background()
 	engine := New(
 		WithDetectBefore(
-			func(device *Device, rule *Rule) {
+			func(device *Device, rule *Rule) bool {
 				t.Log("beforeDetect", device.IMEI, rule.Specification())
+				return false
 			}),
 		WithDetectAfter(
 			func(device *Device, rule *Rule, match bool, events []Event) {

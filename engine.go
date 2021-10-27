@@ -83,7 +83,7 @@ func MakeEvent(d *Device, r *Rule, m []Match) Event {
 	event := Event{
 		ID:       xid.New().String(),
 		Device:   *d,
-		Rule:     Snapshot(r),
+		Rule:     r.Snapshot(),
 		DateTime: time.Now().Unix(),
 		Match:    make([]Match, len(m)),
 	}
@@ -155,7 +155,9 @@ func (e *Engine) Detect(ctx context.Context, device *Device) (events []Event, er
 				return err
 			}
 			for _, beforeFunc := range e.beforeDetect {
-				beforeFunc(device, rule)
+				if ok := beforeFunc(device, rule); !ok {
+					continue
+				}
 			}
 			match, ok, err := rule.spec.evaluate(ctx, rule.ruleID, device, e.refs)
 			if err != nil {

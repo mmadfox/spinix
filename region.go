@@ -66,6 +66,13 @@ func (r Region) Bounding() []geometry.Point {
 
 type RegionID uint64
 
+func RegionIDFromString(id string) (RegionID, error) {
+	if len(id) == 0 {
+		return 0, fmt.Errorf("spinix/rule: got empty region id")
+	}
+	return RegionID(h3.FromString(id)), nil
+}
+
 func (rid RegionID) String() string {
 	return h3.ToString(h3.H3Index(rid))
 }
