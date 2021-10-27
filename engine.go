@@ -7,8 +7,6 @@ import (
 
 	"github.com/tidwall/geojson/geometry"
 
-	"github.com/tidwall/geojson"
-
 	"github.com/rs/xid"
 )
 
@@ -19,14 +17,17 @@ type Detector interface {
 type Option func(*Engine)
 
 type Engine struct {
-	stats *StatsCollector
-	refs  reference
+	refs reference
+
+	beforeDetect []BeforeDetectFunc
+	afterDetect  []AfterDetectFunc
 }
 
 func New(opts ...Option) *Engine {
 	e := &Engine{
-		refs:  defaultRefs(),
-		stats: NewStatsCollector(),
+		refs:         defaultRefs(),
+		beforeDetect: []BeforeDetectFunc{},
+		afterDetect:  []AfterDetectFunc{},
 	}
 	for _, f := range opts {
 		f(e)
@@ -34,9 +35,15 @@ func New(opts ...Option) *Engine {
 	return e
 }
 
-func WithStatsCollector(s *StatsCollector) Option {
+func WithDetectBefore(fn ...BeforeDetectFunc) Option {
 	return func(e *Engine) {
-		e.stats = s
+		e.beforeDetect = append(e.beforeDetect, fn...)
+	}
+}
+
+func WithDetectAfter(fn ...AfterDetectFunc) Option {
+	return func(e *Engine) {
+		e.afterDetect = append(e.afterDetect, fn...)
 	}
 }
 
@@ -100,34 +107,6 @@ func (e *Engine) States() States {
 	return e.refs.states
 }
 
-func (e *Engine) AddObject(ctx context.Context, objectID string, object geojson.Object) (err error) {
-	if object == nil {
-		return fmt.Errorf("spinix/engine: object %s is not defined", objectID)
-	}
-	err = e.refs.objects.Add(ctx, objectID, object)
-	if err == nil {
-		e.stats.IncrObjects()
-	}
-	return
-}
-
-func (e *Engine) RemoveObject(ctx context.Context, objectID string) (err error) {
-	err = e.refs.objects.Delete(ctx, objectID)
-	if err != nil {
-		return
-	}
-	e.stats.DecrObjects()
-	return
-}
-
-func (e *Engine) ResetStats() {
-	e.stats.Reset()
-}
-
-func (e *Engine) Stats() Stats {
-	return e.stats.Stats()
-}
-
 func (e *Engine) AddRule(ctx context.Context, spec string) (*Rule, error) {
 	rule, err := NewRule(spec)
 	if err != nil {
@@ -165,65 +144,40 @@ func (e *Engine) AddRule(ctx context.Context, spec string) (*Rule, error) {
 	if err := e.refs.rules.Insert(ctx, rule); err != nil {
 		return nil, err
 	}
-	e.stats.IncrRules()
 	return rule, nil
 }
 
-func (e *Engine) RemoveRule(ctx context.Context, ruleID string) (err error) {
-	err = e.refs.rules.Delete(ctx, ruleID)
-	if err == nil {
-		e.stats.DecrRules()
-	}
-	return
-}
-
-func (e *Engine) RemoveDevice(ctx context.Context, deviceID string) (err error) {
-	err = e.refs.devices.Delete(ctx, deviceID)
-	if err == nil {
-		e.stats.DecrDevices()
-	}
-	return
-}
-
-func (e *Engine) AddDevice(ctx context.Context, device *Device) (replaced bool, err error) {
-	replaced, err = e.refs.devices.InsertOrReplace(ctx, device)
-	if err == nil {
-		if !replaced {
-			e.stats.IncrDevices()
-		}
-	}
-	return
-}
-
 func (e *Engine) Detect(ctx context.Context, device *Device) (events []Event, err error) {
+	device.DetectRegion()
 	err = e.refs.rules.Walk(ctx, device,
 		func(ctx context.Context, rule *Rule, err error) error {
 			if err != nil {
 				return err
 			}
-			e.stats.IncrDetects()
+			for _, beforeFunc := range e.beforeDetect {
+				beforeFunc(device, rule)
+			}
 			match, ok, err := rule.spec.evaluate(ctx, rule.ruleID, device, e.refs)
 			if err != nil {
 				return err
 			}
 			if ok {
-				e.stats.IncrHits()
 				if events == nil {
 					events = make([]Event, 0, 2)
 				}
 				events = append(events, MakeEvent(device, rule, match))
 			}
+			for _, afterFunc := range e.afterDetect {
+				afterFunc(device, rule, ok, events)
+			}
 			return nil
 		})
 	if err == nil {
-		replaced, err := e.refs.devices.InsertOrReplace(ctx, device)
-		if err != nil {
+		if _, err = e.refs.devices.InsertOrReplace(ctx, device); err != nil {
 			return nil, err
 		}
-		if !replaced {
-			e.stats.IncrDevices()
-		}
 	}
+	device.ResetRegion()
 	return
 }
 

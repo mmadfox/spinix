@@ -27,9 +27,18 @@ func TestEngineDetectOneTimes(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	engine := New()
+	engine := New(
+		WithDetectBefore(
+			func(device *Device, rule *Rule) {
+				t.Log("beforeDetect", device.IMEI, rule.Specification())
+			}),
+		WithDetectAfter(
+			func(device *Device, rule *Rule, match bool, events []Event) {
+				t.Log("afterDetect", device.IMEI, match, len(events))
+			}),
+	)
 
-	_ = engine.AddObject(ctx, "poly", poly1)
+	_ = engine.Objects().Add(ctx, "poly", poly1)
 
 	_, _ = engine.AddRule(ctx, `device intersects polygon(@poly) { :center 42.3351401 -72.236779 :radius 5km }`)
 

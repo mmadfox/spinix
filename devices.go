@@ -21,23 +21,46 @@ type Devices interface {
 }
 
 type Device struct {
-	IMEI          string   `json:"imei"`
-	Owner         string   `json:"owner"`
-	Brand         string   `json:"brand"`
-	Model         string   `json:"model"`
-	Latitude      float64  `json:"lat"`
-	Longitude     float64  `json:"lon"`
-	Altitude      float64  `json:"alt"`
-	Speed         float64  `json:"speed"`
-	DateTime      int64    `json:"dateTime"`
-	Status        int      `json:"status"`
-	BatteryCharge float64  `json:"batteryCharge"`
-	Temperature   float64  `json:"temperature"`
-	Humidity      float64  `json:"humidity"`
-	Luminosity    float64  `json:"luminosity"`
-	Pressure      float64  `json:"pressure"`
-	FuelLevel     float64  `json:"fuelLevel"`
-	regionID      RegionID `json:"regionID"`
+	IMEI          string  `json:"imei"`
+	Owner         string  `json:"owner"`
+	Brand         string  `json:"brand"`
+	Model         string  `json:"model"`
+	Latitude      float64 `json:"lat"`
+	Longitude     float64 `json:"lon"`
+	Altitude      float64 `json:"alt"`
+	Speed         float64 `json:"speed"`
+	DateTime      int64   `json:"dateTime"`
+	Status        int     `json:"status"`
+	BatteryCharge float64 `json:"batteryCharge"`
+	Temperature   float64 `json:"temperature"`
+	Humidity      float64 `json:"humidity"`
+	Luminosity    float64 `json:"luminosity"`
+	Pressure      float64 `json:"pressure"`
+	FuelLevel     float64 `json:"fuelLevel"`
+
+	regionID RegionID
+}
+
+func (d *Device) DetectRegion() {
+	if d.regionID > 0 {
+		return
+	}
+	d.regionID = regionFromLatLon(d.Latitude, d.Longitude, smallRegionSize)
+}
+
+func (d *Device) ResetRegion() {
+	d.regionID = 0
+}
+
+func (d *Device) RegionSize() RegionSize {
+	return smallRegionSize
+}
+
+func (d *Device) RegionID() RegionID {
+	if d.regionID == 0 {
+		d.DetectRegion()
+	}
+	return d.regionID
 }
 
 type devices struct {
@@ -58,8 +81,7 @@ func (d *devices) Lookup(_ context.Context, deviceID string) (*Device, error) {
 }
 
 func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced bool, err error) {
-	device.regionID = regionFromLatLon(device.Latitude, device.Longitude, smallRegionSize)
-
+	device.DetectRegion()
 	prevState, err := d.index.get(device.IMEI)
 	if prevState != nil && err == nil {
 		dist := geo.DistanceTo(

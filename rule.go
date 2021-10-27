@@ -24,6 +24,7 @@ type WalkRuleFunc func(ctx context.Context, rule *Rule, err error) error
 
 type Rule struct {
 	ruleID     string
+	specStr    string
 	spec       *spec
 	bbox       geometry.Rect
 	regions    []RegionID
@@ -73,6 +74,10 @@ func (r *Rule) Center() geometry.Point {
 	return r.spec.center
 }
 
+func (r *Rule) Specification() string {
+	return r.specStr
+}
+
 func (r *Rule) ID() string {
 	return r.ruleID
 }
@@ -114,8 +119,9 @@ func NewRule(spec string) (*Rule, error) {
 		return nil, fmt.Errorf("spinix/rule: center coordinates of the rule is not specified")
 	}
 	rule := &Rule{
-		ruleID: xid.New().String(),
-		spec:   ruleSpec,
+		ruleID:  xid.New().String(),
+		spec:    ruleSpec,
+		specStr: spec,
 	}
 	if err := rule.calc(); err != nil {
 		return nil, err
