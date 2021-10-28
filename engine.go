@@ -112,6 +112,45 @@ func (e *Engine) AddRule(ctx context.Context, spec string) (*Rule, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// validate and prepare
+	if err := rule.validateCoordinates(); err != nil {
+		if err := e.calcCenter(ctx, rule); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := e.expand(ctx, rule); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := e.refs.rules.Insert(ctx, rule); err != nil {
+		return nil, err
+	}
+	return rule, nil
+}
+
+func (e *Engine) calcCenter(ctx context.Context, rule *Rule) error {
+	refs := rule.RefIDs()
+	var bbox geometry.Rect
+	for refID, tok := range refs {
+		if !isObjectToken(tok) || tok == DEVICES {
+			continue
+		}
+		object, err := e.refs.objects.Lookup(ctx, refID)
+		if err != nil {
+			return fmt.Errorf("%w - failed to add rule [%s]", err, rule.specStr)
+		}
+		bbox = e.calcBounding(bbox, object.Rect())
+	}
+	rule.spec.center = bbox.Center()
+	return rule.calc()
+}
+
+func (e *Engine) expand(ctx context.Context, rule *Rule) error {
+	if err := rule.validateCoordinates(); err != nil {
+		return err
+	}
 	refs := rule.RefIDs()
 	var ok bool
 	if refs != nil {
@@ -124,7 +163,7 @@ func (e *Engine) AddRule(ctx context.Context, spec string) (*Rule, error) {
 				}
 				object, err := e.refs.objects.Lookup(ctx, refID)
 				if err != nil {
-					return nil, fmt.Errorf("%w - failed to add rule [%s]", err, spec)
+					return fmt.Errorf("%w - failed to add rule [%s]", err, rule.specStr)
 				}
 				bbox = e.calcBounding(bbox, object.Rect())
 			}
@@ -132,19 +171,16 @@ func (e *Engine) AddRule(ctx context.Context, spec string) (*Rule, error) {
 				ok = true
 				break
 			}
-			rule.spec.radius *= 2
+			rule.spec.radius *= 3
 			if err := rule.calc(); err != nil {
-				return nil, err
+				return err
 			}
 		}
 		if !ok {
-			return nil, fmt.Errorf("spinix/engine: the radius of the rule does not RegionIDs geoobjects")
+			return fmt.Errorf("spinix/engine: rule does not contains any objects")
 		}
 	}
-	if err := e.refs.rules.Insert(ctx, rule); err != nil {
-		return nil, err
-	}
-	return rule, nil
+	return nil
 }
 
 func (e *Engine) Detect(ctx context.Context, device *Device) (events []Event, ok bool, err error) {

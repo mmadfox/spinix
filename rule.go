@@ -164,9 +164,6 @@ func NewRule(spec string) (*Rule, error) {
 	if ruleSpec.radius > LargeRegionThreshold {
 		ruleSpec.radius = LargeRegionThreshold
 	}
-	if ruleSpec.center.X == 0 && ruleSpec.center.Y == 0 {
-		return nil, fmt.Errorf("spinix/rule: center coordinates of the rule is not specified")
-	}
 	rule := &Rule{
 		ruleID:  xid.New().String(),
 		spec:    ruleSpec,
@@ -176,6 +173,13 @@ func NewRule(spec string) (*Rule, error) {
 		return nil, err
 	}
 	return rule, nil
+}
+
+func (r *Rule) validateCoordinates() error {
+	if r.spec.center.X == 0 && r.spec.center.Y == 0 {
+		return fmt.Errorf("spinix/rule: center of the rule not specified")
+	}
+	return nil
 }
 
 type RuleSnapshot struct {
@@ -232,8 +236,14 @@ func (r *rules) Insert(_ context.Context, rule *Rule) error {
 	if rule == nil {
 		return fmt.Errorf("spinix/rule: rule is nil pointer")
 	}
+
+	if err := rule.validateCoordinates(); err != nil {
+		return err
+	}
+
 	var region *regionCell
 	var found bool
+
 	for _, regionID := range rule.regions {
 		switch rule.regionSize {
 		case SmallRegionSize:

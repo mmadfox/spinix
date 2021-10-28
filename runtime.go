@@ -312,13 +312,10 @@ func exprToSpec(e Expr) (*spec, error) {
 	s := &spec{ops: make([]Token, 0, 2), nodes: make([]evaluater, 0, 2)}
 
 	propExpr, ok := e.(*PropExpr)
-	if !ok {
-		return nil, fmt.Errorf("spinix/runtime: rule properties not specified. have %s, want %s { :center lat lon }",
-			e.String(), e.String())
+	if ok {
+		setupProps(s, propExpr)
+		e = propExpr.Expr
 	}
-
-	setupProps(s, propExpr)
-	e = propExpr.Expr
 
 	_, err := walkExpr(e,
 		func(a, b Expr, op Token) error {

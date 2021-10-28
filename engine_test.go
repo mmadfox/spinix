@@ -128,6 +128,40 @@ func TestEngineDetectIntersects(t *testing.T) {
 	}
 }
 
+func TestEngineAddRuleWithoutRequiredProps(t *testing.T) {
+	poly1 := polyFromString(`
+-72.2368648, 42.3367342
+-72.2353846, 42.3363298
+-72.2350414, 42.3368453
+-72.2367468, 42.3372973
+-72.2368970, 42.3367660
+-72.2368648, 42.3367342
+`)
+	ctx := context.Background()
+
+	engine := New()
+	if err := engine.Objects().Add(ctx, "poly1", poly1); err != nil {
+		t.Fatal(err)
+	}
+
+	// spec without required props { :center lat lon } with autodetect mode
+	specWithoutProps := `device IN polygon(@poly1)`
+	rule, err := engine.AddRule(ctx, specWithoutProps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rule.Center().X == 0 && rule.Center().Y == 0 {
+		t.Fatalf("engine.AddRule(%s) => center of the rule not specified", specWithoutProps)
+	}
+
+	// spec without required props { :center lat lon } with error
+	specWithoutProps2 := `speed range [1 .. 200]`
+	rule, err = engine.AddRule(ctx, specWithoutProps2)
+	if err == nil {
+		t.Fatalf("have nil, want error")
+	}
+}
+
 func TestEngineDetectOneTimes(t *testing.T) {
 	poly1 := polyFromString(`
 -72.2368648, 42.3367342
