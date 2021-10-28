@@ -86,6 +86,8 @@ func (s *Scanner) Next() (tok Token, lit string) {
 			tok = RESET
 		case "radius":
 			tok = RADIUS
+		case "bbox":
+			tok = BBOX
 		default:
 			s.Reset()
 		}

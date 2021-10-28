@@ -30,6 +30,14 @@ func TestRuntimeIntersects(t *testing.T) {
 	}{
 		// success not intersects
 		{
+			name:   "should be successful when the current device not intersects the polygon",
+			spec:   `device nintersects polygon(@object) { :center 42.9284788 72.2776118 }`,
+			device: &Device{IMEI: "my", Latitude: 42.9353452, Longitude: -72.2850947},
+			match:  []Match{match(DEVICE, POLY, NINTERSECTS)},
+			object: polytest,
+			rid:    "rule2115",
+		},
+		{
 			name:         "should be successful when the my device not intersects the other devices",
 			spec:         `devices(@my) nintersects devices(@) { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
@@ -58,6 +66,33 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 
 		// success intersects
+		{
+			name:      "should be successful when the current device intersects the polygon",
+			spec:      `device INTERSECTS polygon(@object) { :center 42.9284788 72.2776118 }`,
+			device:    &Device{IMEI: "my", Latitude: 42.9273904, Longitude: -72.2798723},
+			match:     []Match{match(DEVICE, POLY, INTERSECTS)},
+			object:    polytest,
+			refsCount: 1,
+			rid:       "rule4598",
+		},
+		{
+			name:      "should be successful when the current device intersects the polygon",
+			spec:      `device :radius 1km INTERSECTS polygon(@object) { :center 42.9284788 72.2776118 }`,
+			device:    &Device{IMEI: "my", Latitude: 42.924991, Longitude: -72.2799713},
+			match:     []Match{match(DEVICE, POLY, INTERSECTS)},
+			object:    polytest,
+			refsCount: 1,
+			rid:       "rule4390",
+		},
+		{
+			name:      "should be successful when the current device intersects the polygon",
+			spec:      `device :bbox 1km INTERSECTS polygon(@object) { :center 42.9284788 72.2776118 }`,
+			device:    &Device{IMEI: "my", Latitude: 42.924991, Longitude: -72.2799713},
+			match:     []Match{match(DEVICE, POLY, INTERSECTS)},
+			object:    polytest,
+			refsCount: 1,
+			rid:       "rule4340",
+		},
 		{
 			name:         "should be successful when the my device intersects the other devices",
 			spec:         `devices(@my) intersects devices(@) { :center 42.9284788 72.2776118 }`,
@@ -277,19 +312,19 @@ func TestRuntimeIntersects(t *testing.T) {
 		}
 		for i, m := range matches {
 			if have, want := len(m.Right.Refs), tc.refsCount; have != want {
-				t.Fatalf("parseSpec(%s) => got %v, expected %v", tc.spec, have, want)
+				t.Fatalf("parseSpec(%s) => got %v, expected %v refsCount", tc.spec, have, want)
 			}
 			if have, want := m.Ok, tc.match[i].Ok; have != want {
-				t.Fatalf("parseSpec(%s) => got %v, expected %v", tc.spec, have, want)
+				t.Fatalf("parseSpec(%s) => got %v, expected %v matches", tc.spec, have, want)
 			}
 			if have, want := m.Left.Keyword, tc.match[i].Left.Keyword; have != want {
-				t.Fatalf("parseSpec(%s) => got %v, expected %v", tc.spec, have, want)
+				t.Fatalf("parseSpec(%s) => got %v, expected %v left keyword", tc.spec, have, want)
 			}
 			if have, want := m.Right.Keyword, tc.match[i].Right.Keyword; have != want {
-				t.Fatalf("parseSpec(%s) => got %v, expected %v", tc.spec, have, want)
+				t.Fatalf("parseSpec(%s) => got %v, expected %v right keyword", tc.spec, have, want)
 			}
 			if have, want := m.Operator, tc.match[i].Operator; have != want {
-				t.Fatalf("parseSpec(%s) => got %v, expected %v", tc.spec, have, want)
+				t.Fatalf("parseSpec(%s) => got %v, expected %v left keyword", tc.spec, have, want)
 			}
 		}
 	}

@@ -11,6 +11,10 @@ func TestParser(t *testing.T) {
 		spec  string
 		isErr bool
 	}{
+		// successfully
+		{
+			spec: `device :radius 1km intersects polygon(@object) { :center 42.9284788 72.2776118 }`,
+		},
 		{
 			spec: `devices(@my) :radius 100m near devices(@) :radius 100m { :trigger every 10s }`,
 		},
@@ -20,7 +24,6 @@ func TestParser(t *testing.T) {
 		{
 			spec: `device :radius 100m near devices(@other1, @other2, @other2) :radius 100m { :trigger every 10s }`,
 		},
-		// successfully
 		{
 			spec: `
                  status eq 1 OR 1 eq status 

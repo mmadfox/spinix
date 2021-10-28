@@ -1438,8 +1438,12 @@ func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, _ *State, r
 	if n.not {
 		op = NINTERSECTS
 	}
-	var deviceRadius *geometry.Poly
-	var devicePoint geometry.Point
+
+	var (
+		deviceRadius *geometry.Poly
+		devicePoint  geometry.Point
+	)
+
 	switch n.left.Kind {
 	case RADIUS, BBOX:
 		// circle or rect
