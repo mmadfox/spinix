@@ -155,7 +155,7 @@ func (e *Engine) Detect(ctx context.Context, device *Device) (events []Event, er
 				return err
 			}
 			for _, beforeFunc := range e.beforeDetect {
-				if ok := beforeFunc(device, rule); !ok {
+				if ok := beforeFunc(device, rule); ok {
 					continue
 				}
 			}

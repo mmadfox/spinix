@@ -31,7 +31,7 @@ func TestEngineDetectOneTimes(t *testing.T) {
 		WithDetectBefore(
 			func(device *Device, rule *Rule) bool {
 				t.Log("beforeDetect", device.IMEI, rule.Specification())
-				return false
+				return true
 			}),
 		WithDetectAfter(
 			func(device *Device, rule *Rule, match bool, events []Event) {
