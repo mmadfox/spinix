@@ -24,6 +24,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		otherDevices []*Device
 		match        []Match
 		object       geojson.Object
+		populate     func(refs reference)
 		refsCount    int
 		rid          string
 		err          bool
@@ -66,6 +67,48 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 
 		// success intersects
+		{
+			name: "should be successful when the current device intersects the polygons collection or single polygon",
+			spec: `device INTERSECTS collection(@cid) OR device INTERSECTS polygon(@oid) 
+                  { 
+                      :trigger every 60s
+                      :center 42.9284788 72.2776118
+                      :reset after 6h
+                  }`,
+			device:    &Device{IMEI: "my", Latitude: 42.9286159, Longitude: -72.2823506},
+			match:     []Match{match(DEVICE, COLLECTION, INTERSECTS)},
+			refsCount: 1,
+			populate: func(refs reference) {
+				// lon, lat
+				collection := collectionFromString(
+					`
+-72.2837684, 42.9289975
+-72.2831462, 42.9278663
+-72.2809366, 42.9289189
+-72.2837469, 42.9290132
+-72.2837684, 42.9289975
+`, `
+-72.2818376, 42.9258709
+-72.2800142, 42.9251324
+-72.2779119, 42.9271592
+-72.2818591, 42.9259023
+-72.2818376, 42.9258709
+`, `
+-72.2838971, 42.9243939
+-72.2837684, 42.9235297
+-72.2820093, 42.9235297
+-72.2821594, 42.9242211
+-72.2823096, 42.9251795
+-72.2803360, 42.9254152
+-72.2819020, 42.9262479
+-72.2839185, 42.9244410
+-72.2838971, 42.9243939
+`)
+				_ = refs.objects.Add(context.TODO(), "cid", collection)
+				_ = refs.objects.Add(context.TODO(), "oid", polytest)
+			},
+			rid: "rule4598",
+		},
 		{
 			name:      "should be successful when the current device intersects the polygon",
 			spec:      `device INTERSECTS polygon(@object) { :center 42.9284788 72.2776118 }`,
@@ -291,6 +334,10 @@ func TestRuntimeIntersects(t *testing.T) {
 			if err := refs.objects.Add(ctx, "object", tc.object); err != nil {
 				t.Fatal(err)
 			}
+		}
+
+		if tc.populate != nil {
+			tc.populate(refs)
 		}
 
 		spec, err := specFromString(tc.spec)

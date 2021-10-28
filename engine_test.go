@@ -92,3 +92,13 @@ func polyFromString(s string) *geojson.Polygon {
 	res := pointsFromString(s)
 	return geojson.NewPolygon(geometry.NewPoly(res, nil, nil))
 }
+
+func collectionFromString(sets ...string) *geojson.GeometryCollection {
+	objects := make([]geojson.Object, 0, len(sets))
+	for _, set := range sets {
+		res := pointsFromString(set)
+		poly := geojson.NewPolygon(geometry.NewPoly(res, nil, nil))
+		objects = append(objects, poly)
+	}
+	return geojson.NewGeometryCollection(objects)
+}
