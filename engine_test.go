@@ -75,7 +75,7 @@ func TestEngineDetectIntersects(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		matchEvents := make([]Event, 0, 2)
+		matchedEvents := make([]Event, 0, 2)
 
 		// walk the route
 		for _, route := range tc.route {
@@ -88,12 +88,12 @@ func TestEngineDetectIntersects(t *testing.T) {
 				t.Fatal(err)
 			}
 			if ok {
-				matchEvents = append(matchEvents, events...)
+				matchedEvents = append(matchedEvents, events...)
 			}
 		}
 
 		// asserts
-		if have, want := len(matchEvents), tc.matchLen; have != want {
+		if have, want := len(matchedEvents), tc.matchLen; have != want {
 			t.Fatalf("have %d, want %d matched events", have, want)
 		}
 	}
