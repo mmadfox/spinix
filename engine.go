@@ -11,13 +11,13 @@ import (
 )
 
 type Detector interface {
-	Detect(ctx context.Context, device *Device) ([]Event, error)
+	Detect(ctx context.Context, device *Device) ([]Event, bool, error)
 }
 
 type Option func(*Engine)
 
 type Engine struct {
-	refs reference
+	refs *reference
 
 	beforeDetect []BeforeDetectFunc
 	afterDetect  []AfterDetectFunc
@@ -124,7 +124,7 @@ func (e *Engine) AddRule(ctx context.Context, spec string) (*Rule, error) {
 				}
 				object, err := e.refs.objects.Lookup(ctx, refID)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("%w - failed to add rule [%s]", err, spec)
 				}
 				bbox = e.calcBounding(bbox, object.Rect())
 			}
@@ -147,7 +147,7 @@ func (e *Engine) AddRule(ctx context.Context, spec string) (*Rule, error) {
 	return rule, nil
 }
 
-func (e *Engine) Detect(ctx context.Context, device *Device) (events []Event, err error) {
+func (e *Engine) Detect(ctx context.Context, device *Device) (events []Event, ok bool, err error) {
 	device.DetectRegion()
 	err = e.refs.rules.Walk(ctx, device,
 		func(ctx context.Context, rule *Rule, err error) error {
@@ -159,11 +159,12 @@ func (e *Engine) Detect(ctx context.Context, device *Device) (events []Event, er
 					continue
 				}
 			}
-			match, ok, err := rule.spec.evaluate(ctx, rule.ruleID, device, e.refs)
+			match, status, err := rule.spec.evaluate(ctx, rule.ruleID, device, e.refs)
 			if err != nil {
 				return err
 			}
-			if ok {
+			if status {
+				ok = true
 				if events == nil {
 					events = make([]Event, 0, 2)
 				}
@@ -176,7 +177,7 @@ func (e *Engine) Detect(ctx context.Context, device *Device) (events []Event, er
 		})
 	if err == nil {
 		if _, err = e.refs.devices.InsertOrReplace(ctx, device); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 	device.ResetRegion()

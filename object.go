@@ -78,7 +78,7 @@ func (i objectIndex) get(objectID string) (geojson.Object, error) {
 	defer bucket.RUnlock()
 	object, ok := bucket.index[objectID]
 	if !ok {
-		return nil, fmt.Errorf("spinix: object %s not found", objectID)
+		return nil, fmt.Errorf("spinix/objects: object %s not found", objectID)
 	}
 	return object, nil
 }

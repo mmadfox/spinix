@@ -24,7 +24,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		otherDevices []*Device
 		match        []Match
 		object       geojson.Object
-		populate     func(refs reference)
+		populate     func(refs *reference)
 		refsCount    int
 		rid          string
 		err          bool
@@ -78,7 +78,7 @@ func TestRuntimeIntersects(t *testing.T) {
 			device:    &Device{IMEI: "my", Latitude: 42.9286159, Longitude: -72.2823506},
 			match:     []Match{match(DEVICE, COLLECTION, INTERSECTS)},
 			refsCount: 1,
-			populate: func(refs reference) {
+			populate: func(refs *reference) {
 				// lon, lat
 				collection := collectionFromString(
 					`

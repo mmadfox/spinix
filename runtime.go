@@ -25,7 +25,7 @@ const (
 
 type evaluater interface {
 	refIDs() map[string]Token
-	evaluate(ctx context.Context, device *Device, state *State, ref reference) (Match, error)
+	evaluate(ctx context.Context, device *Device, state *State, ref *reference) (Match, error)
 }
 
 type reference struct {
@@ -48,8 +48,8 @@ type Decl struct {
 	Refs    []string
 }
 
-func defaultRefs() reference {
-	return reference{
+func defaultRefs() *reference {
+	return &reference{
 		devices: NewMemoryDevices(),
 		objects: NewMemoryObjects(),
 		rules:   NewMemoryRules(),
@@ -110,7 +110,7 @@ func (s *spec) checkTrigger(state *State, device *Device) bool {
 	return true
 }
 
-func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r reference) (matches []Match, ok bool, err error) {
+func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r *reference) (matches []Match, ok bool, err error) {
 	if d == nil {
 		return matches, false, nil
 	}
@@ -1093,7 +1093,7 @@ func (n nearOp) refIDs() (refs map[string]Token) {
 	return
 }
 
-func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
+func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref *reference) (match Match, err error) {
 	// device
 	var (
 		meters       float64
@@ -1290,7 +1290,7 @@ type rangeDateTimeOp struct {
 
 func (n rangeDateTimeOp) refIDs() (refs map[string]Token) { return }
 
-func (n rangeDateTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
+func (n rangeDateTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ *reference) (match Match, err error) {
 	values := mapper{device: d}
 	ts := values.dateTime()
 	if n.not {
@@ -1320,7 +1320,7 @@ type rangeTimeOp struct {
 
 func (n rangeTimeOp) refIDs() (refs map[string]Token) { return }
 
-func (n rangeTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
+func (n rangeTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ *reference) (match Match, err error) {
 	values := mapper{device: d}
 	ts := values.dateTime()
 	d1 := time.Date(ts.Year(), ts.Month(), ts.Day(), n.begin.h, n.begin.m, 0, 0, ts.Location())
@@ -1348,7 +1348,7 @@ type rangeIntOp struct {
 
 func (n rangeIntOp) refIDs() (refs map[string]Token) { return }
 
-func (n rangeIntOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
+func (n rangeIntOp) evaluate(_ context.Context, d *Device, _ *State, _ *reference) (match Match, err error) {
 	values := mapper{device: d}
 	v := values.intVal(n.keyword)
 	if n.not {
@@ -1375,7 +1375,7 @@ type rangeFloatOp struct {
 
 func (n rangeFloatOp) refIDs() (refs map[string]Token) { return }
 
-func (n rangeFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
+func (n rangeFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ *reference) (match Match, err error) {
 	values := mapper{device: d}
 	v := values.floatVal(n.keyword)
 	if n.not {
@@ -1400,7 +1400,7 @@ type inFloatOp struct {
 
 func (n inFloatOp) refIDs() (refs map[string]Token) { return }
 
-func (n inFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
+func (n inFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ *reference) (match Match, err error) {
 	value := mapper{device: d}.floatVal(n.keyword)
 	_, found := n.values[value]
 	match.Left.Keyword = n.keyword
@@ -1433,7 +1433,7 @@ func (n intersectsObjectOp) refIDs() (refs map[string]Token) {
 	return
 }
 
-func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
+func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref *reference) (match Match, err error) {
 	op := INTERSECTS
 	if n.not {
 		op = NINTERSECTS
@@ -1531,7 +1531,7 @@ func (n intersectsDDevicesOp) refIDs() (refs map[string]Token) {
 // devices(others) intersects devices(others) - BAD
 // devices(my) intersects devices(@) - OK
 // devices(@) intersects devices(@) - BAD
-func (n intersectsDDevicesOp) evaluate(ctx context.Context, device *Device, state *State, ref reference) (match Match, err error) {
+func (n intersectsDDevicesOp) evaluate(ctx context.Context, device *Device, state *State, ref *reference) (match Match, err error) {
 	leftOk := n.exists(device.IMEI, n.left.Ref)
 	rightOk := n.exists(device.IMEI, n.right.Ref)
 	if leftOk && rightOk {
@@ -1609,7 +1609,7 @@ func (n intersectsDevicesOp) refIDs() (refs map[string]Token) {
 	return
 }
 
-func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
+func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, ref *reference) (match Match, err error) {
 	op := INTERSECTS
 	if n.not {
 		op = NINTERSECTS
@@ -1895,7 +1895,7 @@ func (n inObjectOp) refIDs() (refs map[string]Token) {
 	return
 }
 
-func (n inObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
+func (n inObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref *reference) (match Match, err error) {
 	match.Left.Keyword = DEVICE
 	match.Right.Keyword = n.object.Kind
 	match.Pos = n.pos
@@ -1956,7 +1956,7 @@ type inIntOp struct {
 
 func (n inIntOp) refIDs() (refs map[string]Token) { return }
 
-func (n inIntOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
+func (n inIntOp) evaluate(_ context.Context, d *Device, _ *State, _ *reference) (match Match, err error) {
 	value := mapper{device: d}.intVal(n.keyword)
 	_, found := n.values[value]
 	match.Left.Keyword = n.keyword
@@ -1981,7 +1981,7 @@ type inStringOp struct {
 
 func (n inStringOp) refIDs() (refs map[string]Token) { return }
 
-func (n inStringOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
+func (n inStringOp) evaluate(_ context.Context, d *Device, _ *State, _ *reference) (match Match, err error) {
 	value := mapper{device: d}.stringVal(n.keyword)
 	_, found := n.values[value]
 	match.Left.Keyword = n.keyword
@@ -2014,7 +2014,7 @@ func (n equalObjectOp) refIDs() (refs map[string]Token) {
 	return
 }
 
-func (n equalObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
+func (n equalObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref *reference) (match Match, err error) {
 	match.Left.Keyword = DEVICE
 	match.Right.Keyword = n.right.Kind
 	match.Pos = n.pos
@@ -2078,7 +2078,7 @@ func (n equalDevicesOp) refIDs() (refs map[string]Token) {
 	return
 }
 
-func (n equalDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference) (match Match, err error) {
+func (n equalDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, ref *reference) (match Match, err error) {
 	match.Left.Keyword = DEVICE
 	match.Right.Keyword = DEVICES
 	match.Pos = n.pos
@@ -2133,7 +2133,7 @@ type equalTimeOp struct {
 
 func (n equalTimeOp) refIDs() (refs map[string]Token) { return }
 
-func (n equalTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
+func (n equalTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ *reference) (match Match, err error) {
 	values := mapper{device: d}
 	ts := values.dateTime()
 	right := time.Date(ts.Year(), ts.Month(), ts.Day(), n.value.h, n.value.m, 0, 0, ts.Location())
@@ -2167,7 +2167,7 @@ type equalStrOp struct {
 
 func (n equalStrOp) refIDs() (refs map[string]Token) { return }
 
-func (n equalStrOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
+func (n equalStrOp) evaluate(_ context.Context, d *Device, _ *State, _ *reference) (match Match, err error) {
 	values := mapper{device: d}
 	switch n.op {
 	case EQ:
@@ -2199,7 +2199,7 @@ type equalIntOp struct {
 
 func (n equalIntOp) refIDs() (refs map[string]Token) { return }
 
-func (n equalIntOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
+func (n equalIntOp) evaluate(_ context.Context, d *Device, _ *State, _ *reference) (match Match, err error) {
 	values := mapper{device: d}
 	switch n.op {
 	case EQ:
@@ -2231,7 +2231,7 @@ type equalFloatOp struct {
 
 func (n equalFloatOp) refIDs() (refs map[string]Token) { return }
 
-func (n equalFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ reference) (match Match, err error) {
+func (n equalFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ *reference) (match Match, err error) {
 	values := mapper{device: d}
 	switch n.op {
 	case EQ:
