@@ -24,12 +24,38 @@ type testCase struct {
 func TestEngineDetectIntersects(t *testing.T) {
 	ctx := context.Background()
 	testCases := []testCase{
+		// case 1
 		{
 			imei: "qwe34q",
-			spec: `device INTERSECTS objects(@id1) OR device INTERSECTS objects(@id2)
-                { 
-                   :center 42.9314328 -72.2812945 
-                }`,
+			spec: `device INTERSECTS objects(@id1) AND speed RANGE [20 .. 30] { :center 42.9314328 -72.2812945 }`,
+			route: []*Device{
+				{Latitude: 42.9318155, Longitude: -72.2764766, Speed: 10},
+				{Latitude: 42.9317998, Longitude: -72.2771417, Speed: 25},
+				{Latitude: 42.9315013, Longitude: -72.2793513, Speed: 50},
+				{Latitude: 42.9310400, Longitude: -72.2829678, Speed: 120},
+				{Latitude: 42.9308672, Longitude: -72.2851988, Speed: 5},
+			},
+			matchLen: 0,
+			populate: func(e *Engine) {
+				// lon lat
+				o1 := polyFromString(`
+-72.2857655, 42.9312970
+-72.2856582, 42.9303544
+-72.2822902, 42.9306686
+-72.2824833, 42.9317841
+-72.2857441, 42.9313285
+-72.2857655, 42.9312970
+`)
+				if err := e.Objects().Add(ctx, "id1", o1); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+
+		// case 2
+		{
+			imei: "qwe34q",
+			spec: `device INTERSECTS objects(@id1) OR device INTERSECTS objects(@id2) { :center 42.9314328 -72.2812945 }`,
 			route: []*Device{
 				{Latitude: 42.9318155, Longitude: -72.2764766},
 				{Latitude: 42.9317998, Longitude: -72.2771417},
