@@ -13,7 +13,7 @@ import (
 
 type testCase struct {
 	spec     string
-	route    []geometry.Point
+	route    []*Device
 	imei     string
 	populate func(e *Engine)
 	match    []Event
@@ -26,13 +26,16 @@ func TestEngineDetectIntersects(t *testing.T) {
 	testCases := []testCase{
 		{
 			imei: "qwe34q",
-			spec: `device INTERSECTS objects(@id1) OR device INTERSECTS objects(@id2) { :center 42.9314328 -72.2812945 }`,
-			route: []geometry.Point{
-				{X: 42.9318155, Y: -72.2764766},
-				{X: 42.9317998, Y: -72.2771417},
-				{X: 42.9315013, Y: -72.2793513},
-				{X: 42.9310400, Y: -72.2829678},
-				{X: 42.9308672, Y: -72.2851988},
+			spec: `device INTERSECTS objects(@id1) OR device INTERSECTS objects(@id2)
+                { 
+                   :center 42.9314328 -72.2812945 
+                }`,
+			route: []*Device{
+				{Latitude: 42.9318155, Longitude: -72.2764766},
+				{Latitude: 42.9317998, Longitude: -72.2771417},
+				{Latitude: 42.9315013, Longitude: -72.2793513},
+				{Latitude: 42.9310400, Longitude: -72.2829678},
+				{Latitude: 42.9308672, Longitude: -72.2851988},
 			},
 			matchLen: 3,
 			populate: func(e *Engine) {
@@ -78,8 +81,8 @@ func TestEngineDetectIntersects(t *testing.T) {
 		matchedEvents := make([]Event, 0, 2)
 
 		// walk the route
-		for _, route := range tc.route {
-			device := &Device{IMEI: tc.imei, Latitude: route.X, Longitude: route.Y}
+		for _, device := range tc.route {
+			device.IMEI = tc.imei
 			events, ok, err := engine.Detect(ctx, device)
 			if err != nil {
 				if tc.err {
