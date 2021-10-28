@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	VerySmallRegionSize  RegionSize = 5
 	SmallRegionSize      RegionSize = 3
 	LargeRegionSize      RegionSize = 1
 	SmallRegionThreshold            = 20000  // meters

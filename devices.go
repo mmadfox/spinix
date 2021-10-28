@@ -46,7 +46,7 @@ func (d *Device) DetectRegion() {
 	if d.regionID > 0 {
 		return
 	}
-	d.regionID = RegionFromLatLon(d.Latitude, d.Longitude, VerySmallRegionSize)
+	d.regionID = RegionFromLatLon(d.Latitude, d.Longitude, SmallRegionSize)
 }
 
 func (d *Device) ResetRegion() {
@@ -54,7 +54,7 @@ func (d *Device) ResetRegion() {
 }
 
 func (d *Device) RegionSize() RegionSize {
-	return VerySmallRegionSize
+	return SmallRegionSize
 }
 
 func (d *Device) RegionID() RegionID {
@@ -140,7 +140,7 @@ func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced b
 	region, ok := d.regions[device.regionID]
 	d.mu.RUnlock()
 	if !ok {
-		region = newDeviceRegion(device.regionID, VerySmallRegionSize)
+		region = newDeviceRegion(device.regionID, SmallRegionSize)
 		d.mu.Lock()
 		d.regions[device.regionID] = region
 		d.mu.Unlock()
@@ -182,9 +182,9 @@ func (d *devices) Nearby(
 
 	if meters > 0 {
 		points, bbox = MakeCircle(lat, lon, meters, Steps)
-		rids = RegionIDs(points, VerySmallRegionSize)
+		rids = RegionIDs(points, SmallRegionSize)
 	} else {
-		rids = []RegionID{RegionFromLatLon(lat, lon, VerySmallRegionSize)}
+		rids = []RegionID{RegionFromLatLon(lat, lon, SmallRegionSize)}
 		point := geometry.Point{X: lat, Y: lon}
 		points = []geometry.Point{point}
 		bbox = point.Rect()

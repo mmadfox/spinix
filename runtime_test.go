@@ -28,7 +28,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		rid          string
 		err          bool
 	}{
-		// success
+		// success not intersects
 		{
 			name:         "should be successful when the my device not intersects the other devices",
 			spec:         `devices(@my) nintersects devices(@) { :center 42.9284788 72.2776118 }`,
@@ -38,6 +38,26 @@ func TestRuntimeIntersects(t *testing.T) {
 			refsCount:    1,
 			rid:          "rule21",
 		},
+		{
+			name:         "should be successful when the my device not intersects the other devices",
+			spec:         `devices(@my) nintersects devices(@) :radius 100m { :center 42.9284788 72.2776118 }`,
+			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
+			match:        []Match{match(DEVICE, DEVICES, NINTERSECTS)},
+			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9306625, Longitude: -72.2847043}},
+			refsCount:    1,
+			rid:          "rule211",
+		},
+		{
+			name:         "should be successful when the my device not intersects the other devices",
+			spec:         `devices(@my) :bbox 10m nintersects devices(@) :bbox 100m { :center 42.9284788 72.2776118 }`,
+			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
+			match:        []Match{match(DEVICE, DEVICES, NINTERSECTS)},
+			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9306625, Longitude: -72.2847043}},
+			refsCount:    1,
+			rid:          "rule211",
+		},
+
+		// success intersects
 		{
 			name:         "should be successful when the my device intersects the other devices",
 			spec:         `devices(@my) intersects devices(@) { :center 42.9284788 72.2776118 }`,
