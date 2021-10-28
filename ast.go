@@ -94,6 +94,7 @@ type (
 	}
 
 	DevicesLit struct {
+		All   bool
 		Unit  DistanceUnit
 		Kind  Token
 		Value float64

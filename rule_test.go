@@ -42,7 +42,7 @@ func TestRuleMarshalUnmarshalJSON(t *testing.T) {
 		t.Fatalf("have %s, want %s rule id", have, want)
 	}
 	if have, want := len(rule.RegionIDs()), len(rule2.RegionIDs()); want != have {
-		t.Fatalf("have %d, want %d regionIDs", have, want)
+		t.Fatalf("have %device, want %device RegionIDs", have, want)
 	}
 	r1regionIDs := rule.RegionIDs()
 	r2regionIDs := rule2.RegionIDs()
@@ -50,11 +50,11 @@ func TestRuleMarshalUnmarshalJSON(t *testing.T) {
 		want := r1regionIDs[i]
 		have := r2regionIDs[i]
 		if have != want {
-			t.Fatalf("have %d, want %d", have, want)
+			t.Fatalf("have %device, want %device", have, want)
 		}
 	}
 	if have, want := rule.RegionSize(), rule2.RegionSize(); want != have {
-		t.Fatalf("have %d, want %d regionSize", have, want)
+		t.Fatalf("have %device, want %device regionSize", have, want)
 	}
 
 	// fails
@@ -112,6 +112,6 @@ func TestRulesInsert(t *testing.T) {
 		t.Fatal(err)
 	}
 	if rules != 1 {
-		t.Fatalf("have %d, want 1", rules)
+		t.Fatalf("have %device, want 1", rules)
 	}
 }

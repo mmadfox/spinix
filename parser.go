@@ -337,8 +337,13 @@ func (p *Parser) parseDevicesLit() (Expr, error) {
 	}
 	object := expr.(*ObjectLit)
 	devices := &DevicesLit{}
-	devices.Ref = make([]string, len(object.Ref))
-	copy(devices.Ref, object.Ref)
+	// for all devices
+	if len(object.Ref) == 0 {
+		devices.All = true
+	} else {
+		devices.Ref = make([]string, len(object.Ref))
+		copy(devices.Ref, object.Ref)
+	}
 	tok := p.s.NextTok()
 	switch tok {
 	case BBOX:
@@ -442,7 +447,7 @@ func (p *Parser) parseObjectLit(kind Token) (expr Expr, err error) {
 
 	obj := &ObjectLit{
 		Kind: kind,
-		Ref:  make([]string, 0, 2),
+		Ref:  make([]string, 0, 1),
 	}
 
 	badToken := func(tok Token) bool {
@@ -465,7 +470,7 @@ func (p *Parser) parseObjectLit(kind Token) (expr Expr, err error) {
 		}
 		// )
 		if tok == RPAREN {
-			if len(obj.Ref) == 0 {
+			if len(obj.Ref) == 0 && kind != DEVICES {
 				return nil, p.error(tok, lit, "arguments not found")
 			}
 

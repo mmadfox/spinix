@@ -313,7 +313,7 @@ func exprToSpec(e Expr) (*spec, error) {
 
 	propExpr, ok := e.(*PropExpr)
 	if !ok {
-		return nil, fmt.Errorf("spinix/runtime: rule properties not specified. got(%s) expected(%s { :center lat lon })",
+		return nil, fmt.Errorf("spinix/runtime: rule properties not specified. have %s, want %s { :center lat lon }",
 			e.String(), e.String())
 	}
 
@@ -444,6 +444,15 @@ func e2intersects(left, right Expr, not bool) (evaluater, error) {
 	case *DevicesLit:
 		switch rhs := right.(type) {
 		case *DevicesLit:
+			if rhs.All && lhs.All {
+				return nil, &InvalidExprError{
+					Left:  lhs,
+					Right: right,
+					Op:    op,
+					Pos:   rhs.Pos,
+					Msg:   "illegal",
+				}
+			}
 			return intersectsDDevicesOp{
 				left:  rhs,
 				right: lhs,
@@ -1014,7 +1023,7 @@ func e2near(left, right Expr) (evaluater, error) {
 				node.device.Value = 1000
 			}
 		default:
-			return node, fmt.Errorf("spinix/runtime: invalid specStr => %s NEAR %s, pos=%v",
+			return node, fmt.Errorf("spinix/runtime: invalid spec => %s NEAR %s, pos=%v",
 				lhs, rhs, lhs.Pos)
 		}
 	case *ObjectLit:
@@ -1024,7 +1033,7 @@ func e2near(left, right Expr) (evaluater, error) {
 			node.device = rhs
 			node.pos = rhs.Pos
 		default:
-			return node, fmt.Errorf("spinix/runtime: invalid specStr => %s NEAR %s, pos=%v",
+			return node, fmt.Errorf("spinix/runtime: invalid spec => %s NEAR %s, pos=%v",
 				lhs, rhs, lhs.Pos)
 		}
 	case *DevicesLit:
@@ -1034,23 +1043,23 @@ func e2near(left, right Expr) (evaluater, error) {
 			node.device = rhs
 			node.pos = rhs.Pos
 		default:
-			return node, fmt.Errorf("spinix/runtime: invalid specStr => %s NEAR %s, pos=%v",
+			return node, fmt.Errorf("spinix/runtime: invalid spec => %s NEAR %s, pos=%v",
 				lhs, rhs, lhs.Pos)
 		}
 	default:
-		return node, fmt.Errorf("spinix/runtime: invalid specStr => %s NEAR %s",
+		return node, fmt.Errorf("spinix/runtime: invalid spec => %s NEAR %s",
 			left, right)
 	}
 
 	switch node.device.Unit {
 	case DistanceMeters, DistanceKilometers:
 		if node.device.Value <= 0 {
-			return node, fmt.Errorf("spinix/runtime: invalid distance value in specStr => %s, operator=%v, pos=%v",
+			return node, fmt.Errorf("spinix/runtime: invalid distance value in spec => %s, operator=%v, pos=%v",
 				node.device, NEAR, node.device.Pos)
 		}
 	}
 	if node.devices != nil && node.object != nil && node.other != nil {
-		return node, fmt.Errorf("spinix/runtime: invalid specStr => %s NEAR %s",
+		return node, fmt.Errorf("spinix/runtime: invalid spec => %s NEAR %s",
 			left, right)
 	}
 	return node, nil
@@ -1516,6 +1525,8 @@ func (n intersectsDDevicesOp) refIDs() (refs map[string]Token) {
 // devices(others) intersects devices(my) - OK
 // devices(my) intersects devices(my) - BAD
 // devices(others) intersects devices(others) - BAD
+// devices(my) intersects devices(@) - OK
+// devices(@) intersects devices(@) - BAD
 func (n intersectsDDevicesOp) evaluate(ctx context.Context, device *Device, state *State, ref reference) (match Match, err error) {
 	leftOk := n.exists(device.IMEI, n.left.Ref)
 	rightOk := n.exists(device.IMEI, n.right.Ref)
@@ -1524,6 +1535,15 @@ func (n intersectsDDevicesOp) evaluate(ctx context.Context, device *Device, stat
 	}
 	if !leftOk && !rightOk {
 		return
+	}
+	if n.left.All && n.right.All {
+		return
+	}
+	// devices(@) OP devices(@my) => devices(@my) OP devices(@)
+	if n.left.All && rightOk {
+		leftOk = true
+		rightOk = false
+		n.left, n.right = n.right, n.left
 	}
 
 	var op intersectsDevicesOp
@@ -1534,10 +1554,12 @@ func (n intersectsDDevicesOp) evaluate(ctx context.Context, device *Device, stat
 			left: &DeviceLit{
 				Unit:  n.left.Unit,
 				Value: n.left.Value,
-				Kind:  DEVICE,
-				Pos:   n.left.Pos,
+				Kind:  n.left.Kind,
+				Pos:   n.pos,
 			},
 			right: n.right,
+			not:   n.not,
+			pos:   n.right.Pos,
 		}
 	}
 	// right -> left
@@ -1546,10 +1568,12 @@ func (n intersectsDDevicesOp) evaluate(ctx context.Context, device *Device, stat
 			left: &DeviceLit{
 				Unit:  n.right.Unit,
 				Value: n.right.Value,
-				Kind:  DEVICE,
-				Pos:   n.right.Pos,
+				Kind:  n.right.Kind,
+				Pos:   n.pos,
 			},
 			right: n.left,
+			not:   n.not,
+			pos:   n.right.Pos,
 		}
 	}
 	return op.evaluate(ctx, device, state, ref)
@@ -1589,24 +1613,15 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 
 	// left device
 	var (
-		meters       float64
 		deviceRadius *geometry.Poly
 		devicePoint  geometry.Point
 	)
 
-	switch n.left.Unit {
-	case DistanceKilometers:
-		if n.left.Value > 0 {
-			meters = n.left.Value * 1000
-		}
-	case DistanceMeters:
-		meters = n.left.Value
-	}
-
+	meters := n.left.meters()
 	switch n.left.Kind {
 	case RADIUS, BBOX:
 		// circle or rect
-		ring := makeRadiusRing(d.Latitude, d.Longitude, meters, 12)
+		ring := makeRadiusRing(d.Latitude, d.Longitude, meters, n.left.steps())
 		deviceRadius = &geometry.Poly{Exterior: ring}
 	default:
 		// point
@@ -1615,20 +1630,13 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 
 	// right devices
 	var (
-		otherDeviceMeters float64
 		otherDeviceRadius *geometry.Poly
 		otherDevicePoint  geometry.Point
 	)
 
-	switch n.right.Unit {
-	case DistanceKilometers:
-		if n.right.Value > 0 {
-			otherDeviceMeters = n.right.Value * 1000
-		}
-	case DistanceMeters:
-		otherDeviceMeters = n.right.Value
-	}
+	otherDeviceMeters := n.right.meters()
 
+	// search by ids
 	for _, otherDeviceID := range n.right.Ref {
 		otherDevice, err := ref.devices.Lookup(ctx, otherDeviceID)
 		if err != nil {
@@ -1644,28 +1652,34 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 			ring := makeRadiusRing(
 				otherDevice.Latitude,
 				otherDevice.Longitude,
-				otherDeviceMeters, 12)
+				otherDeviceMeters, n.right.steps())
 			otherDeviceRadius = &geometry.Poly{Exterior: ring}
 			switch n.right.Kind {
 			case RADIUS:
+				// with deviceRadius
 				if deviceRadius != nil && otherDeviceRadius.IntersectsPoly(deviceRadius) {
 					match.Ok = true
+				}
+				// with devicePoint
+				if deviceRadius == nil && otherDeviceRadius.IntersectsPoint(devicePoint) {
+					match.Ok = true
+				}
+				if match.Ok {
 					if match.Right.Refs == nil {
 						match.Right.Refs = make([]string, 0, len(n.right.Ref))
 					}
 					match.Right.Refs = append(match.Right.Refs, otherDeviceID)
 				}
 			case BBOX:
+				// with deviceRadius
 				if deviceRadius != nil && otherDeviceRadius.IntersectsRect(deviceRadius.Rect()) {
 					match.Ok = true
-					if match.Right.Refs == nil {
-						match.Right.Refs = make([]string, 0, len(n.right.Ref))
-					}
-					match.Right.Refs = append(match.Right.Refs, otherDeviceID)
 				}
-			default:
-				if otherDeviceRadius.IntersectsPoint(devicePoint) {
+				// with devicePoint
+				if deviceRadius == nil && otherDeviceRadius.IntersectsPoint(devicePoint) {
 					match.Ok = true
+				}
+				if match.Ok {
 					if match.Right.Refs == nil {
 						match.Right.Refs = make([]string, 0, len(n.right.Ref))
 					}
@@ -1678,8 +1692,17 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 				X: otherDevice.Latitude,
 				Y: otherDevice.Longitude,
 			}
-			if otherDevicePoint.IntersectsPoint(devicePoint) {
+
+			// with deviceRadius
+			if deviceRadius != nil && otherDevicePoint.IntersectsPoly(deviceRadius) {
 				match.Ok = true
+			}
+			// with devicePoint
+			if deviceRadius == nil && otherDevicePoint.IntersectsPoint(devicePoint) {
+				match.Ok = true
+			}
+
+			if match.Ok {
 				if match.Right.Refs == nil {
 					match.Right.Refs = make([]string, 0, len(n.right.Ref))
 				}
@@ -1690,6 +1713,155 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 
 	if n.not {
 		match.Ok = !match.Ok
+	}
+
+	// search by radius
+	if n.right.All {
+		if n.not {
+			// NOT INTERSECTS
+			d.DetectRegion()
+			if err := ref.devices.Each(ctx, d.RegionID(), d.RegionSize(),
+				func(ctx context.Context, otherDevice *Device) error {
+					if otherDevice.IMEI == d.IMEI {
+						return nil
+					}
+					switch n.right.Kind {
+					case RADIUS, BBOX:
+						// circle
+						ring := makeRadiusRing(
+							otherDevice.Latitude,
+							otherDevice.Longitude,
+							otherDeviceMeters, n.right.steps())
+						otherDeviceRadius = &geometry.Poly{Exterior: ring}
+						switch n.right.Kind {
+						case RADIUS:
+							// with deviceRadius
+							if deviceRadius != nil && !otherDeviceRadius.IntersectsPoly(deviceRadius) {
+								match.Ok = true
+							}
+							// with devicePoint
+							if deviceRadius == nil && !otherDeviceRadius.IntersectsPoint(devicePoint) {
+								match.Ok = true
+							}
+							if match.Ok {
+								if match.Right.Refs == nil {
+									match.Right.Refs = make([]string, 0, 8)
+								}
+								match.Right.Refs = append(match.Right.Refs, otherDevice.IMEI)
+							}
+						case BBOX:
+							// with deviceRadius
+							if deviceRadius != nil && !otherDeviceRadius.IntersectsRect(deviceRadius.Rect()) {
+								match.Ok = true
+							}
+							// with devicePoint
+							if deviceRadius == nil && !otherDeviceRadius.IntersectsPoint(devicePoint) {
+								match.Ok = true
+							}
+							if match.Ok {
+								if match.Right.Refs == nil {
+									match.Right.Refs = make([]string, 0, 8)
+								}
+								match.Right.Refs = append(match.Right.Refs, otherDevice.IMEI)
+							}
+						}
+					default:
+						otherDevicePoint = geometry.Point{
+							X: otherDevice.Latitude,
+							Y: otherDevice.Longitude,
+						}
+
+						// with deviceRadius
+						if deviceRadius != nil && !otherDevicePoint.IntersectsPoly(deviceRadius) {
+							match.Ok = true
+						}
+						// with devicePoint
+						if deviceRadius == nil && !otherDevicePoint.IntersectsPoint(devicePoint) {
+							match.Ok = true
+						}
+
+						if match.Ok {
+							if match.Right.Refs == nil {
+								match.Right.Refs = make([]string, 0, 8)
+							}
+							match.Right.Refs = append(match.Right.Refs, otherDevice.IMEI)
+						}
+					}
+					return nil
+				}); err != nil {
+				return match, err
+			}
+		} else {
+			// INTERSECTS
+			if err := ref.devices.Nearby(ctx, d.Latitude, d.Longitude, meters,
+				func(ctx context.Context, otherDevice *Device) error {
+					switch n.right.Kind {
+					case RADIUS, BBOX:
+						// circle
+						ring := makeRadiusRing(
+							otherDevice.Latitude,
+							otherDevice.Longitude,
+							otherDeviceMeters, n.right.steps())
+						otherDeviceRadius = &geometry.Poly{Exterior: ring}
+						switch n.right.Kind {
+						case RADIUS:
+							// with deviceRadius
+							if deviceRadius != nil && otherDeviceRadius.IntersectsPoly(deviceRadius) {
+								match.Ok = true
+							}
+							// with devicePoint
+							if deviceRadius == nil && otherDeviceRadius.IntersectsPoint(devicePoint) {
+								match.Ok = true
+							}
+							if match.Ok {
+								if match.Right.Refs == nil {
+									match.Right.Refs = make([]string, 0, 8)
+								}
+								match.Right.Refs = append(match.Right.Refs, otherDevice.IMEI)
+							}
+						case BBOX:
+							// with deviceRadius
+							if deviceRadius != nil && otherDeviceRadius.IntersectsRect(deviceRadius.Rect()) {
+								match.Ok = true
+							}
+							// with devicePoint
+							if deviceRadius == nil && otherDeviceRadius.IntersectsPoint(devicePoint) {
+								match.Ok = true
+							}
+							if match.Ok {
+								if match.Right.Refs == nil {
+									match.Right.Refs = make([]string, 0, 8)
+								}
+								match.Right.Refs = append(match.Right.Refs, otherDevice.IMEI)
+							}
+						}
+					default:
+						otherDevicePoint = geometry.Point{
+							X: otherDevice.Latitude,
+							Y: otherDevice.Longitude,
+						}
+
+						// with deviceRadius
+						if deviceRadius != nil && otherDevicePoint.IntersectsPoly(deviceRadius) {
+							match.Ok = true
+						}
+						// with devicePoint
+						if deviceRadius == nil && otherDevicePoint.IntersectsPoint(devicePoint) {
+							match.Ok = true
+						}
+
+						if match.Ok {
+							if match.Right.Refs == nil {
+								match.Right.Refs = make([]string, 0, 8)
+							}
+							match.Right.Refs = append(match.Right.Refs, otherDevice.IMEI)
+						}
+					}
+					return nil
+				}); err != nil {
+				return match, err
+			}
+		}
 	}
 
 	if match.Ok {
@@ -2085,7 +2257,7 @@ type radiusRing struct {
 
 func makeRadiusRing(lat, lng float64, meters float64, steps int) radiusRing {
 	rr := radiusRing{}
-	rr.points, rr.rect = makeCircle(lat, lng, meters, steps)
+	rr.points, rr.rect = MakeCircle(lat, lng, meters, steps)
 	return rr
 }
 

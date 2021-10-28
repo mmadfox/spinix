@@ -138,7 +138,7 @@ func (e *Engine) AddRule(ctx context.Context, spec string) (*Rule, error) {
 			}
 		}
 		if !ok {
-			return nil, fmt.Errorf("spinix/engine: the radius of the rule does not regionIDs geoobjects")
+			return nil, fmt.Errorf("spinix/engine: the radius of the rule does not RegionIDs geoobjects")
 		}
 	}
 	if err := e.refs.rules.Insert(ctx, rule); err != nil {

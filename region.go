@@ -12,11 +12,12 @@ import (
 )
 
 const (
-	smallRegionSize      RegionSize = 3
-	largeRegionSize      RegionSize = 1
-	smallRegionThreshold            = 20000  // meters
-	largeRegionThreshold            = 350000 // meters
-	steps                           = 16
+	VerySmallRegionSize  RegionSize = 5
+	SmallRegionSize      RegionSize = 3
+	LargeRegionSize      RegionSize = 1
+	SmallRegionThreshold            = 20000  // meters
+	LargeRegionThreshold            = 350000 // meters
+	Steps                           = 16
 )
 
 type Region struct {
@@ -80,10 +81,10 @@ func (rid RegionID) String() string {
 func (rid RegionID) Size() RegionSize {
 	res := h3.Resolution(h3.H3Index(rid))
 	switch res {
-	case smallRegionSize.Value():
-		return smallRegionSize
-	case largeRegionSize.Value():
-		return largeRegionSize
+	case SmallRegionSize.Value():
+		return SmallRegionSize
+	case LargeRegionSize.Value():
+		return LargeRegionSize
 	default:
 		return RegionSize(-1)
 	}
@@ -92,26 +93,26 @@ func (rid RegionID) Size() RegionSize {
 type RegionSize int
 
 func (rs RegionSize) Validate() (err error) {
-	if rs > largeRegionThreshold {
+	if rs > LargeRegionThreshold {
 		err = fmt.Errorf("spinix/region: region size too large")
 	}
 	return
 }
 
 func (rs RegionSize) IsSmall() bool {
-	return rs <= smallRegionThreshold
+	return rs <= SmallRegionThreshold
 }
 
 func (rs RegionSize) IsLarge() bool {
-	return rs > smallRegionThreshold && rs < largeRegionThreshold
+	return rs > SmallRegionThreshold && rs < LargeRegionThreshold
 }
 
 func (rs RegionSize) Threshold() float64 {
 	switch rs {
-	case smallRegionSize:
-		return smallRegionThreshold
-	case largeRegionSize:
-		return largeRegionThreshold
+	case SmallRegionSize:
+		return SmallRegionThreshold
+	case LargeRegionSize:
+		return LargeRegionThreshold
 	default:
 		return 0
 	}
@@ -123,9 +124,9 @@ func (rs RegionSize) Value() int {
 
 func (rs RegionSize) String() string {
 	switch rs {
-	case smallRegionSize:
+	case SmallRegionSize:
 		return "small"
-	case largeRegionSize:
+	case LargeRegionSize:
 		return "large"
 	default:
 		return "unknown region size"
@@ -194,24 +195,24 @@ func (sr *regionCell) walk(ctx context.Context, lat float64, lon float64, fn Wal
 	return
 }
 
-func regionSizeFromMeters(value float64) RegionSize {
-	if value <= smallRegionThreshold {
-		return smallRegionSize
+func RegionSizeFromMeters(value float64) RegionSize {
+	if value <= SmallRegionThreshold {
+		return SmallRegionSize
 	} else {
-		return largeRegionSize
+		return LargeRegionSize
 	}
 }
 
-func regionFromLatLon(lat, lon float64, rs RegionSize) RegionID {
+func RegionFromLatLon(lat, lon float64, rs RegionSize) RegionID {
 	cord := h3.GeoCoord{Latitude: lat, Longitude: lon}
 	return RegionID(h3.FromGeo(cord, rs.Value()))
 }
 
-func regionIDs(points []geometry.Point, rs RegionSize) []RegionID {
+func RegionIDs(points []geometry.Point, rs RegionSize) []RegionID {
 	visits := make(map[RegionID]struct{})
 	res := make([]RegionID, 0, 3)
 	for _, p := range points {
-		idx := regionFromLatLon(p.X, p.Y, rs)
+		idx := RegionFromLatLon(p.X, p.Y, rs)
 		_, visit := visits[idx]
 		if !visit {
 			res = append(res, idx)
@@ -221,7 +222,7 @@ func regionIDs(points []geometry.Point, rs RegionSize) []RegionID {
 	return res
 }
 
-func makeCircle(lat, lng float64, meters float64, steps int) (points []geometry.Point, bbox geometry.Rect) {
+func MakeCircle(lat, lng float64, meters float64, steps int) (points []geometry.Point, bbox geometry.Rect) {
 	meters = geo.NormalizeDistance(meters)
 	points = make([]geometry.Point, 0, steps+1)
 	for i := 0; i < steps; i++ {
@@ -249,7 +250,7 @@ func makeCircle(lat, lng float64, meters float64, steps int) (points []geometry.
 	return
 }
 
-func contains(p geometry.Point, points []geometry.Point) bool {
+func Contains(p geometry.Point, points []geometry.Point) bool {
 	for i := 0; i < len(points); i++ {
 		var seg geometry.Segment
 		seg.A = points[i]
@@ -257,6 +258,9 @@ func contains(p geometry.Point, points []geometry.Point) bool {
 			seg.B = points[0]
 		} else {
 			seg.B = points[i+1]
+		}
+		if seg.ContainsPoint(p) {
+			return true
 		}
 		res := seg.Raycast(p)
 		if res.In {

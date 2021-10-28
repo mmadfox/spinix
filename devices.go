@@ -17,6 +17,7 @@ type Devices interface {
 	Lookup(ctx context.Context, deviceID string) (*Device, error)
 	InsertOrReplace(ctx context.Context, device *Device) (bool, error)
 	Delete(ctx context.Context, deviceID string) error
+	Each(ctx context.Context, rid RegionID, size RegionSize, fn func(ctx context.Context, d *Device) error) error
 	Nearby(ctx context.Context, lat, lon, meters float64, fn func(ctx context.Context, d *Device) error) error
 }
 
@@ -45,7 +46,7 @@ func (d *Device) DetectRegion() {
 	if d.regionID > 0 {
 		return
 	}
-	d.regionID = regionFromLatLon(d.Latitude, d.Longitude, smallRegionSize)
+	d.regionID = RegionFromLatLon(d.Latitude, d.Longitude, VerySmallRegionSize)
 }
 
 func (d *Device) ResetRegion() {
@@ -53,7 +54,7 @@ func (d *Device) ResetRegion() {
 }
 
 func (d *Device) RegionSize() RegionSize {
-	return smallRegionSize
+	return VerySmallRegionSize
 }
 
 func (d *Device) RegionID() RegionID {
@@ -78,6 +79,27 @@ func NewMemoryDevices() Devices {
 
 func (d *devices) Lookup(_ context.Context, deviceID string) (*Device, error) {
 	return d.index.get(deviceID)
+}
+
+func (d *devices) Each(
+	ctx context.Context,
+	rid RegionID, _ RegionSize,
+	fn func(ctx context.Context, d *Device) error,
+) (err error) {
+	d.mu.RLock()
+	region, ok := d.regions[rid]
+	d.mu.RUnlock()
+	if !ok {
+		return nil
+	}
+	region.each(func(d *Device) bool {
+		err = fn(ctx, d)
+		if err != nil {
+			return false
+		}
+		return true
+	})
+	return
 }
 
 func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced bool, err error) {
@@ -118,7 +140,7 @@ func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced b
 	region, ok := d.regions[device.regionID]
 	d.mu.RUnlock()
 	if !ok {
-		region = newDeviceRegion(device.regionID, smallRegionSize)
+		region = newDeviceRegion(device.regionID, VerySmallRegionSize)
 		d.mu.Lock()
 		d.regions[device.regionID] = region
 		d.mu.Unlock()
@@ -151,10 +173,24 @@ func (d *devices) Nearby(
 	ctx context.Context,
 	lat, lon, meters float64,
 	fn func(ctx context.Context, d *Device) error) (err error) {
-	points, bbox := makeCircle(lat, lon, meters, steps)
-	regionIDs := regionIDs(points, smallRegionSize)
+
+	var (
+		bbox   geometry.Rect
+		points []geometry.Point
+		rids   []RegionID
+	)
+
+	if meters > 0 {
+		points, bbox = MakeCircle(lat, lon, meters, Steps)
+		rids = RegionIDs(points, VerySmallRegionSize)
+	} else {
+		rids = []RegionID{RegionFromLatLon(lat, lon, VerySmallRegionSize)}
+		point := geometry.Point{X: lat, Y: lon}
+		points = []geometry.Point{point}
+		bbox = point.Rect()
+	}
 	next := true
-	for _, regionID := range regionIDs {
+	for _, regionID := range rids {
 		d.mu.RLock()
 		region, found := d.regions[regionID]
 		d.mu.RUnlock()
@@ -171,7 +207,7 @@ func (d *devices) Nearby(
 					X: device.Latitude,
 					Y: device.Longitude,
 				}
-				if contains(point, points) {
+				if Contains(point, points) {
 					if err = fn(ctx, device); err != nil {
 						next = false
 						return false
@@ -189,17 +225,19 @@ func (d *devices) Nearby(
 }
 
 type deviceRegion struct {
-	id    RegionID
-	size  RegionSize
-	mu    sync.RWMutex
-	index *rtree.RTree
+	id      RegionID
+	size    RegionSize
+	mu      sync.RWMutex
+	devices map[string]*Device
+	index   *rtree.RTree
 }
 
 func newDeviceRegion(regionID RegionID, size RegionSize) *deviceRegion {
 	return &deviceRegion{
-		id:    regionID,
-		size:  size,
-		index: &rtree.RTree{},
+		id:      regionID,
+		size:    size,
+		index:   &rtree.RTree{},
+		devices: make(map[string]*Device),
 	}
 }
 
@@ -209,12 +247,23 @@ func (r *deviceRegion) isEmpty() bool {
 	return r.index.Len() == 0
 }
 
+func (r *deviceRegion) each(fn func(*Device) bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, d := range r.devices {
+		if ok := fn(d); !ok {
+			break
+		}
+	}
+}
+
 func (r *deviceRegion) insert(device *Device) {
 	r.mu.Lock()
 	r.index.Insert(
 		[2]float64{device.Latitude, device.Longitude},
 		[2]float64{device.Latitude, device.Longitude},
 		device)
+	r.devices[device.IMEI] = device
 	r.mu.Unlock()
 }
 
@@ -224,6 +273,7 @@ func (r *deviceRegion) delete(device *Device) {
 		[2]float64{device.Latitude, device.Longitude},
 		[2]float64{device.Latitude, device.Longitude},
 		device)
+	delete(r.devices, device.IMEI)
 	r.mu.Unlock()
 }
 

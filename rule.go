@@ -53,8 +53,8 @@ func (r *Rule) UnmarshalJSON(data []byte) error {
 	if ruleSpec.radius < 1000 {
 		ruleSpec.radius = 1000
 	}
-	if ruleSpec.radius > largeRegionThreshold {
-		ruleSpec.radius = largeRegionThreshold
+	if ruleSpec.radius > LargeRegionThreshold {
+		ruleSpec.radius = LargeRegionThreshold
 	}
 	if ruleSpec.center.X == 0 && ruleSpec.center.Y == 0 {
 		return fmt.Errorf("spinix/rule: center coordinates of the rule is not specified")
@@ -78,13 +78,13 @@ func (r *Rule) UnmarshalJSON(data []byte) error {
 }
 
 func (r *Rule) calc() error {
-	circle, bbox := makeCircle(r.spec.center.X, r.spec.center.Y, r.spec.radius, steps)
+	circle, bbox := MakeCircle(r.spec.center.X, r.spec.center.Y, r.spec.radius, Steps)
 	r.circle = radiusRing{points: circle, rect: bbox}
-	r.regionSize = regionSizeFromMeters(r.spec.radius)
+	r.regionSize = RegionSizeFromMeters(r.spec.radius)
 	if err := r.regionSize.Validate(); err != nil {
 		return err
 	}
-	r.regions = regionIDs(circle, r.regionSize)
+	r.regions = RegionIDs(circle, r.regionSize)
 	r.bbox = bbox
 	return nil
 }
@@ -161,8 +161,8 @@ func NewRule(spec string) (*Rule, error) {
 	if ruleSpec.radius < 1000 {
 		ruleSpec.radius = 1000
 	}
-	if ruleSpec.radius > largeRegionThreshold {
-		ruleSpec.radius = largeRegionThreshold
+	if ruleSpec.radius > LargeRegionThreshold {
+		ruleSpec.radius = LargeRegionThreshold
 	}
 	if ruleSpec.center.X == 0 && ruleSpec.center.Y == 0 {
 		return nil, fmt.Errorf("spinix/rule: center coordinates of the rule is not specified")
@@ -181,7 +181,7 @@ func NewRule(spec string) (*Rule, error) {
 type RuleSnapshot struct {
 	RuleID     string   `json:"ruleID"`
 	Spec       string   `json:"spec"`
-	RegionIDs  []string `json:"regionIDs"`
+	RegionIDs  []string `json:"RegionIDs"`
 	RegionSize int      `json:"regionSize"`
 }
 
@@ -207,7 +207,7 @@ func NewMemoryRules() Rules {
 }
 
 func (r *rules) Walk(ctx context.Context, device *Device, fn WalkRuleFunc) error {
-	regionID := regionFromLatLon(device.Latitude, device.Longitude, smallRegionSize)
+	regionID := RegionFromLatLon(device.Latitude, device.Longitude, SmallRegionSize)
 	r.RLock()
 	region, ok := r.smallRegionsCells[regionID]
 	r.RUnlock()
@@ -216,7 +216,7 @@ func (r *rules) Walk(ctx context.Context, device *Device, fn WalkRuleFunc) error
 			return err
 		}
 	}
-	regionID = regionFromLatLon(device.Latitude, device.Longitude, largeRegionSize)
+	regionID = RegionFromLatLon(device.Latitude, device.Longitude, LargeRegionSize)
 	r.RLock()
 	region, ok = r.largeRegionsCells[regionID]
 	r.RUnlock()
@@ -236,7 +236,7 @@ func (r *rules) Insert(_ context.Context, rule *Rule) error {
 	var found bool
 	for _, regionID := range rule.regions {
 		switch rule.regionSize {
-		case smallRegionSize:
+		case SmallRegionSize:
 			r.RLock()
 			region, found = r.smallRegionsCells[regionID]
 			r.RUnlock()
@@ -247,7 +247,7 @@ func (r *rules) Insert(_ context.Context, rule *Rule) error {
 				r.smallRegionsCells[regionID] = region
 				r.Unlock()
 			}
-		case largeRegionSize:
+		case LargeRegionSize:
 			r.RLock()
 			region, found = r.largeRegionsCells[regionID]
 			r.RUnlock()
@@ -276,11 +276,11 @@ func (r *rules) Delete(_ context.Context, ruleID string) error {
 	var found bool
 	for _, regionID := range rule.regions {
 		switch rule.regionSize {
-		case smallRegionSize:
+		case SmallRegionSize:
 			r.RLock()
 			region, found = r.smallRegionsCells[regionID]
 			r.RUnlock()
-		case largeRegionSize:
+		case LargeRegionSize:
 			r.RLock()
 			region, found = r.largeRegionsCells[regionID]
 			r.RUnlock()
