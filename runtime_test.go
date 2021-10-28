@@ -30,7 +30,7 @@ func TestRuntimeIntersects(t *testing.T) {
 	}{
 		// success
 		{
-			name:         "should be successful when the my device intersects the other devices",
+			name:         "should be successful when the my device not intersects the other devices",
 			spec:         `devices(@my) nintersects devices(@) { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, NINTERSECTS)},
