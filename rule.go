@@ -30,7 +30,6 @@ type Rule struct {
 	bbox       geometry.Rect
 	regions    []RegionID
 	regionSize RegionSize
-	circle     radiusRing
 }
 
 func (r *Rule) MarshalJSON() ([]byte, error) {
@@ -78,8 +77,7 @@ func (r *Rule) UnmarshalJSON(data []byte) error {
 }
 
 func (r *Rule) calc() error {
-	circle, bbox := MakeCircle(r.spec.center.X, r.spec.center.Y, r.spec.radius, Steps)
-	r.circle = radiusRing{points: circle, rect: bbox}
+	circle, bbox := makeCircle(r.spec.center.X, r.spec.center.Y, r.spec.radius, steps)
 	r.regionSize = RegionSizeFromMeters(r.spec.radius)
 	if err := r.regionSize.Validate(); err != nil {
 		return err
@@ -105,10 +103,6 @@ func (r *Rule) Regions() []Region {
 		regions[ri] = MakeRegion(rid, r.regionSize)
 	}
 	return regions
-}
-
-func (r *Rule) Circle() geometry.Series {
-	return r.circle
 }
 
 func (r *Rule) Bounding() geometry.Rect {

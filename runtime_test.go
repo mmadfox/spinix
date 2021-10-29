@@ -68,6 +68,15 @@ func TestRuntimeIntersects(t *testing.T) {
 
 		// success intersects
 		{
+			name:         "should be successful when the my device intersects the other devices",
+			spec:         `devices(@my) intersects devices(@) { :center 42.9284788 72.2776118 }`,
+			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
+			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
+			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
+			refsCount:    1,
+			rid:          "rule2146",
+		},
+		{
 			name: "should be successful when the current device intersects the polygons collection or single polygon",
 			spec: `device INTERSECTS collection(@cid) OR device INTERSECTS polygon(@oid) 
                   { 
@@ -137,22 +146,13 @@ func TestRuntimeIntersects(t *testing.T) {
 			rid:       "rule4340",
 		},
 		{
-			name:         "should be successful when the my device intersects the other devices",
-			spec:         `devices(@my) intersects devices(@) { :center 42.9284788 72.2776118 }`,
-			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
-			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
-			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
-			refsCount:    1,
-			rid:          "rule21",
-		},
-		{
 			name:         "should be successful when the my device intersects the other devices at a distance of 100 meters",
 			spec:         `devices(@my) intersects devices(@) :radius 100m { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
 			refsCount:    1,
-			rid:          "rule21",
+			rid:          "rule21430",
 		},
 		{
 			name:         "should be successful when the my device intersects the other devices at a distance of 100 meters",
@@ -161,7 +161,7 @@ func TestRuntimeIntersects(t *testing.T) {
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
 			refsCount:    1,
-			rid:          "rule21",
+			rid:          "rule2190",
 		},
 		{
 			name:         "should be successful when the my device intersects the other devices at a distance of 100 meters",
@@ -170,7 +170,7 @@ func TestRuntimeIntersects(t *testing.T) {
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
 			refsCount:    1,
-			rid:          "rule21",
+			rid:          "rule22308",
 		},
 		{
 			name:         "should be successful when the my device intersects the other devices at a distance of 100 meters",
@@ -179,7 +179,7 @@ func TestRuntimeIntersects(t *testing.T) {
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
 			refsCount:    1,
-			rid:          "rule21",
+			rid:          "rule2979",
 		},
 		{
 			name:         "should be successful when the my device intersects the other devices with bounding box at a radius 100 meters",
@@ -188,7 +188,7 @@ func TestRuntimeIntersects(t *testing.T) {
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
 			refsCount:    1,
-			rid:          "rule21",
+			rid:          "rule2139",
 		},
 		{
 			name:         "should be successful when the my device intersects the other devices at a distance of 100 meters",
@@ -197,7 +197,7 @@ func TestRuntimeIntersects(t *testing.T) {
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
 			refsCount:    1,
-			rid:          "rule21",
+			rid:          "rule2psd",
 		},
 		{
 			name:         "should be successful when the current device intersects the other device at a distance of 100 meters",
@@ -206,7 +206,7 @@ func TestRuntimeIntersects(t *testing.T) {
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
 			refsCount:    1,
-			rid:          "rule21",
+			rid:          "rule2349",
 		},
 		{
 			name:         "should be successful when the current device intersects the other device with bounding box at a radius 100 meters",
@@ -215,7 +215,7 @@ func TestRuntimeIntersects(t *testing.T) {
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
 			refsCount:    1,
-			rid:          "rule294",
+			rid:          "rule277",
 		},
 		{
 			name:         "should be successful when the current device intersects the other device",
@@ -224,7 +224,7 @@ func TestRuntimeIntersects(t *testing.T) {
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
 			refsCount:    1,
-			rid:          "rule294",
+			rid:          "rule2qw",
 		},
 		{
 			name:      "should be successful when the current device intersects the polygon with @object id",
@@ -260,7 +260,7 @@ func TestRuntimeIntersects(t *testing.T) {
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
 			refsCount:    1,
-			rid:          "rule21",
+			rid:          "rule21sdf",
 		},
 		{
 			name:         "should be successful when the my device intersects the devices with bounding box at a radius 100 meters",
@@ -269,7 +269,7 @@ func TestRuntimeIntersects(t *testing.T) {
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
 			refsCount:    1,
-			rid:          "rule21",
+			rid:          "rule2144",
 		},
 		{
 			name:   "should be successful when the my device intersects the all devices at a distance of 100 meters",
@@ -321,7 +321,7 @@ func TestRuntimeIntersects(t *testing.T) {
 
 	ctx := context.Background()
 
-	for _, tc := range testCases {
+	for tci, tc := range testCases {
 		refs := defaultRefs()
 
 		for _, otherDevice := range tc.otherDevices {
@@ -355,7 +355,7 @@ func TestRuntimeIntersects(t *testing.T) {
 			t.Fatal(err)
 		}
 		if have, want := len(matches), len(tc.match); have != want {
-			t.Fatalf("parseSpec(%s) => got %v, expected %v", tc.spec, have, want)
+			t.Fatalf("%s - %d. parseSpec(%s) => got %v, expected %v", tc.rid, tci, tc.spec, have, want)
 		}
 		for i, m := range matches {
 			if have, want := len(m.Right.Refs), tc.refsCount; have != want {

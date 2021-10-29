@@ -12,12 +12,16 @@ import (
 )
 
 const (
-	SmallRegionSize      RegionSize = 3
-	LargeRegionSize      RegionSize = 1
-	SmallRegionThreshold            = 20000  // meters
-	LargeRegionThreshold            = 350000 // meters
-	Steps                           = 16
+	TinyRegionSize  RegionSize = 3
+	SmallRegionSize RegionSize = 2
+	LargeRegionSize RegionSize = 1
+
+	TinyRegionThreshold  = 50000  // meters
+	SmallRegionThreshold = 100000 // meters
+	LargeRegionThreshold = 300000 // meters
 )
+
+const steps = 8
 
 type Region struct {
 	id       RegionID
@@ -80,6 +84,8 @@ func (rid RegionID) String() string {
 func (rid RegionID) Size() RegionSize {
 	res := h3.Resolution(h3.H3Index(rid))
 	switch res {
+	case TinyRegionSize.Value():
+		return TinyRegionSize
 	case SmallRegionSize.Value():
 		return SmallRegionSize
 	case LargeRegionSize.Value():
@@ -98,12 +104,16 @@ func (rs RegionSize) Validate() (err error) {
 	return
 }
 
+func (rs RegionSize) IsTiny() bool {
+	return rs <= TinyRegionThreshold
+}
+
 func (rs RegionSize) IsSmall() bool {
-	return rs <= SmallRegionThreshold
+	return rs > TinyRegionSize && rs <= SmallRegionThreshold
 }
 
 func (rs RegionSize) IsLarge() bool {
-	return rs > SmallRegionThreshold && rs < LargeRegionThreshold
+	return rs > SmallRegionThreshold && rs <= LargeRegionThreshold
 }
 
 func (rs RegionSize) Threshold() float64 {
@@ -123,6 +133,8 @@ func (rs RegionSize) Value() int {
 
 func (rs RegionSize) String() string {
 	switch rs {
+	case TinyRegionSize:
+		return "tiny"
 	case SmallRegionSize:
 		return "small"
 	case LargeRegionSize:
@@ -207,6 +219,11 @@ func RegionFromLatLon(lat, lon float64, rs RegionSize) RegionID {
 	return RegionID(h3.FromGeo(cord, rs.Value()))
 }
 
+func H3IndexFromLatLon(lat, lon float64, rs RegionSize) h3.H3Index {
+	cord := h3.GeoCoord{Latitude: lat, Longitude: lon}
+	return h3.FromGeo(cord, rs.Value())
+}
+
 func RegionIDs(points []geometry.Point, rs RegionSize) []RegionID {
 	visits := make(map[RegionID]struct{})
 	res := make([]RegionID, 0, 3)
@@ -221,10 +238,15 @@ func RegionIDs(points []geometry.Point, rs RegionSize) []RegionID {
 	return res
 }
 
-func MakeCircle(lat, lng float64, meters float64, steps int) (points []geometry.Point, bbox geometry.Rect) {
+func circleFromRule(r *Rule) *geometry.Poly {
+	_, points := makeCircle(r.Center().X, r.Center().Y, r.spec.radius, steps)
+	return &geometry.Poly{Exterior: points}
+}
+
+func makeCircle(lat, lng float64, meters float64, steps int) (points []geometry.Point, bbox geometry.Rect) {
 	meters = geo.NormalizeDistance(meters)
 	points = make([]geometry.Point, 0, steps+1)
-	for i := 0; i < steps; i++ {
+	for i := 0; i <= steps; i++ {
 		b := (i * -360) / steps
 		lat, lng := geo.DestinationPoint(lat, lng, meters, float64(b))
 		point := geometry.Point{X: lat, Y: lng}
@@ -240,8 +262,8 @@ func MakeCircle(lat, lng float64, meters float64, steps int) (points []geometry.
 			}
 			if point.Y < bbox.Min.Y {
 				bbox.Min.Y = point.Y
-			} else if points[i].Y > bbox.Max.Y {
-				bbox.Max.Y = points[i].Y
+			} else if point.Y > bbox.Max.Y {
+				bbox.Max.Y = point.Y
 			}
 		}
 	}
@@ -249,7 +271,78 @@ func MakeCircle(lat, lng float64, meters float64, steps int) (points []geometry.
 	return
 }
 
-func Contains(p geometry.Point, points []geometry.Point) bool {
+func normalizeDistance(meters float64, size RegionSize) float64 {
+	switch {
+	case size.IsTiny():
+		if meters > TinyRegionThreshold {
+			meters = TinyRegionThreshold
+		}
+	case size.IsSmall():
+		if meters > SmallRegionThreshold {
+			meters = SmallRegionThreshold
+		}
+	case size.IsLarge():
+		if meters > LargeRegionThreshold {
+			meters = LargeRegionThreshold
+		}
+	}
+	return geo.NormalizeDistance(meters)
+}
+
+func regionBoundaryFromLatLon(lat, lon float64, size RegionSize) *geometry.Poly {
+	index := H3IndexFromLatLon(lat, lon, size)
+	boundary := h3.ToGeoBoundary(index)
+	points := make([]geometry.Point, len(boundary))
+	for i, p := range boundary {
+		point := geometry.Point{X: p.Latitude, Y: p.Longitude}
+		points[i] = point
+	}
+	return geometry.NewPoly(points, nil, nil)
+}
+
+type regionInfo struct {
+	boundary *geometry.Poly
+	bbox     geometry.Rect
+	regions  []RegionID
+}
+
+func regionsFromLatLon(lat, lon, meters float64, size RegionSize) (ri regionInfo) {
+
+	ri.boundary = regionBoundaryFromLatLon(lat, lon, size)
+	ri.bbox = calcRect(lat, lon, meters)
+	// fast path
+	if ri.boundary.ContainsRect(ri.bbox) {
+		ri.regions = []RegionID{RegionFromLatLon(lat, lon, size)}
+		return
+	}
+	// slow path
+	t := make(map[RegionID]struct{}, 4)
+	for i := 0; i <= 6; i++ {
+		var p geometry.Point
+		b := (i * -360) / steps
+		p.X, p.Y = geo.DestinationPoint(lat, lon, meters, float64(b))
+		rid := RegionFromLatLon(p.X, p.Y, size)
+		_, ok := t[rid]
+		if !ok {
+			t[rid] = struct{}{}
+		}
+	}
+	ri.regions = make([]RegionID, 0, len(t))
+	for rid := range t {
+		ri.regions = append(ri.regions, rid)
+	}
+	return ri
+}
+
+func calcRect(lat, lon, meters float64) (rect geometry.Rect) {
+	minLat, minLon, maxLat, maxLon := geo.RectFromCenter(lat, lon, meters)
+	return geometry.Rect{
+		Min: geometry.Point{X: minLat, Y: minLon},
+		Max: geometry.Point{X: maxLat, Y: maxLon},
+	}
+}
+
+func contains(p geometry.Point, points []geometry.Point) bool {
 	for i := 0; i < len(points); i++ {
 		var seg geometry.Segment
 		seg.A = points[i]

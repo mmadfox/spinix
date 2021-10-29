@@ -46,7 +46,7 @@ func (d *Device) DetectRegion() {
 	if d.regionID > 0 {
 		return
 	}
-	d.regionID = RegionFromLatLon(d.Latitude, d.Longitude, SmallRegionSize)
+	d.regionID = RegionFromLatLon(d.Latitude, d.Longitude, TinyRegionSize)
 }
 
 func (d *Device) ResetRegion() {
@@ -54,7 +54,7 @@ func (d *Device) ResetRegion() {
 }
 
 func (d *Device) RegionSize() RegionSize {
-	return SmallRegionSize
+	return TinyRegionSize
 }
 
 func (d *Device) RegionID() RegionID {
@@ -140,7 +140,7 @@ func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced b
 	region, ok := d.regions[device.regionID]
 	d.mu.RUnlock()
 	if !ok {
-		region = newDeviceRegion(device.regionID, SmallRegionSize)
+		region = newDeviceRegion(device.regionID, TinyRegionSize)
 		d.mu.Lock()
 		d.regions[device.regionID] = region
 		d.mu.Unlock()
@@ -173,24 +173,15 @@ func (d *devices) Nearby(
 	ctx context.Context,
 	lat, lon, meters float64,
 	fn func(ctx context.Context, d *Device) error) (err error) {
-
-	var (
-		bbox   geometry.Rect
-		points []geometry.Point
-		rids   []RegionID
-	)
-
-	if meters > 0 {
-		points, bbox = MakeCircle(lat, lon, meters, Steps)
-		rids = RegionIDs(points, SmallRegionSize)
+	if meters == 0 {
+		meters = 1
 	} else {
-		rids = []RegionID{RegionFromLatLon(lat, lon, SmallRegionSize)}
-		point := geometry.Point{X: lat, Y: lon}
-		points = []geometry.Point{point}
-		bbox = point.Rect()
+		meters = normalizeDistance(meters, TinyRegionSize)
 	}
+	ri := regionsFromLatLon(lat, lon, meters, TinyRegionSize)
+	points, bbox := makeCircle(lat, lon, meters, steps)
 	next := true
-	for _, regionID := range rids {
+	for _, regionID := range ri.regions {
 		d.mu.RLock()
 		region, found := d.regions[regionID]
 		d.mu.RUnlock()
@@ -201,13 +192,9 @@ func (d *devices) Nearby(
 		region.index.Search(
 			[2]float64{bbox.Min.X, bbox.Min.Y},
 			[2]float64{bbox.Max.X, bbox.Max.Y},
-			func(_, _ [2]float64, value interface{}) bool {
+			func(min, max [2]float64, value interface{}) bool {
 				device := value.(*Device)
-				point := geometry.Point{
-					X: device.Latitude,
-					Y: device.Longitude,
-				}
-				if Contains(point, points) {
+				if contains(geometry.Point{X: device.Latitude, Y: device.Longitude}, points) {
 					if err = fn(ctx, device); err != nil {
 						next = false
 						return false

@@ -2258,7 +2258,7 @@ type radiusRing struct {
 
 func makeRadiusRing(lat, lng float64, meters float64, steps int) radiusRing {
 	rr := radiusRing{}
-	rr.points, rr.rect = MakeCircle(lat, lng, meters, steps)
+	rr.points, rr.rect = makeCircle(lat, lng, meters, steps)
 	return rr
 }
 

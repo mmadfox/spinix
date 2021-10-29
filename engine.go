@@ -156,7 +156,7 @@ func (e *Engine) expand(ctx context.Context, rule *Rule) error {
 	if refs != nil {
 		for i := 0; i < 10; i++ {
 			var bbox geometry.Rect
-			circle := &geometry.Poly{Exterior: rule.Circle()}
+			circle := circleFromRule(rule)
 			for refID, tok := range refs {
 				if !isObjectToken(tok) || tok == DEVICES {
 					continue
