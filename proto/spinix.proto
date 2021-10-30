@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package proto;
+
+message Rule {
+  string rule_id = 1;
+  string spec = 2;
+  repeated string region_ids = 3;
+  int64 region_size = 4;
+}
+
+message Device {
+  string imei = 1;
+  string owner = 2;
+  string brand = 3;
+  string model = 4;
+  float latitude = 5;
+  float longitude = 6;
+  float altitude = 7;
+  float speed = 8;
+  int64 date_time = 9;
+  int64 status = 10;
+  float battery_charge = 11;
+  float temperature = 12;
+  float humidity = 13;
+  float luminosity = 14;
+  float pressure = 15;
+  float fuel_level = 16;
+}
+
+message Object {
+   string id = 1;
+   string geo_json = 2;
+}
+
+message Match {
+   Decl left = 2;
+   Decl right = 3;
+   int64 operator_id = 4;
+   string operator = 5;
+   int64 pos = 6;
+}
+
+message Event {
+  string id = 1;
+  Device device = 2;
+  int64 date_time = 3;
+  Rule rule = 4;
+  repeated Match match = 5;
+}
+
+message Decl {
+  int64 keyword_id = 1;
+  string keyword = 2;
+  repeated string refs = 3;
+}
+
+message DetectRequest {
+  Device device = 1;
+}
+
+message DetectReply {
+  bool ok = 1;
+  repeated Event event = 2;
+  Error error = 3;
+}
+
+message AddObjectRequest {
+  Object object = 1;
+}
+
+message AddDeviceRequest {
+  Device device = 1;
+}
+
+message ErrorReply {
+  Error error = 1;
+}
+
+message AddRuleRequest {
+  string spec = 1;
+}
+
+message AddRuleReply {
+  Rule rule = 1;
+  Error error = 2;
+}
+
+message Error {
+  int64 code = 1;
+  string msg = 2;
+}
