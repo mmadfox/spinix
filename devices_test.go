@@ -9,7 +9,6 @@ import (
 )
 
 func TestDevicesNearby(t *testing.T) {
-	TinyRegionSize.IsSmall()
 	ctx := context.Background()
 	device := NewMemoryDevices()
 	if _, err := device.InsertOrReplace(ctx, &Device{
@@ -27,7 +26,7 @@ func TestDevicesNearby(t *testing.T) {
 		t.Fatal(err)
 	}
 	var found int
-	if err := device.Nearby(ctx, 42.9316717, -72.2846072, 100,
+	if err := device.Nearby(ctx, 42.9316717, -72.2846072, 1000000000,
 		func(ctx context.Context, d *Device) error {
 			found++
 			return nil

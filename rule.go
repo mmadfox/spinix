@@ -36,7 +36,7 @@ func (r *Rule) MarshalJSON() ([]byte, error) {
 	return json.Marshal(r.Snapshot())
 }
 
-func (r *Rule) UnmarshalJSON(data []byte) error {
+func (r *Rule) UnmarshalJSON(data []byte) (err error) {
 	var snap RuleSnapshot
 	if err := json.Unmarshal(data, &snap); err != nil {
 		return err
@@ -52,33 +52,34 @@ func (r *Rule) UnmarshalJSON(data []byte) error {
 	if ruleSpec.radius < 1000 {
 		ruleSpec.radius = 1000
 	}
-	if ruleSpec.radius > LargeRegionThreshold {
-		ruleSpec.radius = LargeRegionThreshold
-	}
-	if ruleSpec.center.X == 0 && ruleSpec.center.Y == 0 {
-		return fmt.Errorf("spinix/rule: center coordinates of the rule is not specified")
-	}
-	r.regions = make([]RegionID, len(snap.RegionIDs))
+	size := RegionSize(snap.RegionSize)
+	regions := make([]RegionID, len(snap.RegionIDs))
 	for i := 0; i < len(snap.RegionIDs); i++ {
 		rid, err := RegionIDFromString(snap.RegionIDs[i])
 		if err != nil {
 			return err
 		}
-		r.regions[i] = rid
+		regions[i] = rid
+	}
+	normalizeDistance(ruleSpec.radius, size)
+	if ruleSpec.center.X == 0 && ruleSpec.center.Y == 0 {
+		return fmt.Errorf("spinix/rule: center of the rule is not specified")
 	}
 	r.ruleID = snap.RuleID
-	r.regionSize = RegionSize(snap.RegionSize)
+	r.regions = regions
+	r.regionSize = size
 	r.specStr = expr.String()
 	r.spec = ruleSpec
 	if err := r.calc(); err != nil {
 		return err
 	}
-	return nil
+	return
 }
 
 func (r *Rule) calc() error {
 	circle, bbox := makeCircle(r.spec.center.X, r.spec.center.Y, r.spec.radius, steps)
 	r.regionSize = RegionSizeFromMeters(r.spec.radius)
+	normalizeDistance(r.spec.radius, r.regionSize)
 	if err := r.regionSize.Validate(); err != nil {
 		return err
 	}
@@ -137,6 +138,33 @@ func (r *Rule) RefIDs() (refs map[string]Token) {
 	return refs
 }
 
+func RuleFromSpec(ruleID string, regions []RegionID, size RegionSize, spec string) (*Rule, error) {
+	expr, err := ParseSpec(spec)
+	if err != nil {
+		return nil, err
+	}
+	ruleSpec, err := exprToSpec(expr)
+	if err != nil {
+		return nil, err
+	}
+	if ruleSpec.radius < 1000 {
+		ruleSpec.radius = 1000
+	}
+	normalizeDistance(ruleSpec.radius, size)
+	if ruleSpec.center.X == 0 && ruleSpec.center.Y == 0 {
+		return nil, fmt.Errorf("spinix/rule: center of the rule is not specified")
+	}
+	rule := &Rule{ruleID: ruleID}
+	rule.regions = regions
+	rule.regionSize = size
+	rule.specStr = expr.String()
+	rule.spec = ruleSpec
+	if err := rule.calc(); err != nil {
+		return nil, err
+	}
+	return rule, nil
+}
+
 func NewRule(spec string) (*Rule, error) {
 	if len(spec) == 0 {
 		return nil, fmt.Errorf("spinix/rule: specification too short")
@@ -154,9 +182,6 @@ func NewRule(spec string) (*Rule, error) {
 	}
 	if ruleSpec.radius < 1000 {
 		ruleSpec.radius = 1000
-	}
-	if ruleSpec.radius > LargeRegionThreshold {
-		ruleSpec.radius = LargeRegionThreshold
 	}
 	rule := &Rule{
 		ruleID:  xid.New().String(),

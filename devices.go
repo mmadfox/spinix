@@ -117,6 +117,9 @@ func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced b
 			replaced = true
 			return
 		}
+		if prevState.RegionID() != device.RegionID() {
+			d.index.delete(device.IMEI)
+		}
 	}
 	if err == nil {
 		d.mu.RLock()

@@ -14,18 +14,18 @@ message Device {
   string owner = 2;
   string brand = 3;
   string model = 4;
-  float latitude = 5;
-  float longitude = 6;
-  float altitude = 7;
-  float speed = 8;
+  double latitude = 5;
+  double longitude = 6;
+  double altitude = 7;
+  double speed = 8;
   int64 date_time = 9;
   int64 status = 10;
-  float battery_charge = 11;
-  float temperature = 12;
-  float humidity = 13;
-  float luminosity = 14;
-  float pressure = 15;
-  float fuel_level = 16;
+  double battery_charge = 11;
+  double temperature = 12;
+  double humidity = 13;
+  double luminosity = 14;
+  double pressure = 15;
+  double fuel_level = 16;
 }
 
 message Object {
@@ -53,40 +53,4 @@ message Decl {
   int64 keyword_id = 1;
   string keyword = 2;
   repeated string refs = 3;
-}
-
-message DetectRequest {
-  Device device = 1;
-}
-
-message DetectReply {
-  bool ok = 1;
-  repeated Event event = 2;
-  Error error = 3;
-}
-
-message AddObjectRequest {
-  Object object = 1;
-}
-
-message AddDeviceRequest {
-  Device device = 1;
-}
-
-message ErrorReply {
-  Error error = 1;
-}
-
-message AddRuleRequest {
-  string spec = 1;
-}
-
-message AddRuleReply {
-  Rule rule = 1;
-  Error error = 2;
-}
-
-message Error {
-  int64 code = 1;
-  string msg = 2;
 }

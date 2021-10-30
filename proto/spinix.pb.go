@@ -97,18 +97,18 @@ type Device struct {
 	Owner         string  `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty"`
 	Brand         string  `protobuf:"bytes,3,opt,name=brand,proto3" json:"brand,omitempty"`
 	Model         string  `protobuf:"bytes,4,opt,name=model,proto3" json:"model,omitempty"`
-	Latitude      float32 `protobuf:"fixed32,5,opt,name=latitude,proto3" json:"latitude,omitempty"`
-	Longitude     float32 `protobuf:"fixed32,6,opt,name=longitude,proto3" json:"longitude,omitempty"`
-	Altitude      float32 `protobuf:"fixed32,7,opt,name=altitude,proto3" json:"altitude,omitempty"`
-	Speed         float32 `protobuf:"fixed32,8,opt,name=speed,proto3" json:"speed,omitempty"`
+	Latitude      float64 `protobuf:"fixed64,5,opt,name=latitude,proto3" json:"latitude,omitempty"`
+	Longitude     float64 `protobuf:"fixed64,6,opt,name=longitude,proto3" json:"longitude,omitempty"`
+	Altitude      float64 `protobuf:"fixed64,7,opt,name=altitude,proto3" json:"altitude,omitempty"`
+	Speed         float64 `protobuf:"fixed64,8,opt,name=speed,proto3" json:"speed,omitempty"`
 	DateTime      int64   `protobuf:"varint,9,opt,name=date_time,json=dateTime,proto3" json:"date_time,omitempty"`
 	Status        int64   `protobuf:"varint,10,opt,name=status,proto3" json:"status,omitempty"`
-	BatteryCharge float32 `protobuf:"fixed32,11,opt,name=battery_charge,json=batteryCharge,proto3" json:"battery_charge,omitempty"`
-	Temperature   float32 `protobuf:"fixed32,12,opt,name=temperature,proto3" json:"temperature,omitempty"`
-	Humidity      float32 `protobuf:"fixed32,13,opt,name=humidity,proto3" json:"humidity,omitempty"`
-	Luminosity    float32 `protobuf:"fixed32,14,opt,name=luminosity,proto3" json:"luminosity,omitempty"`
-	Pressure      float32 `protobuf:"fixed32,15,opt,name=pressure,proto3" json:"pressure,omitempty"`
-	FuelLevel     float32 `protobuf:"fixed32,16,opt,name=fuel_level,json=fuelLevel,proto3" json:"fuel_level,omitempty"`
+	BatteryCharge float64 `protobuf:"fixed64,11,opt,name=battery_charge,json=batteryCharge,proto3" json:"battery_charge,omitempty"`
+	Temperature   float64 `protobuf:"fixed64,12,opt,name=temperature,proto3" json:"temperature,omitempty"`
+	Humidity      float64 `protobuf:"fixed64,13,opt,name=humidity,proto3" json:"humidity,omitempty"`
+	Luminosity    float64 `protobuf:"fixed64,14,opt,name=luminosity,proto3" json:"luminosity,omitempty"`
+	Pressure      float64 `protobuf:"fixed64,15,opt,name=pressure,proto3" json:"pressure,omitempty"`
+	FuelLevel     float64 `protobuf:"fixed64,16,opt,name=fuel_level,json=fuelLevel,proto3" json:"fuel_level,omitempty"`
 }
 
 func (m *Device) Reset()      { *m = Device{} }
@@ -171,28 +171,28 @@ func (m *Device) GetModel() string {
 	return ""
 }
 
-func (m *Device) GetLatitude() float32 {
+func (m *Device) GetLatitude() float64 {
 	if m != nil {
 		return m.Latitude
 	}
 	return 0
 }
 
-func (m *Device) GetLongitude() float32 {
+func (m *Device) GetLongitude() float64 {
 	if m != nil {
 		return m.Longitude
 	}
 	return 0
 }
 
-func (m *Device) GetAltitude() float32 {
+func (m *Device) GetAltitude() float64 {
 	if m != nil {
 		return m.Altitude
 	}
 	return 0
 }
 
-func (m *Device) GetSpeed() float32 {
+func (m *Device) GetSpeed() float64 {
 	if m != nil {
 		return m.Speed
 	}
@@ -213,42 +213,42 @@ func (m *Device) GetStatus() int64 {
 	return 0
 }
 
-func (m *Device) GetBatteryCharge() float32 {
+func (m *Device) GetBatteryCharge() float64 {
 	if m != nil {
 		return m.BatteryCharge
 	}
 	return 0
 }
 
-func (m *Device) GetTemperature() float32 {
+func (m *Device) GetTemperature() float64 {
 	if m != nil {
 		return m.Temperature
 	}
 	return 0
 }
 
-func (m *Device) GetHumidity() float32 {
+func (m *Device) GetHumidity() float64 {
 	if m != nil {
 		return m.Humidity
 	}
 	return 0
 }
 
-func (m *Device) GetLuminosity() float32 {
+func (m *Device) GetLuminosity() float64 {
 	if m != nil {
 		return m.Luminosity
 	}
 	return 0
 }
 
-func (m *Device) GetPressure() float32 {
+func (m *Device) GetPressure() float64 {
 	if m != nil {
 		return m.Pressure
 	}
 	return 0
 }
 
-func (m *Device) GetFuelLevel() float32 {
+func (m *Device) GetFuelLevel() float64 {
 	if m != nil {
 		return m.FuelLevel
 	}
@@ -515,382 +515,6 @@ func (m *Decl) GetRefs() []string {
 	return nil
 }
 
-type DetectRequest struct {
-	Device *Device `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
-}
-
-func (m *DetectRequest) Reset()      { *m = DetectRequest{} }
-func (*DetectRequest) ProtoMessage() {}
-func (*DetectRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e3318ce1f17c4927, []int{6}
-}
-func (m *DetectRequest) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *DetectRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_DetectRequest.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *DetectRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DetectRequest.Merge(m, src)
-}
-func (m *DetectRequest) XXX_Size() int {
-	return m.Size()
-}
-func (m *DetectRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_DetectRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_DetectRequest proto.InternalMessageInfo
-
-func (m *DetectRequest) GetDevice() *Device {
-	if m != nil {
-		return m.Device
-	}
-	return nil
-}
-
-type DetectReply struct {
-	Ok    bool     `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
-	Event []*Event `protobuf:"bytes,2,rep,name=event,proto3" json:"event,omitempty"`
-	Error *Error   `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
-}
-
-func (m *DetectReply) Reset()      { *m = DetectReply{} }
-func (*DetectReply) ProtoMessage() {}
-func (*DetectReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e3318ce1f17c4927, []int{7}
-}
-func (m *DetectReply) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *DetectReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_DetectReply.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *DetectReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DetectReply.Merge(m, src)
-}
-func (m *DetectReply) XXX_Size() int {
-	return m.Size()
-}
-func (m *DetectReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_DetectReply.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_DetectReply proto.InternalMessageInfo
-
-func (m *DetectReply) GetOk() bool {
-	if m != nil {
-		return m.Ok
-	}
-	return false
-}
-
-func (m *DetectReply) GetEvent() []*Event {
-	if m != nil {
-		return m.Event
-	}
-	return nil
-}
-
-func (m *DetectReply) GetError() *Error {
-	if m != nil {
-		return m.Error
-	}
-	return nil
-}
-
-type ObjectRequest struct {
-	Object *Object `protobuf:"bytes,1,opt,name=object,proto3" json:"object,omitempty"`
-}
-
-func (m *ObjectRequest) Reset()      { *m = ObjectRequest{} }
-func (*ObjectRequest) ProtoMessage() {}
-func (*ObjectRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e3318ce1f17c4927, []int{8}
-}
-func (m *ObjectRequest) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *ObjectRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_ObjectRequest.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *ObjectRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ObjectRequest.Merge(m, src)
-}
-func (m *ObjectRequest) XXX_Size() int {
-	return m.Size()
-}
-func (m *ObjectRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ObjectRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ObjectRequest proto.InternalMessageInfo
-
-func (m *ObjectRequest) GetObject() *Object {
-	if m != nil {
-		return m.Object
-	}
-	return nil
-}
-
-type DeviceRequest struct {
-	Device *Device `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
-}
-
-func (m *DeviceRequest) Reset()      { *m = DeviceRequest{} }
-func (*DeviceRequest) ProtoMessage() {}
-func (*DeviceRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e3318ce1f17c4927, []int{9}
-}
-func (m *DeviceRequest) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *DeviceRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_DeviceRequest.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *DeviceRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DeviceRequest.Merge(m, src)
-}
-func (m *DeviceRequest) XXX_Size() int {
-	return m.Size()
-}
-func (m *DeviceRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_DeviceRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_DeviceRequest proto.InternalMessageInfo
-
-func (m *DeviceRequest) GetDevice() *Device {
-	if m != nil {
-		return m.Device
-	}
-	return nil
-}
-
-type Reply struct {
-	Error *Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-}
-
-func (m *Reply) Reset()      { *m = Reply{} }
-func (*Reply) ProtoMessage() {}
-func (*Reply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e3318ce1f17c4927, []int{10}
-}
-func (m *Reply) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Reply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_Reply.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *Reply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Reply.Merge(m, src)
-}
-func (m *Reply) XXX_Size() int {
-	return m.Size()
-}
-func (m *Reply) XXX_DiscardUnknown() {
-	xxx_messageInfo_Reply.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Reply proto.InternalMessageInfo
-
-func (m *Reply) GetError() *Error {
-	if m != nil {
-		return m.Error
-	}
-	return nil
-}
-
-type RuleRequest struct {
-	Spec string `protobuf:"bytes,1,opt,name=spec,proto3" json:"spec,omitempty"`
-}
-
-func (m *RuleRequest) Reset()      { *m = RuleRequest{} }
-func (*RuleRequest) ProtoMessage() {}
-func (*RuleRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e3318ce1f17c4927, []int{11}
-}
-func (m *RuleRequest) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RuleRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_RuleRequest.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *RuleRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RuleRequest.Merge(m, src)
-}
-func (m *RuleRequest) XXX_Size() int {
-	return m.Size()
-}
-func (m *RuleRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_RuleRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RuleRequest proto.InternalMessageInfo
-
-func (m *RuleRequest) GetSpec() string {
-	if m != nil {
-		return m.Spec
-	}
-	return ""
-}
-
-type RuleReply struct {
-	Rule  *Rule  `protobuf:"bytes,1,opt,name=rule,proto3" json:"rule,omitempty"`
-	Error *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
-}
-
-func (m *RuleReply) Reset()      { *m = RuleReply{} }
-func (*RuleReply) ProtoMessage() {}
-func (*RuleReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e3318ce1f17c4927, []int{12}
-}
-func (m *RuleReply) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RuleReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_RuleReply.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *RuleReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RuleReply.Merge(m, src)
-}
-func (m *RuleReply) XXX_Size() int {
-	return m.Size()
-}
-func (m *RuleReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_RuleReply.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RuleReply proto.InternalMessageInfo
-
-func (m *RuleReply) GetRule() *Rule {
-	if m != nil {
-		return m.Rule
-	}
-	return nil
-}
-
-func (m *RuleReply) GetError() *Error {
-	if m != nil {
-		return m.Error
-	}
-	return nil
-}
-
-type Error struct {
-	Code int64  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
-	Msg  string `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
-}
-
-func (m *Error) Reset()      { *m = Error{} }
-func (*Error) ProtoMessage() {}
-func (*Error) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e3318ce1f17c4927, []int{13}
-}
-func (m *Error) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_Error.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Error.Merge(m, src)
-}
-func (m *Error) XXX_Size() int {
-	return m.Size()
-}
-func (m *Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Error.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Error proto.InternalMessageInfo
-
-func (m *Error) GetCode() int64 {
-	if m != nil {
-		return m.Code
-	}
-	return 0
-}
-
-func (m *Error) GetMsg() string {
-	if m != nil {
-		return m.Msg
-	}
-	return ""
-}
-
 func init() {
 	proto.RegisterType((*Rule)(nil), "proto.Rule")
 	proto.RegisterType((*Device)(nil), "proto.Device")
@@ -898,70 +522,53 @@ func init() {
 	proto.RegisterType((*Match)(nil), "proto.Match")
 	proto.RegisterType((*Event)(nil), "proto.Event")
 	proto.RegisterType((*Decl)(nil), "proto.Decl")
-	proto.RegisterType((*DetectRequest)(nil), "proto.DetectRequest")
-	proto.RegisterType((*DetectReply)(nil), "proto.DetectReply")
-	proto.RegisterType((*ObjectRequest)(nil), "proto.ObjectRequest")
-	proto.RegisterType((*DeviceRequest)(nil), "proto.DeviceRequest")
-	proto.RegisterType((*Reply)(nil), "proto.Reply")
-	proto.RegisterType((*RuleRequest)(nil), "proto.RuleRequest")
-	proto.RegisterType((*RuleReply)(nil), "proto.RuleReply")
-	proto.RegisterType((*Error)(nil), "proto.Error")
 }
 
 func init() { proto.RegisterFile("proto/spinix.proto", fileDescriptor_e3318ce1f17c4927) }
 
 var fileDescriptor_e3318ce1f17c4927 = []byte{
-	// 790 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x54, 0x4f, 0x6f, 0xdc, 0x44,
-	0x14, 0x5f, 0xaf, 0xd7, 0x9b, 0xf5, 0xdb, 0x26, 0x54, 0x23, 0x04, 0xe6, 0x9f, 0xb3, 0xb5, 0x54,
-	0x69, 0x25, 0x44, 0x91, 0x5a, 0xc4, 0x07, 0x80, 0x70, 0x08, 0x02, 0x81, 0xa6, 0xdc, 0x57, 0xce,
-	0xfa, 0x65, 0x33, 0x8d, 0xed, 0x59, 0x66, 0xc6, 0x29, 0xe9, 0x89, 0x8f, 0xc0, 0x99, 0x13, 0x47,
-	0xbe, 0x05, 0x57, 0x8e, 0x39, 0xf6, 0x48, 0x36, 0x17, 0x8e, 0xfd, 0x08, 0xe8, 0xbd, 0x19, 0x6f,
-	0xd2, 0xa0, 0x46, 0xea, 0xc9, 0xf3, 0xfb, 0xfd, 0xde, 0x9b, 0xf7, 0x77, 0x0c, 0x62, 0x6d, 0xb4,
-	0xd3, 0x9f, 0xdb, 0xb5, 0x6a, 0xd5, 0x2f, 0x8f, 0x18, 0x88, 0x84, 0x3f, 0x85, 0x85, 0x91, 0xec,
-	0x6a, 0x14, 0xef, 0xc3, 0x8e, 0xe9, 0x6a, 0x5c, 0xa8, 0x2a, 0x8b, 0x66, 0xd1, 0x3c, 0x95, 0x63,
-	0x82, 0x87, 0x95, 0x10, 0x30, 0xb2, 0x6b, 0x5c, 0x66, 0x43, 0x66, 0xf9, 0x2c, 0x3e, 0x01, 0x30,
-	0xb8, 0x52, 0xba, 0x5d, 0xa8, 0xca, 0x66, 0xf1, 0x2c, 0x9e, 0xa7, 0x32, 0xf5, 0xcc, 0x61, 0x65,
-	0xc5, 0x3e, 0x4c, 0x83, 0x6c, 0xd5, 0x0b, 0xcc, 0x46, 0xb3, 0x68, 0x1e, 0xcb, 0xe0, 0xf1, 0x54,
-	0xbd, 0xc0, 0xe2, 0xaf, 0x18, 0xc6, 0x07, 0x78, 0xa6, 0x96, 0x48, 0xd7, 0xab, 0x06, 0x55, 0x08,
-	0xca, 0x67, 0xf1, 0x2e, 0x24, 0xfa, 0x79, 0x8b, 0x26, 0xc4, 0xf4, 0x80, 0xd8, 0x23, 0x53, 0xb6,
-	0x55, 0x16, 0x7b, 0x96, 0x01, 0xb1, 0x8d, 0xae, 0xb0, 0xe6, 0x28, 0xa9, 0xf4, 0x40, 0x7c, 0x08,
-	0x93, 0xba, 0x74, 0xca, 0x75, 0x15, 0x66, 0xc9, 0x2c, 0x9a, 0x0f, 0xe5, 0x16, 0x8b, 0x8f, 0x21,
-	0xad, 0x75, 0xbb, 0xf2, 0xe2, 0x98, 0xc5, 0x6b, 0x82, 0x3c, 0xcb, 0x3a, 0x78, 0xee, 0x78, 0xcf,
-	0x1e, 0x53, 0x2c, 0xbb, 0x46, 0xac, 0xb2, 0x09, 0x0b, 0x1e, 0x88, 0x8f, 0x20, 0xad, 0x4a, 0x87,
-	0x0b, 0xa7, 0x1a, 0xcc, 0x52, 0xae, 0x75, 0x42, 0xc4, 0x4f, 0xaa, 0x41, 0xf1, 0x1e, 0x8c, 0xad,
-	0x2b, 0x5d, 0x67, 0x33, 0x60, 0x25, 0x20, 0xf1, 0x10, 0xf6, 0x8e, 0x4a, 0xe7, 0xd0, 0x9c, 0x2f,
-	0x96, 0x27, 0xa5, 0x59, 0x61, 0x36, 0xe5, 0x3b, 0x77, 0x03, 0xfb, 0x35, 0x93, 0x62, 0x06, 0x53,
-	0x87, 0xcd, 0x1a, 0x4d, 0xe9, 0x3a, 0x83, 0xd9, 0x3d, 0xb6, 0xb9, 0x49, 0x51, 0xbe, 0x27, 0x5d,
-	0xa3, 0x2a, 0xe5, 0xce, 0xb3, 0x5d, 0x9f, 0x6f, 0x8f, 0x45, 0x0e, 0x50, 0x77, 0x8d, 0x6a, 0xb5,
-	0x25, 0x75, 0x8f, 0xd5, 0x1b, 0x0c, 0xf9, 0xae, 0x0d, 0x5a, 0x4b, 0x57, 0xbf, 0xe3, 0x7d, 0x7b,
-	0x4c, 0x23, 0x3e, 0xee, 0xb0, 0x5e, 0xd4, 0x78, 0x86, 0x75, 0x76, 0xdf, 0xb7, 0x89, 0x98, 0xef,
-	0x88, 0x28, 0x9e, 0xc0, 0xf8, 0x87, 0xa3, 0x67, 0xb8, 0x74, 0x62, 0x0f, 0x86, 0xdb, 0x9d, 0x19,
-	0xaa, 0x4a, 0x7c, 0x00, 0x93, 0x15, 0xea, 0xc5, 0x33, 0xab, 0xdb, 0x30, 0xbf, 0x9d, 0x15, 0xea,
-	0x6f, 0xad, 0x6e, 0x8b, 0xdf, 0x23, 0x48, 0xbe, 0x2f, 0xdd, 0xf2, 0x44, 0xec, 0xc3, 0xa8, 0xc6,
-	0x63, 0xc7, 0x06, 0xd3, 0xc7, 0x53, 0xbf, 0x92, 0x8f, 0x0e, 0x70, 0x59, 0x4b, 0x16, 0xc4, 0x03,
-	0x48, 0x8c, 0x5a, 0x9d, 0x38, 0x1e, 0xf6, 0x2d, 0x0b, 0xaf, 0xd0, 0x96, 0x69, 0x6e, 0x83, 0x36,
-	0xb4, 0xb5, 0x61, 0xcb, 0x7a, 0xea, 0xb0, 0xa2, 0xf2, 0x7a, 0xc4, 0x4b, 0x90, 0xca, 0x2d, 0x16,
-	0xf7, 0x21, 0x5e, 0x6b, 0xcb, 0xe3, 0x8f, 0x25, 0x1d, 0x8b, 0x3f, 0x22, 0x48, 0xbe, 0x39, 0xc3,
-	0xf6, 0xff, 0x15, 0x3d, 0x84, 0x71, 0xc5, 0xcb, 0x1a, 0xd2, 0xdd, 0xdd, 0x26, 0x43, 0xa4, 0x0c,
-	0xe2, 0xeb, 0x7b, 0x10, 0xdf, 0xda, 0x83, 0x7d, 0x18, 0xd1, 0x7b, 0xe2, 0x2c, 0xaf, 0xcb, 0xa1,
-	0x97, 0x27, 0x59, 0x10, 0x05, 0x24, 0x0d, 0xb5, 0x26, 0x4b, 0x66, 0xf1, 0x7c, 0xfa, 0xf8, 0x5e,
-	0xb0, 0xe0, 0x76, 0x49, 0x2f, 0x15, 0x4f, 0x61, 0x44, 0x0d, 0xa0, 0xd9, 0x9c, 0xe2, 0xf9, 0x73,
-	0x6d, 0xaa, 0xfe, 0xb9, 0xc6, 0x32, 0x0d, 0xcc, 0x61, 0x25, 0x32, 0xd8, 0x09, 0xa0, 0x1f, 0x40,
-	0x80, 0xf4, 0xd8, 0x0c, 0x1e, 0xf7, 0x2f, 0x96, 0xcf, 0xc5, 0x97, 0xb0, 0x7b, 0x80, 0x0e, 0x97,
-	0x4e, 0xe2, 0xcf, 0x1d, 0x5a, 0x77, 0xa3, 0xdc, 0xe8, 0x8e, 0x72, 0x0b, 0x84, 0x69, 0xef, 0xb7,
-	0xae, 0xcf, 0xa9, 0x69, 0xfa, 0x94, 0x3d, 0x26, 0x72, 0xa8, 0x4f, 0xa9, 0x1e, 0xa4, 0x6e, 0x66,
-	0xc3, 0xd7, 0xea, 0xe1, 0x0e, 0x4b, 0x2f, 0xb1, 0x8d, 0x31, 0xda, 0x84, 0x21, 0x6f, 0x6d, 0x88,
-	0x93, 0x5e, 0xa2, 0xf4, 0xfc, 0xa2, 0xdd, 0x48, 0x4f, 0x33, 0x71, 0x2b, 0xbd, 0x60, 0x15, 0x44,
-	0x5f, 0x16, 0x27, 0xfc, 0x76, 0x65, 0x7d, 0x0a, 0x89, 0x2f, 0x68, 0x9b, 0x5c, 0xf4, 0xe6, 0xe4,
-	0x1e, 0xc0, 0x94, 0x47, 0x18, 0x42, 0xf4, 0xbf, 0xca, 0xe8, 0xfa, 0x57, 0x59, 0xfc, 0x08, 0xa9,
-	0x37, 0xa1, 0x3b, 0xfb, 0x2d, 0x88, 0xee, 0xd8, 0x02, 0x1f, 0x74, 0xf8, 0xe6, 0xa0, 0x9f, 0x41,
-	0xc2, 0x98, 0xc2, 0x2d, 0x75, 0x85, 0x61, 0x01, 0xf8, 0x4c, 0x7b, 0xdd, 0xd8, 0x55, 0x98, 0x3b,
-	0x1d, 0xbf, 0xfa, 0xe2, 0xe2, 0x32, 0x1f, 0xbc, 0xbc, 0xcc, 0x07, 0xaf, 0x2e, 0xf3, 0xe8, 0xd7,
-	0x4d, 0x1e, 0xfd, 0xb9, 0xc9, 0xa3, 0xbf, 0x37, 0x79, 0x74, 0xb1, 0xc9, 0xa3, 0x7f, 0x36, 0x79,
-	0xf4, 0xef, 0x26, 0x1f, 0xbc, 0xda, 0xe4, 0xd1, 0x6f, 0x57, 0xf9, 0xe0, 0xe2, 0x2a, 0x1f, 0xbc,
-	0xbc, 0xca, 0x07, 0x47, 0x63, 0x0e, 0xfc, 0xe4, 0xbf, 0x00, 0x00, 0x00, 0xff, 0xff, 0xf2, 0xf9,
-	0xeb, 0x20, 0x3a, 0x06, 0x00, 0x00,
+	// 645 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x53, 0xbd, 0x6e, 0xdb, 0x3a,
+	0x14, 0xb6, 0x22, 0xcb, 0xb6, 0x8e, 0x93, 0xdc, 0x80, 0xb8, 0xb8, 0x97, 0xfd, 0x63, 0x5c, 0x03,
+	0x01, 0x3c, 0xa5, 0x40, 0xd2, 0x27, 0x68, 0xd3, 0xc1, 0x45, 0x8b, 0x02, 0x4a, 0x77, 0x43, 0x36,
+	0x4f, 0x6c, 0xa6, 0x92, 0x68, 0x90, 0x54, 0xd2, 0x64, 0xea, 0x23, 0x74, 0xee, 0xd4, 0xb1, 0x6f,
+	0xd1, 0xb5, 0x63, 0xc6, 0x8c, 0x8d, 0xb2, 0x74, 0xcc, 0x23, 0x14, 0xa4, 0x28, 0x27, 0x4d, 0x27,
+	0xf1, 0xfb, 0x3e, 0x1e, 0xf1, 0xfc, 0x7c, 0x07, 0xc8, 0x52, 0x49, 0x23, 0x9f, 0xe9, 0xa5, 0x28,
+	0xc4, 0xc7, 0x5d, 0x07, 0x48, 0xe4, 0x3e, 0x43, 0x0d, 0xed, 0xa4, 0xcc, 0x90, 0xfc, 0x0f, 0x5d,
+	0x55, 0x66, 0x38, 0x11, 0x9c, 0x06, 0x83, 0x60, 0x14, 0x27, 0x1d, 0x0b, 0xc7, 0x9c, 0x10, 0x68,
+	0xeb, 0x25, 0xce, 0xe8, 0x9a, 0x63, 0xdd, 0x99, 0x3c, 0x01, 0x50, 0x38, 0x17, 0xb2, 0x98, 0x08,
+	0xae, 0x69, 0x38, 0x08, 0x47, 0x71, 0x12, 0xd7, 0xcc, 0x98, 0x6b, 0xb2, 0x0d, 0x7d, 0x2f, 0x6b,
+	0x71, 0x8e, 0xb4, 0x3d, 0x08, 0x46, 0x61, 0xe2, 0x23, 0x0e, 0xc5, 0x39, 0x0e, 0xbf, 0x87, 0xd0,
+	0x39, 0xc0, 0x13, 0x31, 0x43, 0xfb, 0x7b, 0x91, 0xa3, 0xf0, 0x8f, 0xba, 0x33, 0xf9, 0x17, 0x22,
+	0x79, 0x5a, 0xa0, 0xf2, 0x6f, 0xd6, 0xc0, 0xb2, 0x53, 0x95, 0x16, 0x9c, 0x86, 0x35, 0xeb, 0x80,
+	0x65, 0x73, 0xc9, 0x31, 0x73, 0xaf, 0xc4, 0x49, 0x0d, 0xc8, 0x43, 0xe8, 0x65, 0xa9, 0x11, 0xa6,
+	0xe4, 0x48, 0xa3, 0x41, 0x30, 0x0a, 0x92, 0x15, 0x26, 0x8f, 0x21, 0xce, 0x64, 0x31, 0xaf, 0xc5,
+	0x8e, 0x13, 0x6f, 0x09, 0x1b, 0x99, 0x66, 0x3e, 0xb2, 0x5b, 0x47, 0x36, 0xd8, 0xbe, 0xa5, 0x97,
+	0x88, 0x9c, 0xf6, 0x9c, 0x50, 0x03, 0xf2, 0x08, 0x62, 0x9e, 0x1a, 0x9c, 0x18, 0x91, 0x23, 0x8d,
+	0x5d, 0xad, 0x3d, 0x4b, 0xbc, 0x17, 0x39, 0x92, 0xff, 0xa0, 0xa3, 0x4d, 0x6a, 0x4a, 0x4d, 0xc1,
+	0x29, 0x1e, 0x91, 0x1d, 0xd8, 0x9c, 0xa6, 0xc6, 0xa0, 0x3a, 0x9b, 0xcc, 0x16, 0xa9, 0x9a, 0x23,
+	0xed, 0xbb, 0x7f, 0x6e, 0x78, 0xf6, 0xa5, 0x23, 0xc9, 0x00, 0xfa, 0x06, 0xf3, 0x25, 0xaa, 0xd4,
+	0x94, 0x0a, 0xe9, 0xba, 0xbb, 0x73, 0x97, 0xb2, 0xf9, 0x2e, 0xca, 0x5c, 0x70, 0x61, 0xce, 0xe8,
+	0x46, 0x9d, 0x6f, 0x83, 0x09, 0x03, 0xc8, 0xca, 0x5c, 0x14, 0x52, 0x5b, 0x75, 0xd3, 0xa9, 0x77,
+	0x18, 0x1b, 0xbb, 0x54, 0xa8, 0xb5, 0xfd, 0xf5, 0x3f, 0x75, 0x6c, 0x83, 0xed, 0x88, 0x8f, 0x4a,
+	0xcc, 0x26, 0x19, 0x9e, 0x60, 0x46, 0xb7, 0xea, 0x36, 0x59, 0xe6, 0x8d, 0x25, 0x86, 0xfb, 0xd0,
+	0x79, 0x37, 0x3d, 0xc6, 0x99, 0x21, 0x9b, 0xb0, 0xb6, 0xf2, 0xcc, 0x9a, 0xe0, 0xe4, 0x01, 0xf4,
+	0xe6, 0x28, 0x27, 0xc7, 0x5a, 0x16, 0x7e, 0x7e, 0xdd, 0x39, 0xca, 0xd7, 0x5a, 0x16, 0xc3, 0x2f,
+	0x01, 0x44, 0x6f, 0x53, 0x33, 0x5b, 0x90, 0x6d, 0x68, 0x67, 0x78, 0x64, 0xdc, 0x85, 0xfe, 0x5e,
+	0xbf, 0xb6, 0xe4, 0xee, 0x01, 0xce, 0xb2, 0xc4, 0x09, 0xe4, 0x29, 0x44, 0x4a, 0xcc, 0x17, 0xc6,
+	0x0d, 0xfb, 0xde, 0x8d, 0x5a, 0xb1, 0x2e, 0x93, 0xae, 0x0d, 0x52, 0x59, 0xd7, 0x7a, 0x97, 0x35,
+	0xd4, 0x98, 0xdb, 0xf2, 0x1a, 0xe4, 0x4c, 0x10, 0x27, 0x2b, 0x4c, 0xb6, 0x20, 0x5c, 0x4a, 0xed,
+	0xc6, 0x1f, 0x26, 0xf6, 0x38, 0xfc, 0x1a, 0x40, 0xf4, 0xea, 0x04, 0x8b, 0xbf, 0x2b, 0xda, 0x81,
+	0x0e, 0x77, 0x66, 0xf5, 0xe9, 0x6e, 0xac, 0x92, 0xb1, 0x64, 0xe2, 0xc5, 0x3f, 0x7d, 0x10, 0xde,
+	0xf3, 0xc1, 0x36, 0xb4, 0xed, 0x3e, 0xb9, 0x2c, 0x6f, 0xcb, 0xb1, 0x9b, 0x97, 0x38, 0x81, 0x0c,
+	0x21, 0xca, 0x6d, 0x6b, 0x68, 0x34, 0x08, 0x47, 0xfd, 0xbd, 0x75, 0x7f, 0xc3, 0xb5, 0x2b, 0xa9,
+	0xa5, 0xe1, 0x21, 0xb4, 0x6d, 0x03, 0xec, 0x6c, 0x3e, 0xe0, 0xd9, 0xa9, 0x54, 0xbc, 0x59, 0xd7,
+	0x30, 0x89, 0x3d, 0x33, 0xe6, 0x84, 0x42, 0xd7, 0x83, 0x66, 0x00, 0x1e, 0xda, 0x65, 0x53, 0x78,
+	0xd4, 0x6c, 0xac, 0x3b, 0xbf, 0x78, 0x7e, 0x71, 0xc5, 0x5a, 0x97, 0x57, 0xac, 0x75, 0x73, 0xc5,
+	0x82, 0x4f, 0x15, 0x0b, 0xbe, 0x55, 0x2c, 0xf8, 0x51, 0xb1, 0xe0, 0xa2, 0x62, 0xc1, 0xcf, 0x8a,
+	0x05, 0xbf, 0x2a, 0xd6, 0xba, 0xa9, 0x58, 0xf0, 0xf9, 0x9a, 0xb5, 0x2e, 0xae, 0x59, 0xeb, 0xf2,
+	0x9a, 0xb5, 0xa6, 0x1d, 0x97, 0xde, 0xfe, 0xef, 0x00, 0x00, 0x00, 0xff, 0xff, 0x49, 0x8f, 0x24,
+	0xb5, 0x5a, 0x04, 0x00, 0x00,
 }
 
 func (this *Rule) Equal(that interface{}) bool {
@@ -1210,215 +817,6 @@ func (this *Decl) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (this *DetectRequest) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*DetectRequest)
-	if !ok {
-		that2, ok := that.(DetectRequest)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Device.Equal(that1.Device) {
-		return false
-	}
-	return true
-}
-func (this *DetectReply) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*DetectReply)
-	if !ok {
-		that2, ok := that.(DetectReply)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Ok != that1.Ok {
-		return false
-	}
-	if len(this.Event) != len(that1.Event) {
-		return false
-	}
-	for i := range this.Event {
-		if !this.Event[i].Equal(that1.Event[i]) {
-			return false
-		}
-	}
-	if !this.Error.Equal(that1.Error) {
-		return false
-	}
-	return true
-}
-func (this *ObjectRequest) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*ObjectRequest)
-	if !ok {
-		that2, ok := that.(ObjectRequest)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Object.Equal(that1.Object) {
-		return false
-	}
-	return true
-}
-func (this *DeviceRequest) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*DeviceRequest)
-	if !ok {
-		that2, ok := that.(DeviceRequest)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Device.Equal(that1.Device) {
-		return false
-	}
-	return true
-}
-func (this *Reply) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Reply)
-	if !ok {
-		that2, ok := that.(Reply)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Error.Equal(that1.Error) {
-		return false
-	}
-	return true
-}
-func (this *RuleRequest) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RuleRequest)
-	if !ok {
-		that2, ok := that.(RuleRequest)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Spec != that1.Spec {
-		return false
-	}
-	return true
-}
-func (this *RuleReply) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*RuleReply)
-	if !ok {
-		that2, ok := that.(RuleReply)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if !this.Rule.Equal(that1.Rule) {
-		return false
-	}
-	if !this.Error.Equal(that1.Error) {
-		return false
-	}
-	return true
-}
-func (this *Error) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Error)
-	if !ok {
-		that2, ok := that.(Error)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Code != that1.Code {
-		return false
-	}
-	if this.Msg != that1.Msg {
-		return false
-	}
-	return true
-}
 func (this *Rule) GoString() string {
 	if this == nil {
 		return "nil"
@@ -1518,106 +916,6 @@ func (this *Decl) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *DetectRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&proto.DetectRequest{")
-	if this.Device != nil {
-		s = append(s, "Device: "+fmt.Sprintf("%#v", this.Device)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *DetectReply) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&proto.DetectReply{")
-	s = append(s, "Ok: "+fmt.Sprintf("%#v", this.Ok)+",\n")
-	if this.Event != nil {
-		s = append(s, "Event: "+fmt.Sprintf("%#v", this.Event)+",\n")
-	}
-	if this.Error != nil {
-		s = append(s, "Error: "+fmt.Sprintf("%#v", this.Error)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ObjectRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&proto.ObjectRequest{")
-	if this.Object != nil {
-		s = append(s, "Object: "+fmt.Sprintf("%#v", this.Object)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *DeviceRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&proto.DeviceRequest{")
-	if this.Device != nil {
-		s = append(s, "Device: "+fmt.Sprintf("%#v", this.Device)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Reply) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&proto.Reply{")
-	if this.Error != nil {
-		s = append(s, "Error: "+fmt.Sprintf("%#v", this.Error)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RuleRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&proto.RuleRequest{")
-	s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RuleReply) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&proto.RuleReply{")
-	if this.Rule != nil {
-		s = append(s, "Rule: "+fmt.Sprintf("%#v", this.Rule)+",\n")
-	}
-	if this.Error != nil {
-		s = append(s, "Error: "+fmt.Sprintf("%#v", this.Error)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Error) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&proto.Error{")
-	s = append(s, "Code: "+fmt.Sprintf("%#v", this.Code)+",\n")
-	s = append(s, "Msg: "+fmt.Sprintf("%#v", this.Msg)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
 func valueToGoStringSpinix(v interface{}, typ string) string {
 	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
@@ -1698,42 +996,42 @@ func (m *Device) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	var l int
 	_ = l
 	if m.FuelLevel != 0 {
-		i -= 4
-		encoding_binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.FuelLevel))))
+		i -= 8
+		encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.FuelLevel))))
 		i--
 		dAtA[i] = 0x1
 		i--
-		dAtA[i] = 0x85
+		dAtA[i] = 0x81
 	}
 	if m.Pressure != 0 {
-		i -= 4
-		encoding_binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.Pressure))))
+		i -= 8
+		encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Pressure))))
 		i--
-		dAtA[i] = 0x7d
+		dAtA[i] = 0x79
 	}
 	if m.Luminosity != 0 {
-		i -= 4
-		encoding_binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.Luminosity))))
+		i -= 8
+		encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Luminosity))))
 		i--
-		dAtA[i] = 0x75
+		dAtA[i] = 0x71
 	}
 	if m.Humidity != 0 {
-		i -= 4
-		encoding_binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.Humidity))))
+		i -= 8
+		encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Humidity))))
 		i--
-		dAtA[i] = 0x6d
+		dAtA[i] = 0x69
 	}
 	if m.Temperature != 0 {
-		i -= 4
-		encoding_binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.Temperature))))
+		i -= 8
+		encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Temperature))))
 		i--
-		dAtA[i] = 0x65
+		dAtA[i] = 0x61
 	}
 	if m.BatteryCharge != 0 {
-		i -= 4
-		encoding_binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.BatteryCharge))))
+		i -= 8
+		encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.BatteryCharge))))
 		i--
-		dAtA[i] = 0x5d
+		dAtA[i] = 0x59
 	}
 	if m.Status != 0 {
 		i = encodeVarintSpinix(dAtA, i, uint64(m.Status))
@@ -1746,28 +1044,28 @@ func (m *Device) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		dAtA[i] = 0x48
 	}
 	if m.Speed != 0 {
-		i -= 4
-		encoding_binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.Speed))))
+		i -= 8
+		encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Speed))))
 		i--
-		dAtA[i] = 0x45
+		dAtA[i] = 0x41
 	}
 	if m.Altitude != 0 {
-		i -= 4
-		encoding_binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.Altitude))))
+		i -= 8
+		encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Altitude))))
 		i--
-		dAtA[i] = 0x3d
+		dAtA[i] = 0x39
 	}
 	if m.Longitude != 0 {
-		i -= 4
-		encoding_binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.Longitude))))
+		i -= 8
+		encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Longitude))))
 		i--
-		dAtA[i] = 0x35
+		dAtA[i] = 0x31
 	}
 	if m.Latitude != 0 {
-		i -= 4
-		encoding_binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.Latitude))))
+		i -= 8
+		encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Latitude))))
 		i--
-		dAtA[i] = 0x2d
+		dAtA[i] = 0x29
 	}
 	if len(m.Model) > 0 {
 		i -= len(m.Model)
@@ -2018,317 +1316,6 @@ func (m *Decl) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *DetectRequest) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *DetectRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *DetectRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Device != nil {
-		{
-			size, err := m.Device.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintSpinix(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *DetectReply) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *DetectReply) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *DetectReply) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Error != nil {
-		{
-			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintSpinix(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x1a
-	}
-	if len(m.Event) > 0 {
-		for iNdEx := len(m.Event) - 1; iNdEx >= 0; iNdEx-- {
-			{
-				size, err := m.Event[iNdEx].MarshalToSizedBuffer(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarintSpinix(dAtA, i, uint64(size))
-			}
-			i--
-			dAtA[i] = 0x12
-		}
-	}
-	if m.Ok {
-		i--
-		if m.Ok {
-			dAtA[i] = 1
-		} else {
-			dAtA[i] = 0
-		}
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *ObjectRequest) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *ObjectRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *ObjectRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Object != nil {
-		{
-			size, err := m.Object.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintSpinix(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *DeviceRequest) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *DeviceRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *DeviceRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Device != nil {
-		{
-			size, err := m.Device.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintSpinix(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *Reply) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Reply) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Reply) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Error != nil {
-		{
-			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintSpinix(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *RuleRequest) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *RuleRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *RuleRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Spec) > 0 {
-		i -= len(m.Spec)
-		copy(dAtA[i:], m.Spec)
-		i = encodeVarintSpinix(dAtA, i, uint64(len(m.Spec)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *RuleReply) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *RuleReply) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *RuleReply) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Error != nil {
-		{
-			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintSpinix(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Rule != nil {
-		{
-			size, err := m.Rule.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintSpinix(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *Error) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Error) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Msg) > 0 {
-		i -= len(m.Msg)
-		copy(dAtA[i:], m.Msg)
-		i = encodeVarintSpinix(dAtA, i, uint64(len(m.Msg)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Code != 0 {
-		i = encodeVarintSpinix(dAtA, i, uint64(m.Code))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
 func encodeVarintSpinix(dAtA []byte, offset int, v uint64) int {
 	offset -= sovSpinix(v)
 	base := offset
@@ -2389,16 +1376,16 @@ func (m *Device) Size() (n int) {
 		n += 1 + l + sovSpinix(uint64(l))
 	}
 	if m.Latitude != 0 {
-		n += 5
+		n += 9
 	}
 	if m.Longitude != 0 {
-		n += 5
+		n += 9
 	}
 	if m.Altitude != 0 {
-		n += 5
+		n += 9
 	}
 	if m.Speed != 0 {
-		n += 5
+		n += 9
 	}
 	if m.DateTime != 0 {
 		n += 1 + sovSpinix(uint64(m.DateTime))
@@ -2407,22 +1394,22 @@ func (m *Device) Size() (n int) {
 		n += 1 + sovSpinix(uint64(m.Status))
 	}
 	if m.BatteryCharge != 0 {
-		n += 5
+		n += 9
 	}
 	if m.Temperature != 0 {
-		n += 5
+		n += 9
 	}
 	if m.Humidity != 0 {
-		n += 5
+		n += 9
 	}
 	if m.Luminosity != 0 {
-		n += 5
+		n += 9
 	}
 	if m.Pressure != 0 {
-		n += 5
+		n += 9
 	}
 	if m.FuelLevel != 0 {
-		n += 6
+		n += 10
 	}
 	return n
 }
@@ -2523,126 +1510,6 @@ func (m *Decl) Size() (n int) {
 	return n
 }
 
-func (m *DetectRequest) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Device != nil {
-		l = m.Device.Size()
-		n += 1 + l + sovSpinix(uint64(l))
-	}
-	return n
-}
-
-func (m *DetectReply) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Ok {
-		n += 2
-	}
-	if len(m.Event) > 0 {
-		for _, e := range m.Event {
-			l = e.Size()
-			n += 1 + l + sovSpinix(uint64(l))
-		}
-	}
-	if m.Error != nil {
-		l = m.Error.Size()
-		n += 1 + l + sovSpinix(uint64(l))
-	}
-	return n
-}
-
-func (m *ObjectRequest) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Object != nil {
-		l = m.Object.Size()
-		n += 1 + l + sovSpinix(uint64(l))
-	}
-	return n
-}
-
-func (m *DeviceRequest) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Device != nil {
-		l = m.Device.Size()
-		n += 1 + l + sovSpinix(uint64(l))
-	}
-	return n
-}
-
-func (m *Reply) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Error != nil {
-		l = m.Error.Size()
-		n += 1 + l + sovSpinix(uint64(l))
-	}
-	return n
-}
-
-func (m *RuleRequest) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Spec)
-	if l > 0 {
-		n += 1 + l + sovSpinix(uint64(l))
-	}
-	return n
-}
-
-func (m *RuleReply) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Rule != nil {
-		l = m.Rule.Size()
-		n += 1 + l + sovSpinix(uint64(l))
-	}
-	if m.Error != nil {
-		l = m.Error.Size()
-		n += 1 + l + sovSpinix(uint64(l))
-	}
-	return n
-}
-
-func (m *Error) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Code != 0 {
-		n += 1 + sovSpinix(uint64(m.Code))
-	}
-	l = len(m.Msg)
-	if l > 0 {
-		n += 1 + l + sovSpinix(uint64(l))
-	}
-	return n
-}
-
 func sovSpinix(x uint64) (n int) {
 	return (math_bits.Len64(x|1) + 6) / 7
 }
@@ -2739,95 +1606,6 @@ func (this *Decl) String() string {
 		`KeywordId:` + fmt.Sprintf("%v", this.KeywordId) + `,`,
 		`Keyword:` + fmt.Sprintf("%v", this.Keyword) + `,`,
 		`Refs:` + fmt.Sprintf("%v", this.Refs) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *DetectRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&DetectRequest{`,
-		`Device:` + strings.Replace(this.Device.String(), "Device", "Device", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *DetectReply) String() string {
-	if this == nil {
-		return "nil"
-	}
-	repeatedStringForEvent := "[]*Event{"
-	for _, f := range this.Event {
-		repeatedStringForEvent += strings.Replace(f.String(), "Event", "Event", 1) + ","
-	}
-	repeatedStringForEvent += "}"
-	s := strings.Join([]string{`&DetectReply{`,
-		`Ok:` + fmt.Sprintf("%v", this.Ok) + `,`,
-		`Event:` + repeatedStringForEvent + `,`,
-		`Error:` + strings.Replace(this.Error.String(), "Error", "Error", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ObjectRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ObjectRequest{`,
-		`Object:` + strings.Replace(this.Object.String(), "Object", "Object", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *DeviceRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&DeviceRequest{`,
-		`Device:` + strings.Replace(this.Device.String(), "Device", "Device", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Reply) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Reply{`,
-		`Error:` + strings.Replace(this.Error.String(), "Error", "Error", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RuleRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RuleRequest{`,
-		`Spec:` + fmt.Sprintf("%v", this.Spec) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RuleReply) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RuleReply{`,
-		`Rule:` + strings.Replace(this.Rule.String(), "Rule", "Rule", 1) + `,`,
-		`Error:` + strings.Replace(this.Error.String(), "Error", "Error", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Error) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Error{`,
-		`Code:` + fmt.Sprintf("%v", this.Code) + `,`,
-		`Msg:` + fmt.Sprintf("%v", this.Msg) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3163,49 +1941,49 @@ func (m *Device) Unmarshal(dAtA []byte) error {
 			m.Model = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 5:
-			if wireType != 5 {
+			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Latitude", wireType)
 			}
-			var v uint32
-			if (iNdEx + 4) > l {
+			var v uint64
+			if (iNdEx + 8) > l {
 				return io.ErrUnexpectedEOF
 			}
-			v = uint32(encoding_binary.LittleEndian.Uint32(dAtA[iNdEx:]))
-			iNdEx += 4
-			m.Latitude = float32(math.Float32frombits(v))
+			v = uint64(encoding_binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.Latitude = float64(math.Float64frombits(v))
 		case 6:
-			if wireType != 5 {
+			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Longitude", wireType)
 			}
-			var v uint32
-			if (iNdEx + 4) > l {
+			var v uint64
+			if (iNdEx + 8) > l {
 				return io.ErrUnexpectedEOF
 			}
-			v = uint32(encoding_binary.LittleEndian.Uint32(dAtA[iNdEx:]))
-			iNdEx += 4
-			m.Longitude = float32(math.Float32frombits(v))
+			v = uint64(encoding_binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.Longitude = float64(math.Float64frombits(v))
 		case 7:
-			if wireType != 5 {
+			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Altitude", wireType)
 			}
-			var v uint32
-			if (iNdEx + 4) > l {
+			var v uint64
+			if (iNdEx + 8) > l {
 				return io.ErrUnexpectedEOF
 			}
-			v = uint32(encoding_binary.LittleEndian.Uint32(dAtA[iNdEx:]))
-			iNdEx += 4
-			m.Altitude = float32(math.Float32frombits(v))
+			v = uint64(encoding_binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.Altitude = float64(math.Float64frombits(v))
 		case 8:
-			if wireType != 5 {
+			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Speed", wireType)
 			}
-			var v uint32
-			if (iNdEx + 4) > l {
+			var v uint64
+			if (iNdEx + 8) > l {
 				return io.ErrUnexpectedEOF
 			}
-			v = uint32(encoding_binary.LittleEndian.Uint32(dAtA[iNdEx:]))
-			iNdEx += 4
-			m.Speed = float32(math.Float32frombits(v))
+			v = uint64(encoding_binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.Speed = float64(math.Float64frombits(v))
 		case 9:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DateTime", wireType)
@@ -3245,71 +2023,71 @@ func (m *Device) Unmarshal(dAtA []byte) error {
 				}
 			}
 		case 11:
-			if wireType != 5 {
+			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field BatteryCharge", wireType)
 			}
-			var v uint32
-			if (iNdEx + 4) > l {
+			var v uint64
+			if (iNdEx + 8) > l {
 				return io.ErrUnexpectedEOF
 			}
-			v = uint32(encoding_binary.LittleEndian.Uint32(dAtA[iNdEx:]))
-			iNdEx += 4
-			m.BatteryCharge = float32(math.Float32frombits(v))
+			v = uint64(encoding_binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.BatteryCharge = float64(math.Float64frombits(v))
 		case 12:
-			if wireType != 5 {
+			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Temperature", wireType)
 			}
-			var v uint32
-			if (iNdEx + 4) > l {
+			var v uint64
+			if (iNdEx + 8) > l {
 				return io.ErrUnexpectedEOF
 			}
-			v = uint32(encoding_binary.LittleEndian.Uint32(dAtA[iNdEx:]))
-			iNdEx += 4
-			m.Temperature = float32(math.Float32frombits(v))
+			v = uint64(encoding_binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.Temperature = float64(math.Float64frombits(v))
 		case 13:
-			if wireType != 5 {
+			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Humidity", wireType)
 			}
-			var v uint32
-			if (iNdEx + 4) > l {
+			var v uint64
+			if (iNdEx + 8) > l {
 				return io.ErrUnexpectedEOF
 			}
-			v = uint32(encoding_binary.LittleEndian.Uint32(dAtA[iNdEx:]))
-			iNdEx += 4
-			m.Humidity = float32(math.Float32frombits(v))
+			v = uint64(encoding_binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.Humidity = float64(math.Float64frombits(v))
 		case 14:
-			if wireType != 5 {
+			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Luminosity", wireType)
 			}
-			var v uint32
-			if (iNdEx + 4) > l {
+			var v uint64
+			if (iNdEx + 8) > l {
 				return io.ErrUnexpectedEOF
 			}
-			v = uint32(encoding_binary.LittleEndian.Uint32(dAtA[iNdEx:]))
-			iNdEx += 4
-			m.Luminosity = float32(math.Float32frombits(v))
+			v = uint64(encoding_binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.Luminosity = float64(math.Float64frombits(v))
 		case 15:
-			if wireType != 5 {
+			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Pressure", wireType)
 			}
-			var v uint32
-			if (iNdEx + 4) > l {
+			var v uint64
+			if (iNdEx + 8) > l {
 				return io.ErrUnexpectedEOF
 			}
-			v = uint32(encoding_binary.LittleEndian.Uint32(dAtA[iNdEx:]))
-			iNdEx += 4
-			m.Pressure = float32(math.Float32frombits(v))
+			v = uint64(encoding_binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.Pressure = float64(math.Float64frombits(v))
 		case 16:
-			if wireType != 5 {
+			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field FuelLevel", wireType)
 			}
-			var v uint32
-			if (iNdEx + 4) > l {
+			var v uint64
+			if (iNdEx + 8) > l {
 				return io.ErrUnexpectedEOF
 			}
-			v = uint32(encoding_binary.LittleEndian.Uint32(dAtA[iNdEx:]))
-			iNdEx += 4
-			m.FuelLevel = float32(math.Float32frombits(v))
+			v = uint64(encoding_binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.FuelLevel = float64(math.Float64frombits(v))
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSpinix(dAtA[iNdEx:])
@@ -3955,795 +2733,6 @@ func (m *Decl) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Refs = append(m.Refs, string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSpinix(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *DetectRequest) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSpinix
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: DetectRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DetectRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Device", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpinix
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Device == nil {
-				m.Device = &Device{}
-			}
-			if err := m.Device.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSpinix(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *DetectReply) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSpinix
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: DetectReply: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DetectReply: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ok", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpinix
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.Ok = bool(v != 0)
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Event", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpinix
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Event = append(m.Event, &Event{})
-			if err := m.Event[len(m.Event)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpinix
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Error == nil {
-				m.Error = &Error{}
-			}
-			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSpinix(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *ObjectRequest) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSpinix
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ObjectRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ObjectRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Object", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpinix
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Object == nil {
-				m.Object = &Object{}
-			}
-			if err := m.Object.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSpinix(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *DeviceRequest) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSpinix
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: DeviceRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DeviceRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Device", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpinix
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Device == nil {
-				m.Device = &Device{}
-			}
-			if err := m.Device.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSpinix(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Reply) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSpinix
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Reply: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Reply: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpinix
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Error == nil {
-				m.Error = &Error{}
-			}
-			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSpinix(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RuleRequest) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSpinix
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: RuleRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RuleRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpinix
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Spec = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSpinix(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RuleReply) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSpinix
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: RuleReply: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RuleReply: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Rule", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpinix
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Rule == nil {
-				m.Rule = &Rule{}
-			}
-			if err := m.Rule.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpinix
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Error == nil {
-				m.Error = &Error{}
-			}
-			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSpinix(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Error) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSpinix
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Error: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
-			}
-			m.Code = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpinix
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Code |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Msg", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpinix
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthSpinix
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Msg = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

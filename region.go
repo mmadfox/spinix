@@ -244,7 +244,6 @@ func circleFromRule(r *Rule) *geometry.Poly {
 }
 
 func makeCircle(lat, lng float64, meters float64, steps int) (points []geometry.Point, bbox geometry.Rect) {
-	meters = geo.NormalizeDistance(meters)
 	points = make([]geometry.Point, 0, steps+1)
 	for i := 0; i <= steps; i++ {
 		b := (i * -360) / steps
@@ -272,6 +271,9 @@ func makeCircle(lat, lng float64, meters float64, steps int) (points []geometry.
 }
 
 func normalizeDistance(meters float64, size RegionSize) float64 {
+	if meters < 1 {
+		meters = 1
+	}
 	switch {
 	case size.IsTiny():
 		if meters > TinyRegionThreshold {
@@ -307,7 +309,6 @@ type regionInfo struct {
 }
 
 func regionsFromLatLon(lat, lon, meters float64, size RegionSize) (ri regionInfo) {
-
 	ri.boundary = regionBoundaryFromLatLon(lat, lon, size)
 	ri.bbox = calcRect(lat, lon, meters)
 	// fast path
@@ -317,7 +318,7 @@ func regionsFromLatLon(lat, lon, meters float64, size RegionSize) (ri regionInfo
 	}
 	// slow path
 	t := make(map[RegionID]struct{}, 4)
-	for i := 0; i <= 6; i++ {
+	for i := 0; i <= 3; i++ {
 		var p geometry.Point
 		b := (i * -360) / steps
 		p.X, p.Y = geo.DestinationPoint(lat, lon, meters, float64(b))
