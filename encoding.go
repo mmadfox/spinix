@@ -17,8 +17,20 @@ func ToRule(rule *Rule) *pb.Rule {
 	return p
 }
 
-func FromRule(rule *pb.Rule) *Rule {
-	return nil
+func FromRule(rule *pb.Rule) (*Rule, error) {
+	regions := make([]RegionID, len(rule.RegionIds))
+	for i := 0; i < len(regions); i++ {
+		id, err := RegionIDFromString(rule.RegionIds[i])
+		if err != nil {
+			return nil, err
+		}
+		regions[i] = id
+	}
+	regionSize := RegionSize(rule.RegionSize)
+	if err := regionSize.Validate(); err != nil {
+		return nil, err
+	}
+	return RuleFromSpec(rule.RuleId, regions, regionSize, rule.Spec)
 }
 
 func ToDevice(device *Device) *pb.Device {

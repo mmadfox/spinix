@@ -32,7 +32,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		// success not intersects
 		{
 			name:   "should be successful when the current device not intersects the polygon",
-			spec:   `device nintersects polygon(@object) { :center 42.9284788 72.2776118 }`,
+			spec:   `device nintersects polygon(object) { :center 42.9284788 72.2776118 }`,
 			device: &Device{IMEI: "my", Latitude: 42.9353452, Longitude: -72.2850947},
 			match:  []Match{match(DEVICE, POLY, NINTERSECTS)},
 			object: polytest,
@@ -40,7 +40,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the my device not intersects the other devices",
-			spec:         `devices(@my) nintersects devices(@) { :center 42.9284788 72.2776118 }`,
+			spec:         `devices(my) nintersects devices(@) { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, NINTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9306625, Longitude: -72.2847043}},
@@ -49,7 +49,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the my device not intersects the other devices",
-			spec:         `devices(@my) nintersects devices(@) :radius 100m { :center 42.9284788 72.2776118 }`,
+			spec:         `devices(my) nintersects devices(@) :radius 100m { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, NINTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9306625, Longitude: -72.2847043}},
@@ -58,7 +58,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the my device not intersects the other devices",
-			spec:         `devices(@my) :bbox 10m nintersects devices(@) :bbox 100m { :center 42.9284788 72.2776118 }`,
+			spec:         `devices(my) :bbox 10m nintersects devices(@) :bbox 100m { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, NINTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9306625, Longitude: -72.2847043}},
@@ -69,7 +69,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		// success intersects
 		{
 			name:         "should be successful when the my device intersects the other devices",
-			spec:         `devices(@my) intersects devices(@) { :center 42.9284788 72.2776118 }`,
+			spec:         `devices(my) intersects devices(@) { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
@@ -78,7 +78,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name: "should be successful when the current device intersects the polygons collection or single polygon",
-			spec: `device INTERSECTS collection(@cid) OR device INTERSECTS polygon(@oid) 
+			spec: `device INTERSECTS collection(cid) OR device INTERSECTS polygon(@oid) 
                   { 
                       :trigger every 60s
                       :center 42.9284788 72.2776118
@@ -120,7 +120,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:      "should be successful when the current device intersects the polygon",
-			spec:      `device INTERSECTS polygon(@object) { :center 42.9284788 72.2776118 }`,
+			spec:      `device INTERSECTS polygon(object) { :center 42.9284788 72.2776118 }`,
 			device:    &Device{IMEI: "my", Latitude: 42.9273904, Longitude: -72.2798723},
 			match:     []Match{match(DEVICE, POLY, INTERSECTS)},
 			object:    polytest,
@@ -129,7 +129,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:      "should be successful when the current device intersects the polygon",
-			spec:      `device :radius 1km INTERSECTS polygon(@object) { :center 42.9284788 72.2776118 }`,
+			spec:      `device :radius 1km INTERSECTS polygon(object) { :center 42.9284788 72.2776118 }`,
 			device:    &Device{IMEI: "my", Latitude: 42.924991, Longitude: -72.2799713},
 			match:     []Match{match(DEVICE, POLY, INTERSECTS)},
 			object:    polytest,
@@ -138,7 +138,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:      "should be successful when the current device intersects the polygon",
-			spec:      `device :bbox 1km INTERSECTS polygon(@object) { :center 42.9284788 72.2776118 }`,
+			spec:      `device :bbox 1km INTERSECTS polygon(object) { :center 42.9284788 72.2776118 }`,
 			device:    &Device{IMEI: "my", Latitude: 42.924991, Longitude: -72.2799713},
 			match:     []Match{match(DEVICE, POLY, INTERSECTS)},
 			object:    polytest,
@@ -147,7 +147,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the my device intersects the other devices at a distance of 100 meters",
-			spec:         `devices(@my) intersects devices(@) :radius 100m { :center 42.9284788 72.2776118 }`,
+			spec:         `devices(my) intersects devices(@) :radius 100m { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
@@ -156,7 +156,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the my device intersects the other devices at a distance of 100 meters",
-			spec:         `device intersects devices(@other) :radius 100m { :center 42.9284788 72.2776118 }`,
+			spec:         `device intersects devices(other) :radius 100m { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
@@ -165,7 +165,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the my device intersects the other devices at a distance of 100 meters",
-			spec:         `device :radius 100m intersects devices(@other)  { :center 42.9284788 72.2776118 }`,
+			spec:         `device :radius 100m intersects devices(other)  { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
@@ -174,7 +174,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the my device intersects the other devices at a distance of 100 meters",
-			spec:         `device :radius 100m intersects devices(@other) :bbox 400m  { :center 42.9284788 72.2776118 }`,
+			spec:         `device :radius 100m intersects devices(other) :bbox 400m  { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
@@ -183,7 +183,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the my device intersects the other devices with bounding box at a radius 100 meters",
-			spec:         `devices(@my) intersects devices(@) :bbox 100m { :center 42.9284788 72.2776118 }`,
+			spec:         `devices(my) intersects devices(@) :bbox 100m { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
@@ -192,7 +192,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the my device intersects the other devices at a distance of 100 meters",
-			spec:         `devices(@my) :radius 100m intersects devices(@) { :center 42.9284788 72.2776118 }`,
+			spec:         `devices(my) :radius 100m intersects devices(@) { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
@@ -201,7 +201,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the current device intersects the other device at a distance of 100 meters",
-			spec:         `devices(@other) :radius 100m intersects device { :center 42.9284788 72.2776118 }`,
+			spec:         `devices(other) :radius 100m intersects device { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
@@ -210,7 +210,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the current device intersects the other device with bounding box at a radius 100 meters",
-			spec:         `devices(@other) :bbox 100m intersects device { :center 42.9284788 72.2776118 }`,
+			spec:         `devices(other) :bbox 100m intersects device { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
@@ -219,7 +219,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the current device intersects the other device",
-			spec:         `devices(@other) intersects device { :center 42.9284788 72.2776118 }`,
+			spec:         `devices(other) intersects device { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
@@ -228,7 +228,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:      "should be successful when the current device intersects the polygon with @object id",
-			spec:      `device intersects polygon(@object)  { :center 42.9284788 72.2776118 }`,
+			spec:      `device intersects polygon(object)  { :center 42.9284788 72.2776118 }`,
 			device:    &Device{IMEI: "current", Latitude: 42.9275513, Longitude: -72.2799653},
 			match:     []Match{match(DEVICE, POLY, INTERSECTS)},
 			object:    polytest,
@@ -237,7 +237,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:      "should be successful when the current device intersects the polygon with @object id",
-			spec:      `polygon(@object) intersects device { :center 42.9284788 72.2776118 }`,
+			spec:      `polygon(object) intersects device { :center 42.9284788 72.2776118 }`,
 			device:    &Device{IMEI: "current", Latitude: 42.9275513, Longitude: -72.2799653},
 			match:     []Match{match(DEVICE, POLY, INTERSECTS)},
 			object:    polytest,
@@ -246,7 +246,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the current device intersects the other device at a distance of 100 meters",
-			spec:         `device :radius 100m intersects devices(@other) :radius 100m { :center 42.9284788 72.2776118 }`,
+			spec:         `device :radius 100m intersects devices(other) :radius 100m { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "current", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
@@ -255,7 +255,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the my device intersects the other device at a distance of 100 meters",
-			spec:         `devices(@my) :radius 100m intersects devices(@other) :radius 100m { :center 42.9284788 72.2776118 }`,
+			spec:         `devices(my) :radius 100m intersects devices(other) :radius 100m { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
@@ -264,7 +264,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:         "should be successful when the my device intersects the devices with bounding box at a radius 100 meters",
-			spec:         `devices(@my) :bbox 100m intersects devices(@) :bbox 100m { :center 42.9284788 72.2776118 }`,
+			spec:         `devices(my) :bbox 100m intersects devices(@) :bbox 100m { :center 42.9284788 72.2776118 }`,
 			device:       &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:        []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{{IMEI: "other", Latitude: 42.9284788, Longitude: -72.2776118}},
@@ -273,7 +273,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:   "should be successful when the my device intersects the all devices at a distance of 100 meters",
-			spec:   `devices(@my) :radius 100m intersects devices(@) :radius 100m { :center 42.9284788 72.2776118 }`,
+			spec:   `devices(my) :radius 100m intersects devices(@) :radius 100m { :center 42.9284788 72.2776118 }`,
 			device: &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:  []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{
@@ -286,7 +286,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name:   "should be successful when the my device intersects the all devices at a distance of 100 meters",
-			spec:   `devices(@) :radius 100m intersects devices(@my) :radius 100m { :center 42.9284788 72.2776118 }`,
+			spec:   `devices(@) :radius 100m intersects devices(my) :radius 100m { :center 42.9284788 72.2776118 }`,
 			device: &Device{IMEI: "my", Latitude: 42.9284788, Longitude: -72.2776118},
 			match:  []Match{match(DEVICE, DEVICES, INTERSECTS)},
 			otherDevices: []*Device{
@@ -309,7 +309,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		},
 		{
 			name: "invalid device specification => got device 100m, expected device :radius 100m",
-			spec: `device 100m intersects polygon(@object)  { :center 42.9284788 72.2776118 }`,
+			spec: `device 100m intersects polygon(object)  { :center 42.9284788 72.2776118 }`,
 			err:  true,
 		},
 		{

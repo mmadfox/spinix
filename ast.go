@@ -103,6 +103,7 @@ type (
 	}
 
 	ObjectLit struct {
+		All    bool
 		Kind   Token
 		Ref    []string
 		DurVal time.Duration
@@ -272,8 +273,16 @@ func (e *ObjectLit) String() string {
 	sb.WriteString(e.Kind.String())
 	sb.WriteString("(")
 	last := len(e.Ref) - 1
+	if e.All {
+		sb.WriteString("@")
+	}
+	if e.All && len(e.Ref) > 0 {
+		sb.WriteString(",")
+	}
 	for i, ref := range e.Ref {
-		sb.WriteString("@" + ref)
+		sb.WriteString(`"`)
+		sb.WriteString(ref)
+		sb.WriteString(`"`)
 		if i != last {
 			sb.WriteString(",")
 		}
@@ -393,8 +402,16 @@ func (e *DevicesLit) String() string {
 	sb.WriteString("devices")
 	sb.WriteString("(")
 	last := len(e.Ref) - 1
+	if e.All {
+		sb.WriteString("@")
+	}
+	if e.All && len(e.Ref) > 0 {
+		sb.WriteString(",")
+	}
 	for i, ref := range e.Ref {
-		sb.WriteString("@" + ref)
+		sb.WriteString(`"`)
+		sb.WriteString(ref)
+		sb.WriteString(`"`)
 		if i != last {
 			sb.WriteString(",")
 		}

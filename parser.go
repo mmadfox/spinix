@@ -336,11 +336,11 @@ func (p *Parser) parseDevicesLit() (Expr, error) {
 		return nil, err
 	}
 	object := expr.(*ObjectLit)
-	devices := &DevicesLit{}
+	devices := &DevicesLit{
+		All: object.All,
+	}
 	// for all devices
-	if len(object.Ref) == 0 {
-		devices.All = true
-	} else {
+	if len(object.Ref) > 0 {
 		devices.Ref = make([]string, len(object.Ref))
 		copy(devices.Ref, object.Ref)
 	}
@@ -440,10 +440,7 @@ func (p *Parser) parseObjectLit(kind Token) (expr Expr, err error) {
 		return nil, p.error(kind, "", "missing (")
 	}
 
-	var (
-		lastTok Token
-		unique  map[string]struct{}
-	)
+	var unique map[string]struct{}
 
 	obj := &ObjectLit{
 		Kind: kind,
@@ -461,16 +458,26 @@ func (p *Parser) parseObjectLit(kind Token) (expr Expr, err error) {
 		if tok == ILLEGAL {
 			tok = IDENT
 		}
+
+		if tok == VAR_IDENT {
+			obj.All = true
+			continue
+		}
+
+		if tok == COMMA {
+			continue
+		}
+
 		if badToken(tok) {
 			return nil, p.error(tok, lit, "args error")
 		}
-		isAllowToken := tok == IDENT || tok == STRING || tok == INT || tok == FLOAT
-		if isAllowToken && lastTok != VAR_IDENT {
+		isValidToken := tok == RPAREN || tok == IDENT || tok == STRING || tok == INT
+		if !isValidToken {
 			return nil, p.error(tok, lit, "missing token")
 		}
 		// )
 		if tok == RPAREN {
-			if len(obj.Ref) == 0 && kind != DEVICES {
+			if len(obj.Ref) == 0 && !obj.All {
 				return nil, p.error(tok, lit, "arguments not found")
 			}
 
@@ -496,9 +503,14 @@ func (p *Parser) parseObjectLit(kind Token) (expr Expr, err error) {
 			return obj, nil
 		}
 		// ident
-		lastTok = tok
-		if tok == IDENT || tok == INT || tok == FLOAT || tok == STRING {
-			if len(lit) > 64 {
+		if tok == IDENT || tok == INT || tok == STRING {
+			if tok == STRING {
+				lit = strings.Trim(lit, `"`)
+			}
+			if len(lit) == 0 {
+				return nil, p.error(tok, lit, "literal too short")
+			}
+			if len(lit) > 512 {
 				return nil, p.error(tok, lit, "literal too long")
 			}
 			if unique == nil {
