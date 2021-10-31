@@ -26,7 +26,7 @@ func TestDevicesNearby(t *testing.T) {
 		t.Fatal(err)
 	}
 	var found int
-	if err := device.Nearby(ctx, 42.9316717, -72.2846072, 1000000000,
+	if err := device.Near(ctx, 42.9316717, -72.2846072, 1000000000,
 		func(ctx context.Context, d *Device) error {
 			found++
 			return nil
@@ -63,7 +63,7 @@ func BenchmarkDevicesNearby(b *testing.B) {
 		}
 		cord := coords[n]
 		n++
-		if err := device.Nearby(ctx, cord[0], cord[1], 10000,
+		if err := device.Near(ctx, cord[0], cord[1], 10000,
 			func(ctx context.Context, d *Device) error {
 				return nil
 			}); err != nil {

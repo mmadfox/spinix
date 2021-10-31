@@ -113,8 +113,8 @@ func TestRuntimeIntersects(t *testing.T) {
 -72.2839185, 42.9244410
 -72.2838971, 42.9243939
 `)
-				_ = refs.objects.Add(context.TODO(), "cid", collection)
-				_ = refs.objects.Add(context.TODO(), "oid", polytest)
+				_ = refs.objects.Add(context.TODO(), NewGeoObject("cid", DefaultLayer, collection))
+				_ = refs.objects.Add(context.TODO(), NewGeoObject("oid", DefaultLayer, polytest))
 			},
 			rid: "rule4598",
 		},
@@ -331,7 +331,7 @@ func TestRuntimeIntersects(t *testing.T) {
 		}
 
 		if tc.object != nil {
-			if err := refs.objects.Add(ctx, "object", tc.object); err != nil {
+			if err := refs.objects.Add(ctx, NewGeoObject("object", DefaultLayer, tc.object)); err != nil {
 				t.Fatal(err)
 			}
 		}

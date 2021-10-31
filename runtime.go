@@ -1164,7 +1164,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 			}
 			switch n.device.Kind {
 			case RADIUS:
-				if deviceRadius != nil && obj.Spatial().IntersectsPoly(deviceRadius) {
+				if deviceRadius != nil && obj.data.Spatial().IntersectsPoly(deviceRadius) {
 					match.Ok = true
 					if match.Right.Refs == nil {
 						match.Right.Refs = make([]string, 0, len(n.object.Ref))
@@ -1172,7 +1172,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 					match.Right.Refs = append(match.Right.Refs, objectID)
 				}
 			case BBOX:
-				if deviceRadius != nil && obj.Spatial().IntersectsRect(deviceRadius.Rect()) {
+				if deviceRadius != nil && obj.data.Spatial().IntersectsRect(deviceRadius.Rect()) {
 					match.Ok = true
 					if match.Right.Refs == nil {
 						match.Right.Refs = make([]string, 0, len(n.object.Ref))
@@ -1180,7 +1180,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 					match.Right.Refs = append(match.Right.Refs, objectID)
 				}
 			default:
-				if obj.Spatial().IntersectsPoint(devicePoint) {
+				if obj.data.Spatial().IntersectsPoint(devicePoint) {
 					match.Ok = true
 					if match.Right.Refs == nil {
 						match.Right.Refs = make([]string, 0, len(n.object.Ref))
@@ -1281,7 +1281,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 
 	// device -> device
 	if n.other != nil {
-		err := ref.devices.Nearby(ctx, d.Latitude, d.Longitude, meters,
+		err := ref.devices.Near(ctx, d.Latitude, d.Longitude, meters,
 			func(ctx context.Context, other *Device) error {
 				if d.IMEI == other.IMEI {
 					return nil
@@ -1495,7 +1495,7 @@ func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, _ *State, r
 		}
 		switch n.left.Kind {
 		case RADIUS:
-			if deviceRadius != nil && obj.Spatial().IntersectsPoly(deviceRadius) {
+			if deviceRadius != nil && obj.data.Spatial().IntersectsPoly(deviceRadius) {
 				match.Ok = true
 				if match.Right.Refs == nil {
 					match.Right.Refs = make([]string, 0, len(n.right.Ref))
@@ -1503,7 +1503,7 @@ func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, _ *State, r
 				match.Right.Refs = append(match.Right.Refs, objectID)
 			}
 		case BBOX:
-			if deviceRadius != nil && obj.Spatial().IntersectsRect(deviceRadius.Rect()) {
+			if deviceRadius != nil && obj.data.Spatial().IntersectsRect(deviceRadius.Rect()) {
 				match.Ok = true
 				if match.Right.Refs == nil {
 					match.Right.Refs = make([]string, 0, len(n.right.Ref))
@@ -1511,7 +1511,7 @@ func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, _ *State, r
 				match.Right.Refs = append(match.Right.Refs, objectID)
 			}
 		default:
-			if obj.Spatial().IntersectsPoint(devicePoint) {
+			if obj.data.Spatial().IntersectsPoint(devicePoint) {
 				match.Ok = true
 				if match.Right.Refs == nil {
 					match.Right.Refs = make([]string, 0, len(n.right.Ref))
@@ -1825,7 +1825,7 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 			}
 		} else {
 			// INTERSECTS
-			if err := ref.devices.Nearby(ctx, d.Latitude, d.Longitude, meters,
+			if err := ref.devices.Near(ctx, d.Latitude, d.Longitude, meters,
 				func(ctx context.Context, otherDevice *Device) error {
 					switch n.right.Kind {
 					case RADIUS, BBOX:
@@ -1954,11 +1954,11 @@ func (n inObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref refer
 		}
 
 		if deviceRadius != nil {
-			if ok := object.Contains(deviceRadius); ok {
+			if ok := object.data.Contains(deviceRadius); ok {
 				match.Ok = true
 			}
 		} else {
-			if ok := object.Contains(devicePoint); ok {
+			if ok := object.data.Contains(devicePoint); ok {
 				match.Ok = true
 			}
 		}
@@ -2056,7 +2056,7 @@ func (n equalObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref re
 			}
 			return match, err
 		}
-		center := object.Center()
+		center := object.data.Center()
 		distance := round(geo.DistanceTo(
 			d.Latitude,
 			d.Longitude,

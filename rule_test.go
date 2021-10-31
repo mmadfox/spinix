@@ -69,7 +69,7 @@ func TestRuleMarshalUnmarshalJSON(t *testing.T) {
 func TestRulesInsert(t *testing.T) {
 	ctx := context.Background()
 	refs := defaultRefs()
-	_ = refs.objects.Add(ctx, "poly", poly)
+	_ = refs.objects.Add(ctx, NewGeoObject("poly", DefaultLayer, poly))
 	rulesInMem := NewMemoryRules()
 	testCases := []struct {
 		spec     string

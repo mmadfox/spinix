@@ -11,14 +11,16 @@ import (
 	"github.com/tidwall/rtree"
 )
 
-var ErrDeviceNotFound = errors.New("spinix/devices: device not found")
+var ErrDeviceNotFound = errors.New("spinix/devices: not found")
+
+type DeviceIterFunc func(ctx context.Context, d *Device) error
 
 type Devices interface {
 	Lookup(ctx context.Context, deviceID string) (*Device, error)
 	InsertOrReplace(ctx context.Context, device *Device) (bool, error)
 	Delete(ctx context.Context, deviceID string) error
-	Each(ctx context.Context, rid RegionID, size RegionSize, fn func(ctx context.Context, d *Device) error) error
-	Nearby(ctx context.Context, lat, lon, meters float64, fn func(ctx context.Context, d *Device) error) error
+	Each(ctx context.Context, rid RegionID, size RegionSize, fn DeviceIterFunc) error
+	Near(ctx context.Context, lat, lon, meters float64, fn DeviceIterFunc) error
 }
 
 type Device struct {
@@ -65,32 +67,25 @@ func (d *Device) RegionID() RegionID {
 }
 
 type devices struct {
-	regions map[RegionID]*deviceRegion
-	index   deviceIndex
-	mu      sync.RWMutex
+	hashIndex   deviceHashIndex
+	regionIndex *deviceRegionIndex
 }
 
 func NewMemoryDevices() Devices {
 	return &devices{
-		regions: make(map[RegionID]*deviceRegion),
-		index:   newDeviceIndex(),
+		hashIndex:   newDevicesHashIndex(),
+		regionIndex: newDevicesRegionIndex(),
 	}
 }
 
 func (d *devices) Lookup(_ context.Context, deviceID string) (*Device, error) {
-	return d.index.get(deviceID)
+	return d.hashIndex.get(deviceID)
 }
 
-func (d *devices) Each(
-	ctx context.Context,
-	rid RegionID, _ RegionSize,
-	fn func(ctx context.Context, d *Device) error,
-) (err error) {
-	d.mu.RLock()
-	region, ok := d.regions[rid]
-	d.mu.RUnlock()
-	if !ok {
-		return nil
+func (d *devices) Each(ctx context.Context, rid RegionID, _ RegionSize, fn DeviceIterFunc) (err error) {
+	region, err := d.regionIndex.regionByID(rid)
+	if err != nil {
+		return err
 	}
 	region.each(func(d *Device) bool {
 		err = fn(ctx, d)
@@ -104,7 +99,7 @@ func (d *devices) Each(
 
 func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced bool, err error) {
 	device.DetectRegion()
-	prevState, err := d.index.get(device.IMEI)
+	prevState, err := d.hashIndex.get(device.IMEI)
 	if prevState != nil && err == nil {
 		dist := geo.DistanceTo(
 			prevState.Latitude,
@@ -113,71 +108,59 @@ func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced b
 			device.Longitude,
 		)
 		if dist <= minDistMeters {
-			d.index.set(device)
+			d.hashIndex.set(device)
 			replaced = true
 			return
 		}
 		if prevState.RegionID() != device.RegionID() {
-			d.index.delete(device.IMEI)
+			d.hashIndex.delete(device.IMEI)
 		}
 	}
 	if err == nil {
-		d.mu.RLock()
-		region, ok := d.regions[prevState.regionID]
-		d.mu.RUnlock()
-		if ok {
+		region, err := d.regionIndex.regionByID(prevState.regionID)
+		if err == nil {
 			replaced = true
 			region.delete(prevState)
 			if region.isEmpty() {
-				d.mu.Lock()
-				delete(d.regions, prevState.regionID)
-				d.mu.Unlock()
+				d.regionIndex.delete(prevState.regionID)
 			}
 		}
 	}
 	if errors.Is(err, ErrDeviceNotFound) {
 		err = nil
 	}
-	d.index.set(device)
-	d.mu.RLock()
-	region, ok := d.regions[device.regionID]
-	d.mu.RUnlock()
-	if !ok {
-		region = newDeviceRegion(device.regionID, TinyRegionSize)
-		d.mu.Lock()
-		d.regions[device.regionID] = region
-		d.mu.Unlock()
+	d.hashIndex.set(device)
+	region, err := d.regionIndex.regionByID(device.regionID)
+	if err != nil {
+		region = d.regionIndex.newRegion(device.regionID)
+		if region != nil {
+			err = nil
+		}
 	}
 	region.insert(device)
 	return
 }
 
 func (d *devices) Delete(_ context.Context, deviceID string) error {
-	prevState, err := d.index.get(deviceID)
+	prevState, err := d.hashIndex.get(deviceID)
 	if err != nil {
 		return err
 	}
-	d.mu.RLock()
-	region, ok := d.regions[prevState.regionID]
-	d.mu.RUnlock()
-	if !ok {
+	region, err := d.regionIndex.regionByID(prevState.regionID)
+	// not found
+	if err != nil {
 		return nil
 	}
 	region.delete(prevState)
 	if region.isEmpty() {
-		d.mu.Lock()
-		delete(d.regions, prevState.regionID)
-		d.mu.Unlock()
+		d.regionIndex.delete(prevState.regionID)
 	}
 	return nil
 }
 
-func (d *devices) Nearby(
-	ctx context.Context,
-	lat, lon, meters float64,
-	fn func(ctx context.Context, d *Device) error) (err error) {
-	if meters == 0 {
-		meters = 1
+func (d *devices) Near(ctx context.Context, lat, lon, meters float64, fn DeviceIterFunc) (err error) {
+	if meters <= 0 {
+		meters = minDistMeters
 	} else {
 		meters = normalizeDistance(meters, TinyRegionSize)
 	}
@@ -185,10 +168,8 @@ func (d *devices) Nearby(
 	points, bbox := makeCircle(lat, lon, meters, steps)
 	next := true
 	for _, regionID := range ri.regions {
-		d.mu.RLock()
-		region, found := d.regions[regionID]
-		d.mu.RUnlock()
-		if !found {
+		region, err := d.regionIndex.regionByID(regionID)
+		if err != nil {
 			continue
 		}
 		region.mu.RLock()
@@ -214,6 +195,41 @@ func (d *devices) Nearby(
 	return
 }
 
+type deviceRegionIndex struct {
+	regions map[RegionID]*deviceRegion
+	sync.RWMutex
+}
+
+func newDevicesRegionIndex() *deviceRegionIndex {
+	return &deviceRegionIndex{
+		regions: make(map[RegionID]*deviceRegion),
+	}
+}
+
+func (ri *deviceRegionIndex) newRegion(rid RegionID) (region *deviceRegion) {
+	ri.Lock()
+	defer ri.Unlock()
+	region = newDeviceRegion(rid, TinyRegionSize)
+	ri.regions[rid] = region
+	return
+}
+
+func (ri *deviceRegionIndex) delete(rid RegionID) {
+	ri.Lock()
+	defer ri.Unlock()
+	delete(ri.regions, rid)
+}
+
+func (ri *deviceRegionIndex) regionByID(rid RegionID) (*deviceRegion, error) {
+	ri.RLock()
+	defer ri.RUnlock()
+	region, ok := ri.regions[rid]
+	if !ok {
+		return nil, fmt.Errorf("spinix/devices: region %s not found", rid)
+	}
+	return region, nil
+}
+
 type deviceRegion struct {
 	id      RegionID
 	size    RegionSize
@@ -229,6 +245,13 @@ func newDeviceRegion(regionID RegionID, size RegionSize) *deviceRegion {
 		index:   &rtree.RTree{},
 		devices: make(map[string]*Device),
 	}
+}
+
+func (r *deviceRegion) renew() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.devices = make(map[string]*Device)
+	r.index = &rtree.RTree{}
 }
 
 func (r *deviceRegion) isEmpty() bool {
@@ -249,32 +272,35 @@ func (r *deviceRegion) each(fn func(*Device) bool) {
 
 func (r *deviceRegion) insert(device *Device) {
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.index.Insert(
 		[2]float64{device.Latitude, device.Longitude},
 		[2]float64{device.Latitude, device.Longitude},
 		device)
 	r.devices[device.IMEI] = device
-	r.mu.Unlock()
 }
 
 func (r *deviceRegion) delete(device *Device) {
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.index.Delete(
 		[2]float64{device.Latitude, device.Longitude},
 		[2]float64{device.Latitude, device.Longitude},
 		device)
 	delete(r.devices, device.IMEI)
-	r.mu.Unlock()
+	if len(r.devices) == 0 {
+		r.devices = make(map[string]*Device)
+	}
 }
 
-type deviceIndex []*deviceBucket
+type deviceHashIndex []*deviceBucket
 
 type deviceBucket struct {
 	sync.RWMutex
 	index map[string]*Device
 }
 
-func newDeviceIndex() deviceIndex {
+func newDevicesHashIndex() deviceHashIndex {
 	buckets := make([]*deviceBucket, numBucket)
 	for i := 0; i < numBucket; i++ {
 		buckets[i] = &deviceBucket{
@@ -284,25 +310,25 @@ func newDeviceIndex() deviceIndex {
 	return buckets
 }
 
-func (i deviceIndex) bucket(deviceID string) *deviceBucket {
+func (i deviceHashIndex) bucket(deviceID string) *deviceBucket {
 	return i[bucket(deviceID, numBucket)]
 }
 
-func (i deviceIndex) set(device *Device) {
+func (i deviceHashIndex) set(device *Device) {
 	bucket := i.bucket(device.IMEI)
 	bucket.Lock()
 	bucket.index[device.IMEI] = device
 	bucket.Unlock()
 }
 
-func (i deviceIndex) delete(deviceID string) {
+func (i deviceHashIndex) delete(deviceID string) {
 	bucket := i.bucket(deviceID)
 	bucket.Lock()
 	delete(bucket.index, deviceID)
 	bucket.Unlock()
 }
 
-func (i deviceIndex) get(deviceID string) (*Device, error) {
+func (i deviceHashIndex) get(deviceID string) (*Device, error) {
 	bucket := i.bucket(deviceID)
 	bucket.RLock()
 	defer bucket.RUnlock()

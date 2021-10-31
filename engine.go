@@ -145,7 +145,7 @@ func (e *Engine) calcCenter(ctx context.Context, rule *Rule) error {
 		if err != nil {
 			return fmt.Errorf("%w - failed to add rule [%s]", err, rule.specStr)
 		}
-		bbox = e.calcBounding(bbox, object.Rect())
+		bbox = e.calcBounding(bbox, object.data.Rect())
 	}
 	rule.spec.props.center = bbox.Center()
 	return rule.calc()
@@ -169,7 +169,7 @@ func (e *Engine) expand(ctx context.Context, rule *Rule) error {
 				if err != nil {
 					return fmt.Errorf("%w - failed to add rule [%s]", err, rule.specStr)
 				}
-				bbox = e.calcBounding(bbox, object.Rect())
+				bbox = e.calcBounding(bbox, object.data.Rect())
 			}
 			if circle.ContainsRect(bbox) {
 				ok = true

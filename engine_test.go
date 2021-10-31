@@ -46,7 +46,7 @@ func TestEngineDetectIntersects(t *testing.T) {
 -72.2857441, 42.9313285
 -72.2857655, 42.9312970
 `)
-				if err := e.Objects().Add(ctx, "id1", o1); err != nil {
+				if err := e.Objects().Add(ctx, NewGeoObject("id1", DefaultLayer, o1)); err != nil {
 					t.Fatal(err)
 				}
 			},
@@ -83,10 +83,10 @@ func TestEngineDetectIntersects(t *testing.T) {
 -72.2804239, 42.9320826
 -72.2804024, 42.9320826
 `)
-				if err := e.Objects().Add(ctx, "id1", o1); err != nil {
+				if err := e.Objects().Add(ctx, NewGeoObject("id1", DefaultLayer, o1)); err != nil {
 					t.Fatal(err)
 				}
-				if err := e.Objects().Add(ctx, "id2", o2); err != nil {
+				if err := e.Objects().Add(ctx, NewGeoObject("id2", DefaultLayer, o2)); err != nil {
 					t.Fatal(err)
 				}
 			},
@@ -140,7 +140,7 @@ func TestEngineAddRuleWithoutRequiredProps(t *testing.T) {
 	ctx := context.Background()
 
 	engine := New()
-	if err := engine.Objects().Add(ctx, "poly1", poly1); err != nil {
+	if err := engine.Objects().Add(ctx, NewGeoObject("poly1", DefaultLayer, poly1)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -190,7 +190,7 @@ func TestEngineDetectOneTimes(t *testing.T) {
 			}),
 	)
 
-	_ = engine.Objects().Add(ctx, "poly", poly1)
+	_ = engine.Objects().Add(ctx, NewGeoObject("poly", DefaultLayer, poly1))
 
 	_, _ = engine.AddRule(ctx, `device intersects polygon(@poly) { :center 42.3351401 -72.236779 :radius 5km }`)
 
