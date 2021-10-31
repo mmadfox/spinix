@@ -45,6 +45,7 @@ const (
 	MODEL          // model
 	BRAND          // brand
 	OWNER          // owner
+	LAYER          // layer
 	IMEI           // imei
 	VAR_IDENT      // @
 	YEAR           // year
@@ -141,6 +142,8 @@ var tokens = [...]string{
 	BRAND:          "brand",
 	OWNER:          "owner",
 	IMEI:           "imei",
+
+	LAYER: "group",
 
 	INTERSECTS:  "INTERSECTS",
 	NINTERSECTS: "NINTERSECTS",
@@ -304,6 +307,7 @@ var propsToken = map[Token]struct{}{
 	EXPIRE:  {},
 	CENTER:  {},
 	RADIUS:  {},
+	LAYER:   {},
 }
 
 var dateToken = map[Token]struct{}{

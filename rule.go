@@ -49,8 +49,8 @@ func (r *Rule) UnmarshalJSON(data []byte) (err error) {
 	if err != nil {
 		return err
 	}
-	if ruleSpec.radius < 1000 {
-		ruleSpec.radius = 1000
+	if ruleSpec.props.radius < 1000 {
+		ruleSpec.props.radius = 1000
 	}
 	size := RegionSize(snap.RegionSize)
 	regions := make([]RegionID, len(snap.RegionIDs))
@@ -61,8 +61,8 @@ func (r *Rule) UnmarshalJSON(data []byte) (err error) {
 		}
 		regions[i] = rid
 	}
-	normalizeDistance(ruleSpec.radius, size)
-	if ruleSpec.center.X == 0 && ruleSpec.center.Y == 0 {
+	normalizeDistance(ruleSpec.props.radius, size)
+	if ruleSpec.props.center.X == 0 && ruleSpec.props.center.Y == 0 {
 		return fmt.Errorf("spinix/rule: center of the rule is not specified")
 	}
 	r.ruleID = snap.RuleID
@@ -77,9 +77,13 @@ func (r *Rule) UnmarshalJSON(data []byte) (err error) {
 }
 
 func (r *Rule) calc() error {
-	circle, bbox := makeCircle(r.spec.center.X, r.spec.center.Y, r.spec.radius, steps)
-	r.regionSize = RegionSizeFromMeters(r.spec.radius)
-	normalizeDistance(r.spec.radius, r.regionSize)
+	circle, bbox := makeCircle(
+		r.spec.props.center.X,
+		r.spec.props.center.Y,
+		r.spec.props.radius,
+		steps)
+	r.regionSize = RegionSizeFromMeters(r.spec.props.radius)
+	r.spec.normalizeRadius(r.regionSize)
 	if err := r.regionSize.Validate(); err != nil {
 		return err
 	}
@@ -111,7 +115,7 @@ func (r *Rule) Bounding() geometry.Rect {
 }
 
 func (r *Rule) Center() geometry.Point {
-	return r.spec.center
+	return r.spec.props.center
 }
 
 func (r *Rule) Specification() string {
@@ -147,12 +151,9 @@ func RuleFromSpec(ruleID string, regions []RegionID, size RegionSize, spec strin
 	if err != nil {
 		return nil, err
 	}
-	if ruleSpec.radius < 1000 {
-		ruleSpec.radius = 1000
-	}
-	normalizeDistance(ruleSpec.radius, size)
-	if ruleSpec.center.X == 0 && ruleSpec.center.Y == 0 {
-		return nil, fmt.Errorf("spinix/rule: center of the rule is not specified")
+	ruleSpec.normalizeRadius(size)
+	if err := ruleSpec.validate(); err != nil {
+		return nil, err
 	}
 	rule := &Rule{ruleID: ruleID}
 	rule.regions = regions
@@ -180,9 +181,6 @@ func NewRule(spec string) (*Rule, error) {
 	if err != nil {
 		return nil, err
 	}
-	if ruleSpec.radius < 1000 {
-		ruleSpec.radius = 1000
-	}
 	rule := &Rule{
 		ruleID:  xid.New().String(),
 		spec:    ruleSpec,
@@ -192,13 +190,6 @@ func NewRule(spec string) (*Rule, error) {
 		return nil, err
 	}
 	return rule, nil
-}
-
-func (r *Rule) validateCoordinates() error {
-	if r.spec.center.X == 0 && r.spec.center.Y == 0 {
-		return fmt.Errorf("spinix/rule: center of the rule not specified")
-	}
-	return nil
 }
 
 type RuleSnapshot struct {
@@ -253,10 +244,10 @@ func (r *rules) Walk(ctx context.Context, device *Device, fn WalkRuleFunc) error
 
 func (r *rules) Insert(_ context.Context, rule *Rule) error {
 	if rule == nil {
-		return fmt.Errorf("spinix/rule: rule is nil pointer")
+		return fmt.Errorf("spinix/rule: not specified")
 	}
 
-	if err := rule.validateCoordinates(); err != nil {
+	if err := rule.spec.validate(); err != nil {
 		return err
 	}
 

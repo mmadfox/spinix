@@ -88,6 +88,8 @@ func (s *Scanner) Next() (tok Token, lit string) {
 			tok = RADIUS
 		case "bbox":
 			tok = BBOX
+		case "layer":
+			tok = LAYER
 		default:
 			s.Reset()
 		}
@@ -103,6 +105,8 @@ func (s *Scanner) Next() (tok Token, lit string) {
 			tok = keyword
 		} else {
 			switch strings.ToLower(sl) {
+			case "layer":
+				tok = LAYER
 			case "gte":
 				tok = GTE
 			case "lte":

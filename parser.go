@@ -85,6 +85,8 @@ func (p *Parser) parseProps(expr Expr) (Expr, error) {
 			List: make([]Expr, 0, 2),
 		}
 	}
+	var prop Expr
+	var err error
 	for {
 		tok, lit := p.s.Next()
 		if tok == LBRACE {
@@ -94,41 +96,41 @@ func (p *Parser) parseProps(expr Expr) (Expr, error) {
 			break
 		}
 		switch tok {
+		case LAYER:
+			prop, err = p.parseLayerProp()
 		case EXPIRE:
-			prop, err := p.parseExpireProp()
-			if err != nil {
-				return nil, err
-			}
-			props.List = append(props.List, prop)
+			prop, err = p.parseExpireProp()
 		case RADIUS:
-			prop, err := p.parseRadiusProp()
-			if err != nil {
-				return nil, err
-			}
-			props.List = append(props.List, prop)
+			prop, err = p.parseRadiusProp()
 		case CENTER:
-			prop, err := p.parseCenterProp()
-			if err != nil {
-				return nil, err
-			}
-			props.List = append(props.List, prop)
+			prop, err = p.parseCenterProp()
 		case TRIGGER:
-			prop, err := p.parseTriggerProp()
-			if err != nil {
-				return nil, err
-			}
-			props.List = append(props.List, prop)
+			prop, err = p.parseTriggerProp()
 		case RESET:
-			prop, err := p.parseResetProp()
-			if err != nil {
-				return nil, err
-			}
-			props.List = append(props.List, prop)
+			prop, err = p.parseResetProp()
 		default:
 			return nil, p.error(tok, lit, "ILLEGAL")
 		}
+		if err != nil {
+			return nil, err
+		}
+		if prop != nil {
+			props.List = append(props.List, prop)
+		}
 	}
 	return props, nil
+}
+
+func (p *Parser) parseLayerProp() (Expr, error) {
+	tok, lit := p.s.Next()
+	if tok != IDENT && tok != STRING && tok != ILLEGAL {
+		return nil, p.error(tok, lit, fmt.Sprintf("got %v, expected %v", tok, STRING))
+	}
+	return &BaseLit{
+		Kind: LAYER,
+		Expr: &StringLit{Value: lit, Pos: p.s.Offset()},
+		Pos:  p.s.Offset(),
+	}, nil
 }
 
 func (p *Parser) parseExpireProp() (Expr, error) {

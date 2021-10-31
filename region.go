@@ -239,7 +239,7 @@ func RegionIDs(points []geometry.Point, rs RegionSize) []RegionID {
 }
 
 func circleFromRule(r *Rule) *geometry.Poly {
-	_, points := makeCircle(r.Center().X, r.Center().Y, r.spec.radius, steps)
+	_, points := makeCircle(r.Center().X, r.Center().Y, r.spec.props.radius, steps)
 	return &geometry.Poly{Exterior: points}
 }
 

@@ -13,6 +13,9 @@ func TestParser(t *testing.T) {
 	}{
 		// successfully
 		{
+			spec: `devices(me) :radius 1km INTERSECTS objects(@) { :layer one }`,
+		},
+		{
 			spec: `device INTERSECTS polygon(object) AND speed range [1 .. 40] { :center 42.9284788 72.2776118 }`,
 		},
 		{

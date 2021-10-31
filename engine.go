@@ -17,7 +17,7 @@ type Detector interface {
 type Option func(*Engine)
 
 type Engine struct {
-	refs *reference
+	refs reference
 
 	beforeDetect []BeforeDetectFunc
 	afterDetect  []AfterDetectFunc
@@ -107,23 +107,27 @@ func (e *Engine) States() States {
 	return e.refs.states
 }
 
+func (e *Engine) AssignCoordsFromSpec(ctx context.Context, rule *Rule) (err error) {
+	if err = rule.spec.validate(); err != nil {
+		if err = e.calcCenter(ctx, rule); err != nil {
+			return err
+		}
+	} else {
+		if err = e.expand(ctx, rule); err != nil {
+			return err
+		}
+	}
+	return
+}
+
 func (e *Engine) AddRule(ctx context.Context, spec string) (*Rule, error) {
 	rule, err := NewRule(spec)
 	if err != nil {
 		return nil, err
 	}
-
-	// validate and prepare
-	if err := rule.validateCoordinates(); err != nil {
-		if err := e.calcCenter(ctx, rule); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := e.expand(ctx, rule); err != nil {
-			return nil, err
-		}
+	if err := e.AssignCoordsFromSpec(ctx, rule); err != nil {
+		return nil, err
 	}
-
 	if err := e.refs.rules.Insert(ctx, rule); err != nil {
 		return nil, err
 	}
@@ -143,12 +147,12 @@ func (e *Engine) calcCenter(ctx context.Context, rule *Rule) error {
 		}
 		bbox = e.calcBounding(bbox, object.Rect())
 	}
-	rule.spec.center = bbox.Center()
+	rule.spec.props.center = bbox.Center()
 	return rule.calc()
 }
 
 func (e *Engine) expand(ctx context.Context, rule *Rule) error {
-	if err := rule.validateCoordinates(); err != nil {
+	if err := rule.spec.validate(); err != nil {
 		return err
 	}
 	refs := rule.RefIDs()
@@ -171,7 +175,7 @@ func (e *Engine) expand(ctx context.Context, rule *Rule) error {
 				ok = true
 				break
 			}
-			rule.spec.radius *= 3
+			rule.spec.props.radius *= 3
 			if err := rule.calc(); err != nil {
 				return err
 			}
