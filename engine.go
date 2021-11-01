@@ -72,7 +72,7 @@ func WithStatesStorage(s States) Option {
 }
 
 type Event struct {
-	ID       string       `json:"id"`
+	ID       string       `json:"ID"`
 	Device   Device       `json:"device"`
 	DateTime int64        `json:"dateTime"`
 	Rule     RuleSnapshot `json:"rule"`
@@ -189,7 +189,7 @@ func (e *Engine) expand(ctx context.Context, rule *Rule) error {
 
 func (e *Engine) Detect(ctx context.Context, device *Device) (events []Event, ok bool, err error) {
 	device.DetectRegion()
-	err = e.refs.rules.Walk(ctx, device,
+	err = e.refs.rules.Walk(ctx, device.Latitude, device.Longitude,
 		func(ctx context.Context, rule *Rule, err error) error {
 			if err != nil {
 				return err
@@ -199,7 +199,7 @@ func (e *Engine) Detect(ctx context.Context, device *Device) (events []Event, ok
 					continue
 				}
 			}
-			match, status, err := rule.spec.evaluate(ctx, rule.ruleID, device, e.refs)
+			match, status, err := rule.spec.evaluate(ctx, rule.id, device, e.refs)
 			if err != nil {
 				return err
 			}

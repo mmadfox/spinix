@@ -98,17 +98,17 @@ const (
 
 	// GEOSPATIAL
 	keywordGeospatialBegin
-	DEVICES        // devices(@id)
-	OBJECTS        // object(@id, @id1)
-	POLY           // polygon(@id1, @id2, @id3), poly(@id)
+	DEVICES        // devices(@ID)
+	OBJECTS        // object(@ID, @id1)
+	POLY           // polygon(@id1, @id2, @id3), poly(@ID)
 	MULTI_POLY     // multiPolygon(@id1, @id2)
 	LINE           // line(@id1, @id2)
 	MULTI_LINE     // multiLine(@id1, @id2)
-	POINT          // point(@id)
-	MULTI_POINT    // multiPoint(@id)
-	RECT           // rect(@id)
-	CIRCLE         // circle(@id)
-	COLLECTION     // collection(@id)
+	POINT          // point(@ID)
+	MULTI_POINT    // multiPoint(@ID)
+	RECT           // rect(@ID)
+	CIRCLE         // circle(@ID)
+	COLLECTION     // collection(@ID)
 	FUT_COLLECTION // featureCollection(@id1, @id2, @id3)
 	keywordGeospatialEnd
 	keywordEnd

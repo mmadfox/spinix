@@ -72,7 +72,7 @@ type RegionID uint64
 
 func RegionIDFromString(id string) (RegionID, error) {
 	if len(id) == 0 {
-		return 0, fmt.Errorf("spinix/region: got empty region id")
+		return 0, fmt.Errorf("spinix/region: got empty region ID")
 	}
 	return RegionID(h3.FromString(id)), nil
 }
@@ -187,7 +187,7 @@ func (sr *regionCell) delete(r *Rule) {
 	)
 }
 
-func (sr *regionCell) walk(ctx context.Context, lat float64, lon float64, fn WalkRuleFunc) (err error) {
+func (sr *regionCell) walk(ctx context.Context, lat float64, lon float64, fn RuleIterFunc) (err error) {
 	sr.RLock()
 	defer sr.RUnlock()
 	sr.index.Search(

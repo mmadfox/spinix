@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/rs/xid"
+
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/rtree"
@@ -16,33 +18,36 @@ var ErrDeviceNotFound = errors.New("spinix/devices: not found")
 type DeviceIterFunc func(ctx context.Context, d *Device) error
 
 type Devices interface {
-	Lookup(ctx context.Context, deviceID string) (*Device, error)
+	Lookup(ctx context.Context, id DeviceID) (*Device, error)
 	InsertOrReplace(ctx context.Context, device *Device) (bool, error)
-	Delete(ctx context.Context, deviceID string) error
+	Delete(ctx context.Context, id DeviceID) error
 	Each(ctx context.Context, rid RegionID, size RegionSize, fn DeviceIterFunc) error
 	Near(ctx context.Context, lat, lon, meters float64, fn DeviceIterFunc) error
 }
 
 type Device struct {
-	IMEI          string  `json:"imei"`
-	Owner         string  `json:"owner"`
-	Brand         string  `json:"brand"`
-	Model         string  `json:"model"`
-	Latitude      float64 `json:"lat"`
-	Longitude     float64 `json:"lon"`
-	Altitude      float64 `json:"alt"`
-	Speed         float64 `json:"speed"`
-	DateTime      int64   `json:"dateTime"`
-	Status        int     `json:"status"`
-	BatteryCharge float64 `json:"batteryCharge"`
-	Temperature   float64 `json:"temperature"`
-	Humidity      float64 `json:"humidity"`
-	Luminosity    float64 `json:"luminosity"`
-	Pressure      float64 `json:"pressure"`
-	FuelLevel     float64 `json:"fuelLevel"`
+	ID            DeviceID `json:"id"`
+	IMEI          string   `json:"imei"`
+	Owner         string   `json:"owner"`
+	Brand         string   `json:"brand"`
+	Model         string   `json:"model"`
+	Latitude      float64  `json:"lat"`
+	Longitude     float64  `json:"lon"`
+	Altitude      float64  `json:"alt"`
+	Speed         float64  `json:"speed"`
+	DateTime      int64    `json:"dateTime"`
+	Status        int      `json:"status"`
+	BatteryCharge float64  `json:"batteryCharge"`
+	Temperature   float64  `json:"temperature"`
+	Humidity      float64  `json:"humidity"`
+	Luminosity    float64  `json:"luminosity"`
+	Pressure      float64  `json:"pressure"`
+	FuelLevel     float64  `json:"fuelLevel"`
 
 	regionID RegionID
 }
+
+type DeviceID = xid.ID
 
 func (d *Device) DetectRegion() {
 	if d.regionID > 0 {
@@ -78,8 +83,8 @@ func NewMemoryDevices() Devices {
 	}
 }
 
-func (d *devices) Lookup(_ context.Context, deviceID string) (*Device, error) {
-	return d.hashIndex.get(deviceID)
+func (d *devices) Lookup(_ context.Context, id DeviceID) (*Device, error) {
+	return d.hashIndex.get(id)
 }
 
 func (d *devices) Each(ctx context.Context, rid RegionID, _ RegionSize, fn DeviceIterFunc) (err error) {
@@ -99,7 +104,7 @@ func (d *devices) Each(ctx context.Context, rid RegionID, _ RegionSize, fn Devic
 
 func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced bool, err error) {
 	device.DetectRegion()
-	prevState, err := d.hashIndex.get(device.IMEI)
+	prevState, err := d.hashIndex.get(device.ID)
 	if prevState != nil && err == nil {
 		dist := geo.DistanceTo(
 			prevState.Latitude,
@@ -113,7 +118,7 @@ func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced b
 			return
 		}
 		if prevState.RegionID() != device.RegionID() {
-			d.hashIndex.delete(device.IMEI)
+			d.hashIndex.delete(device.ID)
 		}
 	}
 	if err == nil {
@@ -141,8 +146,8 @@ func (d *devices) InsertOrReplace(_ context.Context, device *Device) (replaced b
 	return
 }
 
-func (d *devices) Delete(_ context.Context, deviceID string) error {
-	prevState, err := d.hashIndex.get(deviceID)
+func (d *devices) Delete(_ context.Context, id DeviceID) error {
+	prevState, err := d.hashIndex.get(id)
 	if err != nil {
 		return err
 	}
@@ -234,7 +239,7 @@ type deviceRegion struct {
 	id      RegionID
 	size    RegionSize
 	mu      sync.RWMutex
-	devices map[string]*Device
+	devices map[DeviceID]*Device
 	index   *rtree.RTree
 }
 
@@ -243,14 +248,14 @@ func newDeviceRegion(regionID RegionID, size RegionSize) *deviceRegion {
 		id:      regionID,
 		size:    size,
 		index:   &rtree.RTree{},
-		devices: make(map[string]*Device),
+		devices: make(map[DeviceID]*Device),
 	}
 }
 
 func (r *deviceRegion) renew() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.devices = make(map[string]*Device)
+	r.devices = make(map[DeviceID]*Device)
 	r.index = &rtree.RTree{}
 }
 
@@ -277,7 +282,7 @@ func (r *deviceRegion) insert(device *Device) {
 		[2]float64{device.Latitude, device.Longitude},
 		[2]float64{device.Latitude, device.Longitude},
 		device)
-	r.devices[device.IMEI] = device
+	r.devices[device.ID] = device
 }
 
 func (r *deviceRegion) delete(device *Device) {
@@ -287,9 +292,9 @@ func (r *deviceRegion) delete(device *Device) {
 		[2]float64{device.Latitude, device.Longitude},
 		[2]float64{device.Latitude, device.Longitude},
 		device)
-	delete(r.devices, device.IMEI)
+	delete(r.devices, device.ID)
 	if len(r.devices) == 0 {
-		r.devices = make(map[string]*Device)
+		r.devices = make(map[DeviceID]*Device)
 	}
 }
 
@@ -297,44 +302,44 @@ type deviceHashIndex []*deviceBucket
 
 type deviceBucket struct {
 	sync.RWMutex
-	index map[string]*Device
+	index map[DeviceID]*Device
 }
 
 func newDevicesHashIndex() deviceHashIndex {
 	buckets := make([]*deviceBucket, numBucket)
 	for i := 0; i < numBucket; i++ {
 		buckets[i] = &deviceBucket{
-			index: make(map[string]*Device),
+			index: make(map[DeviceID]*Device),
 		}
 	}
 	return buckets
 }
 
-func (i deviceHashIndex) bucket(deviceID string) *deviceBucket {
-	return i[bucket(deviceID, numBucket)]
+func (i deviceHashIndex) bucket(id DeviceID) *deviceBucket {
+	return i[bucketFromID(id, numBucket)]
 }
 
 func (i deviceHashIndex) set(device *Device) {
-	bucket := i.bucket(device.IMEI)
+	bucket := i.bucket(device.ID)
 	bucket.Lock()
-	bucket.index[device.IMEI] = device
+	bucket.index[device.ID] = device
 	bucket.Unlock()
 }
 
-func (i deviceHashIndex) delete(deviceID string) {
-	bucket := i.bucket(deviceID)
+func (i deviceHashIndex) delete(id DeviceID) {
+	bucket := i.bucket(id)
 	bucket.Lock()
-	delete(bucket.index, deviceID)
+	delete(bucket.index, id)
 	bucket.Unlock()
 }
 
-func (i deviceHashIndex) get(deviceID string) (*Device, error) {
-	bucket := i.bucket(deviceID)
+func (i deviceHashIndex) get(id DeviceID) (*Device, error) {
+	bucket := i.bucket(id)
 	bucket.RLock()
 	defer bucket.RUnlock()
-	device, ok := bucket.index[deviceID]
+	device, ok := bucket.index[id]
 	if !ok {
-		return nil, fmt.Errorf("%w - %s", ErrDeviceNotFound, deviceID)
+		return nil, fmt.Errorf("%w - %s", ErrDeviceNotFound, id)
 	}
 	return device, nil
 }

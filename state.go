@@ -7,17 +7,19 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/rs/xid"
 )
 
-var ErrStateNotFound = errors.New("spinix/states: state not found")
+var ErrStateNotFound = errors.New("spinix/states:  not found")
 
 type States interface {
-	Lookup(ctx context.Context, k StateID) (*State, error)
+	Lookup(ctx context.Context, id StateID) (*State, error)
 	Update(ctx context.Context, s *State) error
-	Make(ctx context.Context, k StateID) (*State, error)
-	Remove(ctx context.Context, k StateID) error
-	RemoveByRule(ctx context.Context, ruleID string) error
-	RemoveByDevice(ctx context.Context, deviceID string) error
+	Make(ctx context.Context, id StateID) (*State, error)
+	Remove(ctx context.Context, id StateID) error
+	RemoveByRule(ctx context.Context, rid RuleID) error
+	RemoveByDevice(ctx context.Context, did DeviceID) error
 }
 
 var _ States = &memoryState{}
@@ -50,8 +52,8 @@ func (ms *memoryState) Make(_ context.Context, sid StateID) (*State, error) {
 	}
 	state := NewState(sid)
 	ms.indexByID.add(state)
-	ms.indexByRule.add(sid.RuleID, sid.IMEI, state)
-	ms.indexByDevice.add(sid.IMEI, sid.RuleID, state)
+	ms.indexByRule.add(sid.rid, sid.did, state)
+	ms.indexByDevice.add(sid.did, sid.rid, state)
 	return state, nil
 }
 
@@ -59,28 +61,28 @@ func (ms *memoryState) Remove(_ context.Context, k StateID) error {
 	if err := ms.indexByID.remove(k); err != nil {
 		return err
 	}
-	ms.indexByDevice.remove(k.IMEI, k.RuleID)
-	ms.indexByRule.remove(k.RuleID, k.IMEI)
+	ms.indexByDevice.remove(k.did, k.rid)
+	ms.indexByRule.remove(k.rid, k.did)
 	return nil
 }
 
-func (ms *memoryState) RemoveByRule(_ context.Context, ruleID string) (err error) {
-	err = ms.indexByRule.deleteAndIter(ruleID, func(s *State) error {
+func (ms *memoryState) RemoveByRule(_ context.Context, rid RuleID) (err error) {
+	err = ms.indexByRule.deleteAndIter(rid, func(s *State) error {
 		if err := ms.indexByID.remove(s.ID()); err != nil {
 			return err
 		}
-		ms.indexByDevice.remove(s.ID().IMEI, s.ID().RuleID)
+		ms.indexByDevice.remove(s.DeviceID(), s.RuleID())
 		return nil
 	})
 	return
 }
 
-func (ms *memoryState) RemoveByDevice(_ context.Context, deviceID string) (err error) {
-	err = ms.indexByDevice.deleteAndIter(deviceID, func(s *State) error {
+func (ms *memoryState) RemoveByDevice(_ context.Context, did DeviceID) (err error) {
+	err = ms.indexByDevice.deleteAndIter(did, func(s *State) error {
 		if err := ms.indexByID.remove(s.ID()); err != nil {
 			return err
 		}
-		ms.indexByRule.remove(s.ID().RuleID, s.ID().IMEI)
+		ms.indexByRule.remove(s.RuleID(), s.DeviceID())
 		return nil
 	})
 	return
@@ -100,19 +102,19 @@ func newStateByValueIndex() stateByValueIndex {
 	buckets := make([]*stateByValueBucket, numBucket/2)
 	for i := 0; i < numBucket/2; i++ {
 		buckets[i] = &stateByValueBucket{
-			index: make(map[string]map[string]*State),
+			index: make(map[xid.ID]map[xid.ID]*State),
 		}
 	}
 	return buckets
 }
 
 type StateID struct {
-	IMEI   string
-	RuleID string
+	did DeviceID
+	rid RuleID
 }
 
 func (s StateID) String() string {
-	return s.IMEI + ":" + s.RuleID
+	return s.did.String() + ":" + s.rid.String()
 }
 
 type State struct {
@@ -125,7 +127,7 @@ type State struct {
 }
 
 type StateSnapshot struct {
-	ID            StateID          `json:"id"`
+	ID            StateID          `json:"ID"`
 	Now           int64            `json:"now"`
 	LastSeenTime  int64            `json:"lastSeenTime"`
 	LastResetTime int64            `json:"lastResetTime"`
@@ -180,6 +182,14 @@ func (s *State) Reset() {
 	s.lastSeenTime = 0
 	s.hits = 0
 	s.objectsVisits = make(map[string]int64)
+}
+
+func (s *State) DeviceID() DeviceID {
+	return s.id.did
+}
+
+func (s *State) RuleID() RuleID {
+	return s.id.rid
 }
 
 func (s *State) ID() StateID {
@@ -244,22 +254,22 @@ func NewState(id StateID) *State {
 }
 
 func (s StateID) validate() error {
-	if len(s.IMEI) == 0 {
-		return fmt.Errorf("spinix/state: imei not specified")
+	if s.did.IsNil() {
+		return fmt.Errorf("spinix/state: deviceID not specified")
 	}
-	if len(s.RuleID) == 0 {
-		return fmt.Errorf("spinix/state: rule id not specified")
+	if s.rid.IsNil() {
+		return fmt.Errorf("spinix/state: ruleID not specified")
 	}
 	return nil
 }
 
 type stateByValueIndex []*stateByValueBucket
 
-func (i stateByValueIndex) bucket(id string) *stateByValueBucket {
-	return i[bucket(id, numBucket/2)]
+func (i stateByValueIndex) bucket(id xid.ID) *stateByValueBucket {
+	return i[bucketFromID(id, numBucket/2)]
 }
 
-func (i stateByValueIndex) remove(rootID string, id string) {
+func (i stateByValueIndex) remove(rootID xid.ID, id xid.ID) {
 	bucket := i.bucket(rootID)
 	bucket.Lock()
 	defer bucket.Unlock()
@@ -269,17 +279,17 @@ func (i stateByValueIndex) remove(rootID string, id string) {
 	}
 }
 
-func (i stateByValueIndex) add(rootID string, id string, s *State) {
+func (i stateByValueIndex) add(rootID xid.ID, id xid.ID, s *State) {
 	bucket := i.bucket(rootID)
 	bucket.Lock()
 	if bucket.index[rootID] == nil {
-		bucket.index[rootID] = make(map[string]*State)
+		bucket.index[rootID] = make(map[xid.ID]*State)
 	}
 	bucket.index[rootID][id] = s
 	bucket.Unlock()
 }
 
-func (i stateByValueIndex) deleteAndIter(rootID string, fn func(s *State) error) error {
+func (i stateByValueIndex) deleteAndIter(rootID xid.ID, fn func(s *State) error) error {
 	bucket := i.bucket(rootID)
 	bucket.Lock()
 	for id, st := range bucket.index[rootID] {
@@ -296,7 +306,7 @@ func (i stateByValueIndex) deleteAndIter(rootID string, fn func(s *State) error)
 }
 
 type stateByValueBucket struct {
-	index map[string]map[string]*State
+	index map[xid.ID]map[xid.ID]*State
 	sync.RWMutex
 }
 

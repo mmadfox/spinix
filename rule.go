@@ -15,16 +15,18 @@ import (
 var ErrRuleNotFound = errors.New("spinix/rule: rule not found")
 
 type Rules interface {
-	Walk(ctx context.Context, device *Device, fn WalkRuleFunc) error
+	Walk(ctx context.Context, lat float64, lon float64, fn RuleIterFunc) error
 	Insert(ctx context.Context, r *Rule) error
-	Delete(ctx context.Context, ruleID string) error
-	Lookup(ctx context.Context, ruleID string) (*Rule, error)
+	Delete(ctx context.Context, id RuleID) error
+	Lookup(ctx context.Context, id RuleID) (*Rule, error)
 }
 
-type WalkRuleFunc func(ctx context.Context, rule *Rule, err error) error
+type RuleID = xid.ID
+
+type RuleIterFunc func(ctx context.Context, rule *Rule, err error) error
 
 type Rule struct {
-	ruleID     string
+	id         RuleID
 	specStr    string
 	spec       *spec
 	bbox       geometry.Rect
@@ -65,7 +67,11 @@ func (r *Rule) UnmarshalJSON(data []byte) (err error) {
 	if ruleSpec.props.center.X == 0 && ruleSpec.props.center.Y == 0 {
 		return fmt.Errorf("spinix/rule: center of the rule is not specified")
 	}
-	r.ruleID = snap.RuleID
+	id, err := xid.FromString(snap.RuleID)
+	if err != nil {
+		return err
+	}
+	r.id = id
 	r.regions = regions
 	r.regionSize = size
 	r.specStr = expr.String()
@@ -122,18 +128,18 @@ func (r *Rule) Specification() string {
 	return r.specStr
 }
 
-func (r *Rule) ID() string {
-	return r.ruleID
+func (r *Rule) ID() RuleID {
+	return r.id
 }
 
-func (r *Rule) RefIDs() (refs map[string]Token) {
+func (r *Rule) RefIDs() (refs map[xid.ID]Token) {
 	for _, n := range r.spec.nodes {
 		nodeRef := n.refIDs()
 		if nodeRef == nil {
 			continue
 		}
 		if refs == nil {
-			refs = make(map[string]Token)
+			refs = make(map[xid.ID]Token)
 		}
 		for k, v := range nodeRef {
 			refs[k] = v
@@ -142,7 +148,7 @@ func (r *Rule) RefIDs() (refs map[string]Token) {
 	return refs
 }
 
-func RuleFromSpec(ruleID string, regions []RegionID, size RegionSize, spec string) (*Rule, error) {
+func RuleFromSpec(id xid.ID, regions []RegionID, size RegionSize, spec string) (*Rule, error) {
 	expr, err := ParseSpec(spec)
 	if err != nil {
 		return nil, err
@@ -155,7 +161,7 @@ func RuleFromSpec(ruleID string, regions []RegionID, size RegionSize, spec strin
 	if err := ruleSpec.validate(); err != nil {
 		return nil, err
 	}
-	rule := &Rule{ruleID: ruleID}
+	rule := &Rule{id: id}
 	rule.regions = regions
 	rule.regionSize = size
 	rule.specStr = expr.String()
@@ -182,7 +188,7 @@ func NewRule(spec string) (*Rule, error) {
 		return nil, err
 	}
 	rule := &Rule{
-		ruleID:  xid.New().String(),
+		id:      xid.New(),
 		spec:    ruleSpec,
 		specStr: expr.String(),
 	}
@@ -193,7 +199,7 @@ func NewRule(spec string) (*Rule, error) {
 }
 
 type RuleSnapshot struct {
-	RuleID     string   `json:"ruleID"`
+	RuleID     string   `json:"ID"`
 	Spec       string   `json:"spec"`
 	RegionIDs  []string `json:"RegionIDs"`
 	RegionSize int      `json:"regionSize"`
@@ -201,7 +207,7 @@ type RuleSnapshot struct {
 
 func (r *Rule) Snapshot() RuleSnapshot {
 	snapshot := RuleSnapshot{
-		RuleID:     r.ruleID,
+		RuleID:     r.id.String(),
 		Spec:       r.specStr,
 		RegionIDs:  make([]string, len(r.regions)),
 		RegionSize: r.regionSize.Value(),
@@ -220,22 +226,22 @@ func NewMemoryRules() Rules {
 	}
 }
 
-func (r *rules) Walk(ctx context.Context, device *Device, fn WalkRuleFunc) error {
-	regionID := RegionFromLatLon(device.Latitude, device.Longitude, SmallRegionSize)
+func (r *rules) Walk(ctx context.Context, lat float64, lon float64, fn RuleIterFunc) error {
+	regionID := RegionFromLatLon(lat, lon, SmallRegionSize)
 	r.RLock()
 	region, ok := r.smallRegionsCells[regionID]
 	r.RUnlock()
 	if ok {
-		if err := region.walk(ctx, device.Latitude, device.Longitude, fn); err != nil {
+		if err := region.walk(ctx, lat, lon, fn); err != nil {
 			return err
 		}
 	}
-	regionID = RegionFromLatLon(device.Latitude, device.Longitude, LargeRegionSize)
+	regionID = RegionFromLatLon(lat, lon, LargeRegionSize)
 	r.RLock()
 	region, ok = r.largeRegionsCells[regionID]
 	r.RUnlock()
 	if ok {
-		if err := region.walk(ctx, device.Latitude, device.Longitude, fn); err != nil {
+		if err := region.walk(ctx, lat, lon, fn); err != nil {
 			return err
 		}
 	}
@@ -287,8 +293,8 @@ func (r *rules) Insert(_ context.Context, rule *Rule) error {
 	return r.indexByRules.set(rule)
 }
 
-func (r *rules) Delete(_ context.Context, ruleID string) error {
-	rule, err := r.indexByRules.get(ruleID)
+func (r *rules) Delete(_ context.Context, id RuleID) error {
+	rule, err := r.indexByRules.get(id)
 	if err != nil {
 		return err
 	}
@@ -316,11 +322,11 @@ func (r *rules) Delete(_ context.Context, ruleID string) error {
 		}
 		region = nil
 	}
-	return r.indexByRules.delete(ruleID)
+	return r.indexByRules.delete(id)
 }
 
-func (r *rules) Lookup(_ context.Context, ruleID string) (*Rule, error) {
-	return r.indexByRules.get(ruleID)
+func (r *rules) Lookup(_ context.Context, id RuleID) (*Rule, error) {
+	return r.indexByRules.get(id)
 }
 
 type rules struct {
@@ -332,13 +338,13 @@ type rules struct {
 
 type ruleIndex []*ruleBucket
 
-func (i ruleIndex) get(ruleID string) (*Rule, error) {
-	bucket := i.bucket(ruleID)
+func (i ruleIndex) get(id RuleID) (*Rule, error) {
+	bucket := i.bucket(id)
 	bucket.RLock()
 	defer bucket.RUnlock()
-	rule, ok := bucket.index[ruleID]
+	rule, ok := bucket.index[id]
 	if !ok {
-		return nil, fmt.Errorf("%w - %s", ErrRuleNotFound, ruleID)
+		return nil, fmt.Errorf("%w - %s", ErrRuleNotFound, id)
 	}
 	return rule, nil
 }
@@ -355,33 +361,33 @@ func (i ruleIndex) set(rule *Rule) error {
 	return nil
 }
 
-func (i ruleIndex) delete(ruleID string) error {
-	bucket := i.bucket(ruleID)
+func (i ruleIndex) delete(id RuleID) error {
+	bucket := i.bucket(id)
 	bucket.Lock()
 	defer bucket.Unlock()
-	_, ok := bucket.index[ruleID]
+	_, ok := bucket.index[id]
 	if !ok {
-		return fmt.Errorf("%w - %s", ErrRuleNotFound, ruleID)
+		return fmt.Errorf("%w - %s", ErrRuleNotFound, id)
 	}
-	delete(bucket.index, ruleID)
+	delete(bucket.index, id)
 	return nil
 }
 
-func (i ruleIndex) bucket(ruleID string) *ruleBucket {
-	return i[bucket(ruleID, numBucket)]
+func (i ruleIndex) bucket(id RuleID) *ruleBucket {
+	return i[bucketFromID(id, numBucket)]
 }
 
 func newRuleIndex() ruleIndex {
 	buckets := make([]*ruleBucket, numBucket)
 	for i := 0; i < numBucket; i++ {
 		buckets[i] = &ruleBucket{
-			index: make(map[string]*Rule),
+			index: make(map[RuleID]*Rule),
 		}
 	}
 	return buckets
 }
 
 type ruleBucket struct {
-	index map[string]*Rule
+	index map[RuleID]*Rule
 	sync.RWMutex
 }

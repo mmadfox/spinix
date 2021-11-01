@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/xid"
+
 	"github.com/tidwall/geojson"
 )
 
@@ -99,13 +101,13 @@ type (
 		Kind  Token
 		Value float64
 		Pos   Pos
-		Ref   []string
+		Ref   []xid.ID
 	}
 
 	ObjectLit struct {
 		All    bool
 		Kind   Token
-		Ref    []string
+		Ref    []xid.ID
 		DurVal time.Duration
 		DurTyp Token
 		Pos    Pos
@@ -138,6 +140,12 @@ type (
 		Pos   Pos
 		Kind  Token
 		Typ   Token
+	}
+
+	IDLit struct {
+		Kind  Token
+		Value xid.ID
+		Pos   Pos
 	}
 
 	// A StringLit nodes represents a literal of string type.
@@ -281,7 +289,7 @@ func (e *ObjectLit) String() string {
 	}
 	for i, ref := range e.Ref {
 		sb.WriteString(`"`)
-		sb.WriteString(ref)
+		sb.WriteString(ref.String())
 		sb.WriteString(`"`)
 		if i != last {
 			sb.WriteString(",")
@@ -410,7 +418,7 @@ func (e *DevicesLit) String() string {
 	}
 	for i, ref := range e.Ref {
 		sb.WriteString(`"`)
-		sb.WriteString(ref)
+		sb.WriteString(ref.String())
 		sb.WriteString(`"`)
 		if i != last {
 			sb.WriteString(",")
@@ -491,6 +499,10 @@ func (e *DurationLit) String() string {
 	return "duration todo"
 }
 
+func (e *IDLit) String() string {
+	return e.Value.String()
+}
+
 func (_ *ParenExpr) expr()   {}
 func (_ *BinaryExpr) expr()  {}
 func (_ *StringLit) expr()   {}
@@ -511,3 +523,4 @@ func (_ *PointLit) expr()    {}
 func (_ *DistanceLit) expr() {}
 func (_ *DurationLit) expr() {}
 func (_ *BaseLit) expr()     {}
+func (_ *IDLit) expr()       {}

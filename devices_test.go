@@ -2,8 +2,9 @@ package spinix
 
 import (
 	"context"
-	"fmt"
 	"testing"
+
+	"github.com/rs/xid"
 
 	"github.com/mmcloughlin/spherand"
 )
@@ -12,14 +13,14 @@ func TestDevicesNearby(t *testing.T) {
 	ctx := context.Background()
 	device := NewMemoryDevices()
 	if _, err := device.InsertOrReplace(ctx, &Device{
-		IMEI:      "one",
+		ID:        xid.New(),
 		Latitude:  42.9312947,
 		Longitude: -72.2845321,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := device.InsertOrReplace(ctx, &Device{
-		IMEI:      "two",
+		ID:        xid.New(),
 		Latitude:  42.9316521,
 		Longitude: -72.2841567,
 	}); err != nil {
@@ -45,9 +46,8 @@ func BenchmarkDevicesNearby(b *testing.B) {
 	coords := make([][2]float64, max)
 	for i := 0; i < max; i++ {
 		lat, lon := spherand.Geographical()
-		imei := fmt.Sprintf("imei-%d", i)
 		if _, err := device.InsertOrReplace(ctx, &Device{
-			IMEI:      imei,
+			ID:        xid.New(),
 			Latitude:  lat,
 			Longitude: lon,
 		}); err != nil {

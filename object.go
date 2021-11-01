@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/rs/xid"
+
+	"github.com/tidwall/geojson/geo"
+
 	"github.com/tidwall/rtree"
 
 	"github.com/tidwall/geojson/geometry"
@@ -13,37 +17,44 @@ import (
 	"github.com/tidwall/geojson"
 )
 
-const DefaultLayer LayerID = "default"
+var DefaultLayer = xid.New()
 
 var ErrObjectNotFound = errors.New("spinix/objects: not found")
 
 type ObjectIterFunc func(ctx context.Context, o *GeoObject) error
 
 type Objects interface {
-	Lookup(ctx context.Context, objectID string) (*GeoObject, error)
+	Lookup(ctx context.Context, oid ObjectID) (*GeoObject, error)
 	Add(ctx context.Context, o *GeoObject) error
-	Delete(ctx context.Context, objectID string) error
+	Delete(ctx context.Context, oid ObjectID) error
 	Each(ctx context.Context, lid LayerID, rid RegionID, fn ObjectIterFunc) error
 	Near(ctx context.Context, lid LayerID, lat, lon, meters float64, fn ObjectIterFunc) error
 }
 
-type LayerID string
+type LayerID = xid.ID
+type ObjectID = xid.ID
 
 type GeoObject struct {
-	id   string
+	id   ObjectID
 	lid  LayerID
-	rid  RegionID
+	rid  []RegionID
 	data geojson.Object
 }
 
-func NewGeoObject(id string, lid LayerID, data geojson.Object) *GeoObject {
-	center := data.Center()
-	regionID := RegionFromLatLon(center.X, center.Y, SmallRegionSize)
+func NewGeoObjectWithID(lid LayerID, data geojson.Object) *GeoObject {
+	return NewGeoObject(xid.New(), lid, data)
+}
+
+func NewGeoObject(oid ObjectID, lid LayerID, data geojson.Object) *GeoObject {
+	rect := data.Rect()
+	dist := geo.DistanceTo(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Max.Y)
+	meters := normalizeDistance(dist/2, SmallRegionSize)
+	ri := regionsFromLatLon(rect.Center().X, rect.Center().Y, meters, SmallRegionSize)
 	return &GeoObject{
-		id:   id,
+		id:   oid,
 		lid:  lid,
 		data: data,
-		rid:  regionID,
+		rid:  ri.regions,
 	}
 }
 
@@ -51,8 +62,10 @@ func (o *GeoObject) RegionSize() RegionSize {
 	return SmallRegionSize
 }
 
-func (o *GeoObject) RegionID() RegionID {
-	return o.rid
+func (o *GeoObject) RegionID() []RegionID {
+	regionIDs := make([]RegionID, len(o.rid))
+	copy(regionIDs, o.rid)
+	return regionIDs
 }
 
 func (o *GeoObject) Within(other *GeoObject) bool {
@@ -79,7 +92,7 @@ func (o *GeoObject) Layer() LayerID {
 	return o.lid
 }
 
-func (o *GeoObject) ID() string {
+func (o *GeoObject) ID() ObjectID {
 	return o.id
 }
 
@@ -120,7 +133,7 @@ func (o *objects) Near(ctx context.Context, lid LayerID, lat, lon, meters float6
 			[2]float64{ring.rect.Max.X, ring.rect.Max.Y},
 			func(min, max [2]float64, value interface{}) bool {
 				obj := value.(*GeoObject)
-				if circle.Contains(obj.Data()) && obj.Layer() == lid {
+				if circle.Contains(obj.Data()) && lid == obj.Layer() {
 					if err = fn(ctx, obj); err != nil {
 						next = false
 						return false
@@ -152,38 +165,46 @@ func (o *objects) Each(ctx context.Context, lid LayerID, rid RegionID, fn Object
 	return nil
 }
 
-func (o *objects) Lookup(_ context.Context, objectID string) (*GeoObject, error) {
-	return o.hashIndex.get(objectID)
+func (o *objects) Lookup(_ context.Context, id ObjectID) (*GeoObject, error) {
+	return o.hashIndex.get(id)
 }
 
 func (o *objects) Add(_ context.Context, obj *GeoObject) error {
-	region, err := o.regionIndex.regionByID(obj.RegionID())
-	if err != nil {
-		region = o.regionIndex.newRegion(obj.RegionID())
-		if region != nil {
-			err = nil
-		}
+	last, err := o.hashIndex.get(obj.ID())
+	if err == nil && last != nil {
+		return fmt.Errorf("spinix/objects: object %s already exists", obj.ID())
 	}
-	region.insert(obj)
+	for _, regionID := range obj.RegionID() {
+		region, err := o.regionIndex.regionByID(regionID)
+		if err != nil {
+			region = o.regionIndex.newRegion(regionID)
+			if region != nil {
+				err = nil
+			}
+		}
+		region.insert(obj)
+	}
 	o.hashIndex.set(obj)
 	return nil
 }
 
-func (o *objects) Delete(_ context.Context, objectID string) error {
-	prevState, err := o.hashIndex.get(objectID)
+func (o *objects) Delete(_ context.Context, id ObjectID) error {
+	prevState, err := o.hashIndex.get(id)
 	if err != nil {
 		return err
 	}
-	region, err := o.regionIndex.regionByID(prevState.RegionID())
-	// not found
-	if err != nil {
-		return nil
+	for _, rid := range prevState.RegionID() {
+		region, err := o.regionIndex.regionByID(rid)
+		// not found
+		if err != nil {
+			return nil
+		}
+		region.delete(prevState)
+		if region.isEmpty() {
+			o.regionIndex.delete(rid)
+		}
 	}
-	region.delete(prevState)
-	if region.isEmpty() {
-		o.regionIndex.delete(prevState.RegionID())
-	}
-	o.hashIndex.delete(objectID)
+	o.hashIndex.delete(id)
 	return nil
 }
 
@@ -191,14 +212,14 @@ type objectHashIndex []*objectBucket
 
 type objectBucket struct {
 	sync.RWMutex
-	index map[string]*GeoObject
+	index map[ObjectID]*GeoObject
 }
 
 func newObjectsHashIndex() objectHashIndex {
 	buckets := make([]*objectBucket, numBucket)
 	for i := 0; i < numBucket; i++ {
 		buckets[i] = &objectBucket{
-			index: make(map[string]*GeoObject),
+			index: make(map[ObjectID]*GeoObject),
 		}
 	}
 	return buckets
@@ -211,26 +232,26 @@ func (i objectHashIndex) set(obj *GeoObject) {
 	bucket.Unlock()
 }
 
-func (i objectHashIndex) delete(objectID string) {
-	bucket := i.bucket(objectID)
+func (i objectHashIndex) delete(id ObjectID) {
+	bucket := i.bucket(id)
 	bucket.Lock()
-	delete(bucket.index, objectID)
+	delete(bucket.index, id)
 	bucket.Unlock()
 }
 
-func (i objectHashIndex) get(objectID string) (*GeoObject, error) {
-	bucket := i.bucket(objectID)
+func (i objectHashIndex) get(id ObjectID) (*GeoObject, error) {
+	bucket := i.bucket(id)
 	bucket.RLock()
 	defer bucket.RUnlock()
-	object, ok := bucket.index[objectID]
+	object, ok := bucket.index[id]
 	if !ok {
-		return nil, fmt.Errorf("spinix/objects: object %s not found", objectID)
+		return nil, fmt.Errorf("spinix/objects: object %s not found", id)
 	}
 	return object, nil
 }
 
-func (i objectHashIndex) bucket(objectID string) *objectBucket {
-	return i[bucket(objectID, numBucket)]
+func (i objectHashIndex) bucket(id ObjectID) *objectBucket {
+	return i[bucketFromID(id, numBucket)]
 }
 
 type objectRegionIndex struct {
@@ -272,7 +293,7 @@ type objectRegion struct {
 	id    RegionID
 	size  RegionSize
 	mu    sync.RWMutex
-	layer map[LayerID]map[string]*GeoObject
+	layer map[LayerID]map[ObjectID]*GeoObject
 	index *rtree.RTree
 }
 
@@ -280,7 +301,7 @@ func newObjectRegion(rid RegionID, size RegionSize) *objectRegion {
 	return &objectRegion{
 		id:    rid,
 		size:  size,
-		layer: make(map[LayerID]map[string]*GeoObject),
+		layer: make(map[LayerID]map[ObjectID]*GeoObject),
 		index: &rtree.RTree{},
 	}
 }
@@ -301,14 +322,14 @@ func (o *objectRegion) delete(obj *GeoObject) {
 		obj)
 	delete(o.layer[obj.lid], obj.id)
 	if len(o.layer[obj.lid]) == 0 {
-		o.layer = make(map[LayerID]map[string]*GeoObject)
+		o.layer = make(map[LayerID]map[ObjectID]*GeoObject)
 	}
 }
 
 func (o *objectRegion) renew() {
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	o.layer = make(map[LayerID]map[string]*GeoObject)
+	o.layer = make(map[LayerID]map[ObjectID]*GeoObject)
 }
 
 func (o *objectRegion) each(lid LayerID, fn func(*GeoObject) bool) {
@@ -334,7 +355,7 @@ func (o *objectRegion) insert(obj *GeoObject) {
 		[2]float64{bbox.Max.X, bbox.Max.Y},
 		obj)
 	if o.layer[obj.lid] == nil {
-		o.layer[obj.lid] = make(map[string]*GeoObject)
+		o.layer[obj.lid] = make(map[ObjectID]*GeoObject)
 	}
 	o.layer[obj.lid][obj.ID()] = obj
 }

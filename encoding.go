@@ -2,11 +2,12 @@ package spinix
 
 import (
 	pb "github.com/mmadfox/spinix/proto"
+	"github.com/rs/xid"
 )
 
 func ToRule(rule *Rule) *pb.Rule {
 	p := new(pb.Rule)
-	p.RuleId = rule.ID()
+	p.RuleId = rule.ID().String()
 	p.RegionSize = int64(rule.RegionSize().Value())
 	p.Spec = rule.Specification()
 	p.RegionIds = make([]string, len(rule.RegionIDs()))
@@ -30,7 +31,11 @@ func FromRule(rule *pb.Rule) (*Rule, error) {
 	if err := regionSize.Validate(); err != nil {
 		return nil, err
 	}
-	return RuleFromSpec(rule.RuleId, regions, regionSize, rule.Spec)
+	rid, err := xid.FromString(rule.RuleId)
+	if err != nil {
+		return nil, err
+	}
+	return RuleFromSpec(rid, regions, regionSize, rule.Spec)
 }
 
 func ToDevice(device *Device) *pb.Device {

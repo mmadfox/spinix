@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/xid"
+
 	"github.com/tidwall/geojson"
 
 	"github.com/tidwall/geojson/geo"
@@ -24,7 +26,7 @@ const (
 )
 
 type evaluater interface {
-	refIDs() map[string]Token
+	refIDs() map[xid.ID]Token
 	evaluate(ctx context.Context, device *Device, state *State, ref reference, props *specProps) (Match, error)
 }
 
@@ -45,7 +47,7 @@ type Match struct {
 
 type Decl struct {
 	Keyword Token
-	Refs    []string
+	Refs    []xid.ID
 }
 
 func defaultRefs() reference {
@@ -66,7 +68,7 @@ type specProps struct {
 	center        geometry.Point
 	expire        time.Duration
 	radius        float64
-	layer         string
+	layer         LayerID
 }
 
 type spec struct {
@@ -129,7 +131,7 @@ func (s *spec) checkTrigger(state *State, device *Device) bool {
 	return true
 }
 
-func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r reference) (matches []Match, ok bool, err error) {
+func (s *spec) evaluate(ctx context.Context, rid RuleID, d *Device, r reference) (matches []Match, ok bool, err error) {
 	if d == nil {
 		return matches, false, nil
 	}
@@ -140,7 +142,7 @@ func (s *spec) evaluate(ctx context.Context, ruleID string, d *Device, r referen
 
 	var currState *State
 	if s.isStateful {
-		sid := StateID{IMEI: d.IMEI, RuleID: ruleID}
+		sid := StateID{did: d.ID, rid: rid}
 		currState, err = r.states.Lookup(ctx, sid)
 		if err != nil {
 			if errors.Is(err, ErrStateNotFound) {
@@ -289,6 +291,11 @@ func isStateful(e Expr) bool {
 func setupProps(sp *specProps, expr *PropExpr) {
 	for i := 0; i < len(expr.List); i++ {
 		switch prop := expr.List[i].(type) {
+		case *IDLit:
+			switch prop.Kind {
+			case LAYER:
+				sp.layer = prop.Value
+			}
 		case *PointLit:
 			switch prop.Kind {
 			case CENTER:
@@ -296,12 +303,6 @@ func setupProps(sp *specProps, expr *PropExpr) {
 			}
 		case *BaseLit:
 			switch prop.Kind {
-			case LAYER:
-				str, ok := prop.Expr.(*StringLit)
-				if !ok {
-					continue
-				}
-				sp.layer = str.Value
 			case RADIUS:
 				distLit, ok := prop.Expr.(*DistanceLit)
 				if !ok {
@@ -1105,15 +1106,15 @@ type nearOp struct {
 	pos Pos
 }
 
-func (n nearOp) refIDs() (refs map[string]Token) {
+func (n nearOp) refIDs() (refs map[xid.ID]Token) {
 	if n.object != nil && len(n.object.Ref) > 0 {
-		refs = make(map[string]Token)
+		refs = make(map[xid.ID]Token)
 		for i := 0; i < len(n.object.Ref); i++ {
 			refs[n.object.Ref[i]] = n.object.Kind
 		}
 	}
 	if n.devices != nil && len(n.devices.Ref) > 0 {
-		refs = make(map[string]Token)
+		refs = make(map[xid.ID]Token)
 		for i := 0; i < len(n.devices.Ref); i++ {
 			refs[n.devices.Ref[i]] = n.devices.Kind
 		}
@@ -1167,7 +1168,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 				if deviceRadius != nil && obj.data.Spatial().IntersectsPoly(deviceRadius) {
 					match.Ok = true
 					if match.Right.Refs == nil {
-						match.Right.Refs = make([]string, 0, len(n.object.Ref))
+						match.Right.Refs = make([]xid.ID, 0, len(n.object.Ref))
 					}
 					match.Right.Refs = append(match.Right.Refs, objectID)
 				}
@@ -1175,7 +1176,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 				if deviceRadius != nil && obj.data.Spatial().IntersectsRect(deviceRadius.Rect()) {
 					match.Ok = true
 					if match.Right.Refs == nil {
-						match.Right.Refs = make([]string, 0, len(n.object.Ref))
+						match.Right.Refs = make([]xid.ID, 0, len(n.object.Ref))
 					}
 					match.Right.Refs = append(match.Right.Refs, objectID)
 				}
@@ -1183,7 +1184,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 				if obj.data.Spatial().IntersectsPoint(devicePoint) {
 					match.Ok = true
 					if match.Right.Refs == nil {
-						match.Right.Refs = make([]string, 0, len(n.object.Ref))
+						match.Right.Refs = make([]xid.ID, 0, len(n.object.Ref))
 					}
 					match.Right.Refs = append(match.Right.Refs, objectID)
 				}
@@ -1191,7 +1192,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 		}
 		if match.Ok {
 			match.Left.Keyword = DEVICE
-			match.Left.Refs = []string{d.IMEI}
+			match.Left.Refs = []xid.ID{d.ID}
 			match.Operator = NEAR
 			match.Pos = n.pos
 			match.Right.Keyword = OBJECTS
@@ -1233,7 +1234,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 					if deviceRadius != nil && otherDeviceRadius.IntersectsPoly(deviceRadius) {
 						match.Ok = true
 						if match.Right.Refs == nil {
-							match.Right.Refs = make([]string, 0, len(n.devices.Ref))
+							match.Right.Refs = make([]xid.ID, 0, len(n.devices.Ref))
 						}
 						match.Right.Refs = append(match.Right.Refs, otherDeviceID)
 					}
@@ -1241,7 +1242,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 					if deviceRadius != nil && otherDeviceRadius.IntersectsRect(deviceRadius.Rect()) {
 						match.Ok = true
 						if match.Right.Refs == nil {
-							match.Right.Refs = make([]string, 0, len(n.devices.Ref))
+							match.Right.Refs = make([]xid.ID, 0, len(n.devices.Ref))
 						}
 						match.Right.Refs = append(match.Right.Refs, otherDeviceID)
 					}
@@ -1249,7 +1250,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 					if otherDeviceRadius.IntersectsPoint(devicePoint) {
 						match.Ok = true
 						if match.Right.Refs == nil {
-							match.Right.Refs = make([]string, 0, len(n.devices.Ref))
+							match.Right.Refs = make([]xid.ID, 0, len(n.devices.Ref))
 						}
 						match.Right.Refs = append(match.Right.Refs, otherDeviceID)
 					}
@@ -1263,7 +1264,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 				if otherDevicePoint.IntersectsPoint(devicePoint) {
 					match.Ok = true
 					if match.Right.Refs == nil {
-						match.Right.Refs = make([]string, 0, len(n.devices.Ref))
+						match.Right.Refs = make([]xid.ID, 0, len(n.devices.Ref))
 					}
 					match.Right.Refs = append(match.Right.Refs, otherDeviceID)
 				}
@@ -1271,7 +1272,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 		}
 		if match.Ok {
 			match.Left.Keyword = DEVICE
-			match.Left.Refs = []string{d.IMEI}
+			match.Left.Refs = []xid.ID{d.ID}
 			match.Operator = NEAR
 			match.Pos = n.pos
 			match.Right.Keyword = DEVICES
@@ -1288,9 +1289,9 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 				}
 				match.Ok = true
 				if match.Right.Refs == nil {
-					match.Right.Refs = make([]string, 0, 8)
+					match.Right.Refs = make([]xid.ID, 0, 8)
 				}
-				match.Right.Refs = append(match.Right.Refs, other.IMEI)
+				match.Right.Refs = append(match.Right.Refs, other.ID)
 				return nil
 			})
 		if err != nil {
@@ -1298,7 +1299,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 		}
 		if match.Ok {
 			match.Left.Keyword = DEVICE
-			match.Left.Refs = []string{d.IMEI}
+			match.Left.Refs = []xid.ID{d.ID}
 			match.Operator = NEAR
 			match.Pos = n.pos
 			match.Right.Keyword = DEVICE
@@ -1316,7 +1317,7 @@ type rangeDateTimeOp struct {
 	not     bool
 }
 
-func (n rangeDateTimeOp) refIDs() (refs map[string]Token) { return }
+func (n rangeDateTimeOp) refIDs() (refs map[xid.ID]Token) { return }
 
 func (n rangeDateTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ reference, _ *specProps) (match Match, err error) {
 	values := mapper{device: d}
@@ -1346,7 +1347,7 @@ type rangeTimeOp struct {
 	not     bool
 }
 
-func (n rangeTimeOp) refIDs() (refs map[string]Token) { return }
+func (n rangeTimeOp) refIDs() (refs map[xid.ID]Token) { return }
 
 func (n rangeTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ reference, _ *specProps) (match Match, err error) {
 	values := mapper{device: d}
@@ -1374,7 +1375,7 @@ type rangeIntOp struct {
 	not     bool
 }
 
-func (n rangeIntOp) refIDs() (refs map[string]Token) { return }
+func (n rangeIntOp) refIDs() (refs map[xid.ID]Token) { return }
 
 func (n rangeIntOp) evaluate(_ context.Context, d *Device, _ *State, _ reference, _ *specProps) (match Match, err error) {
 	values := mapper{device: d}
@@ -1401,7 +1402,7 @@ type rangeFloatOp struct {
 	not     bool
 }
 
-func (n rangeFloatOp) refIDs() (refs map[string]Token) { return }
+func (n rangeFloatOp) refIDs() (refs map[xid.ID]Token) { return }
 
 func (n rangeFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ reference, _ *specProps) (match Match, err error) {
 	values := mapper{device: d}
@@ -1426,7 +1427,7 @@ type inFloatOp struct {
 	not     bool
 }
 
-func (n inFloatOp) refIDs() (refs map[string]Token) { return }
+func (n inFloatOp) refIDs() (refs map[xid.ID]Token) { return }
 
 func (n inFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ reference, _ *specProps) (match Match, err error) {
 	value := mapper{device: d}.floatVal(n.keyword)
@@ -1451,9 +1452,9 @@ type intersectsObjectOp struct {
 	not   bool
 }
 
-func (n intersectsObjectOp) refIDs() (refs map[string]Token) {
+func (n intersectsObjectOp) refIDs() (refs map[xid.ID]Token) {
 	if n.right != nil && len(n.right.Ref) > 0 {
-		refs = make(map[string]Token)
+		refs = make(map[xid.ID]Token)
 		for i := 0; i < len(n.right.Ref); i++ {
 			refs[n.right.Ref[i]] = n.right.Kind
 		}
@@ -1498,7 +1499,7 @@ func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, _ *State, r
 			if deviceRadius != nil && obj.data.Spatial().IntersectsPoly(deviceRadius) {
 				match.Ok = true
 				if match.Right.Refs == nil {
-					match.Right.Refs = make([]string, 0, len(n.right.Ref))
+					match.Right.Refs = make([]xid.ID, 0, len(n.right.Ref))
 				}
 				match.Right.Refs = append(match.Right.Refs, objectID)
 			}
@@ -1506,7 +1507,7 @@ func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, _ *State, r
 			if deviceRadius != nil && obj.data.Spatial().IntersectsRect(deviceRadius.Rect()) {
 				match.Ok = true
 				if match.Right.Refs == nil {
-					match.Right.Refs = make([]string, 0, len(n.right.Ref))
+					match.Right.Refs = make([]xid.ID, 0, len(n.right.Ref))
 				}
 				match.Right.Refs = append(match.Right.Refs, objectID)
 			}
@@ -1514,7 +1515,7 @@ func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, _ *State, r
 			if obj.data.Spatial().IntersectsPoint(devicePoint) {
 				match.Ok = true
 				if match.Right.Refs == nil {
-					match.Right.Refs = make([]string, 0, len(n.right.Ref))
+					match.Right.Refs = make([]xid.ID, 0, len(n.right.Ref))
 				}
 				match.Right.Refs = append(match.Right.Refs, objectID)
 			}
@@ -1525,7 +1526,7 @@ func (n intersectsObjectOp) evaluate(ctx context.Context, d *Device, _ *State, r
 	}
 	if match.Ok {
 		match.Left.Keyword = DEVICE
-		match.Left.Refs = []string{d.IMEI}
+		match.Left.Refs = []xid.ID{d.ID}
 		match.Operator = op
 		match.Pos = n.pos
 		match.Right.Keyword = n.right.Kind
@@ -1540,9 +1541,9 @@ type intersectsDDevicesOp struct {
 	not   bool
 }
 
-func (n intersectsDDevicesOp) refIDs() (refs map[string]Token) {
+func (n intersectsDDevicesOp) refIDs() (refs map[xid.ID]Token) {
 	if len(n.right.Ref) > 0 || len(n.left.Ref) > 0 {
-		refs = make(map[string]Token)
+		refs = make(map[xid.ID]Token)
 		for i := 0; i < len(n.right.Ref); i++ {
 			refs[n.right.Ref[i]] = n.right.Kind
 		}
@@ -1560,8 +1561,8 @@ func (n intersectsDDevicesOp) refIDs() (refs map[string]Token) {
 // devices(my) intersects devices(@) - OK
 // devices(@) intersects devices(@) - BAD
 func (n intersectsDDevicesOp) evaluate(ctx context.Context, device *Device, state *State, ref reference, props *specProps) (match Match, err error) {
-	leftOk := n.exists(device.IMEI, n.left.Ref)
-	rightOk := n.exists(device.IMEI, n.right.Ref)
+	leftOk := n.exists(device.ID, n.left.Ref)
+	rightOk := n.exists(device.ID, n.right.Ref)
 	if leftOk && rightOk {
 		return
 	}
@@ -1611,7 +1612,7 @@ func (n intersectsDDevicesOp) evaluate(ctx context.Context, device *Device, stat
 	return op.evaluate(ctx, device, state, ref, props)
 }
 
-func (n intersectsDDevicesOp) exists(target string, list []string) bool {
+func (n intersectsDDevicesOp) exists(target xid.ID, list []xid.ID) bool {
 	for _, deviceID := range list {
 		if target == deviceID {
 			return true
@@ -1627,9 +1628,9 @@ type intersectsDevicesOp struct {
 	not   bool
 }
 
-func (n intersectsDevicesOp) refIDs() (refs map[string]Token) {
+func (n intersectsDevicesOp) refIDs() (refs map[xid.ID]Token) {
 	if n.right != nil && len(n.right.Ref) > 0 {
-		refs = make(map[string]Token)
+		refs = make(map[xid.ID]Token)
 		for i := 0; i < len(n.right.Ref); i++ {
 			refs[n.right.Ref[i]] = n.right.Kind
 		}
@@ -1698,7 +1699,7 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 				}
 				if match.Ok {
 					if match.Right.Refs == nil {
-						match.Right.Refs = make([]string, 0, len(n.right.Ref))
+						match.Right.Refs = make([]xid.ID, 0, len(n.right.Ref))
 					}
 					match.Right.Refs = append(match.Right.Refs, otherDeviceID)
 				}
@@ -1713,7 +1714,7 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 				}
 				if match.Ok {
 					if match.Right.Refs == nil {
-						match.Right.Refs = make([]string, 0, len(n.right.Ref))
+						match.Right.Refs = make([]xid.ID, 0, len(n.right.Ref))
 					}
 					match.Right.Refs = append(match.Right.Refs, otherDeviceID)
 				}
@@ -1736,7 +1737,7 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 
 			if match.Ok {
 				if match.Right.Refs == nil {
-					match.Right.Refs = make([]string, 0, len(n.right.Ref))
+					match.Right.Refs = make([]xid.ID, 0, len(n.right.Ref))
 				}
 				match.Right.Refs = append(match.Right.Refs, otherDeviceID)
 			}
@@ -1777,9 +1778,9 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 							}
 							if match.Ok {
 								if match.Right.Refs == nil {
-									match.Right.Refs = make([]string, 0, 8)
+									match.Right.Refs = make([]xid.ID, 0, 8)
 								}
-								match.Right.Refs = append(match.Right.Refs, otherDevice.IMEI)
+								match.Right.Refs = append(match.Right.Refs, otherDevice.ID)
 							}
 						case BBOX:
 							// with deviceRadius
@@ -1792,9 +1793,9 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 							}
 							if match.Ok {
 								if match.Right.Refs == nil {
-									match.Right.Refs = make([]string, 0, 8)
+									match.Right.Refs = make([]xid.ID, 0, 8)
 								}
-								match.Right.Refs = append(match.Right.Refs, otherDevice.IMEI)
+								match.Right.Refs = append(match.Right.Refs, otherDevice.ID)
 							}
 						}
 					default:
@@ -1814,9 +1815,9 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 
 						if match.Ok {
 							if match.Right.Refs == nil {
-								match.Right.Refs = make([]string, 0, 8)
+								match.Right.Refs = make([]xid.ID, 0, 8)
 							}
-							match.Right.Refs = append(match.Right.Refs, otherDevice.IMEI)
+							match.Right.Refs = append(match.Right.Refs, otherDevice.ID)
 						}
 					}
 					return nil
@@ -1847,9 +1848,9 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 							}
 							if match.Ok {
 								if match.Right.Refs == nil {
-									match.Right.Refs = make([]string, 0, 8)
+									match.Right.Refs = make([]DeviceID, 0, 8)
 								}
-								match.Right.Refs = append(match.Right.Refs, otherDevice.IMEI)
+								match.Right.Refs = append(match.Right.Refs, otherDevice.ID)
 							}
 						case BBOX:
 							// with deviceRadius
@@ -1862,9 +1863,9 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 							}
 							if match.Ok {
 								if match.Right.Refs == nil {
-									match.Right.Refs = make([]string, 0, 8)
+									match.Right.Refs = make([]xid.ID, 0, 8)
 								}
-								match.Right.Refs = append(match.Right.Refs, otherDevice.IMEI)
+								match.Right.Refs = append(match.Right.Refs, otherDevice.ID)
 							}
 						}
 					default:
@@ -1884,9 +1885,9 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 
 						if match.Ok {
 							if match.Right.Refs == nil {
-								match.Right.Refs = make([]string, 0, 8)
+								match.Right.Refs = make([]xid.ID, 0, 8)
 							}
-							match.Right.Refs = append(match.Right.Refs, otherDevice.IMEI)
+							match.Right.Refs = append(match.Right.Refs, otherDevice.ID)
 						}
 					}
 					return nil
@@ -1898,7 +1899,7 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 
 	if match.Ok {
 		match.Left.Keyword = DEVICE
-		match.Left.Refs = []string{d.IMEI}
+		match.Left.Refs = []xid.ID{d.ID}
 		match.Operator = op
 		match.Pos = n.pos
 		match.Right.Keyword = DEVICES
@@ -1913,9 +1914,9 @@ type inObjectOp struct {
 	not    bool
 }
 
-func (n inObjectOp) refIDs() (refs map[string]Token) {
+func (n inObjectOp) refIDs() (refs map[xid.ID]Token) {
 	if n.object != nil && len(n.object.Ref) > 0 {
-		refs = make(map[string]Token)
+		refs = make(map[xid.ID]Token)
 		for i := 0; i < len(n.object.Ref); i++ {
 			refs[n.object.Ref[i]] = n.object.Kind
 		}
@@ -1967,7 +1968,7 @@ func (n inObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref refer
 		}
 		if match.Ok {
 			if match.Right.Refs == nil {
-				match.Right.Refs = make([]string, 0, len(n.object.Ref))
+				match.Right.Refs = make([]xid.ID, 0, len(n.object.Ref))
 			}
 			match.Right.Refs = append(match.Right.Refs, objectID)
 		}
@@ -1982,7 +1983,7 @@ type inIntOp struct {
 	not     bool
 }
 
-func (n inIntOp) refIDs() (refs map[string]Token) { return }
+func (n inIntOp) refIDs() (refs map[xid.ID]Token) { return }
 
 func (n inIntOp) evaluate(_ context.Context, d *Device, _ *State, _ reference, _ *specProps) (match Match, err error) {
 	value := mapper{device: d}.intVal(n.keyword)
@@ -2007,7 +2008,7 @@ type inStringOp struct {
 	not     bool
 }
 
-func (n inStringOp) refIDs() (refs map[string]Token) { return }
+func (n inStringOp) refIDs() (refs map[xid.ID]Token) { return }
 
 func (n inStringOp) evaluate(_ context.Context, d *Device, _ *State, _ reference, _ *specProps) (match Match, err error) {
 	value := mapper{device: d}.stringVal(n.keyword)
@@ -2032,9 +2033,9 @@ type equalObjectOp struct {
 	pos   Pos
 }
 
-func (n equalObjectOp) refIDs() (refs map[string]Token) {
+func (n equalObjectOp) refIDs() (refs map[xid.ID]Token) {
 	if n.right != nil && len(n.right.Ref) > 0 {
-		refs = make(map[string]Token)
+		refs = make(map[xid.ID]Token)
 		for i := 0; i < len(n.right.Ref); i++ {
 			refs[n.right.Ref[i]] = n.right.Kind
 		}
@@ -2078,13 +2079,13 @@ func (n equalObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref re
 		}
 		if match.Ok {
 			if match.Right.Refs == nil {
-				match.Right.Refs = make([]string, 0, len(n.right.Ref))
+				match.Right.Refs = make([]xid.ID, 0, len(n.right.Ref))
 			}
 			match.Right.Refs = append(match.Right.Refs, objectID)
 		}
 	}
 	if match.Ok {
-		match.Left.Refs = []string{d.IMEI}
+		match.Left.Refs = []xid.ID{d.ID}
 	}
 	return
 }
@@ -2096,9 +2097,9 @@ type equalDevicesOp struct {
 	pos   Pos
 }
 
-func (n equalDevicesOp) refIDs() (refs map[string]Token) {
+func (n equalDevicesOp) refIDs() (refs map[xid.ID]Token) {
 	if n.right != nil && len(n.right.Ref) > 0 {
-		refs = make(map[string]Token)
+		refs = make(map[xid.ID]Token)
 		for i := 0; i < len(n.right.Ref); i++ {
 			refs[n.right.Ref[i]] = n.right.Kind
 		}
@@ -2141,13 +2142,13 @@ func (n equalDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, ref r
 		}
 		if match.Ok {
 			if match.Right.Refs == nil {
-				match.Right.Refs = make([]string, 0, len(n.right.Ref))
+				match.Right.Refs = make([]xid.ID, 0, len(n.right.Ref))
 			}
 			match.Right.Refs = append(match.Right.Refs, deviceID)
 		}
 	}
 	if match.Ok {
-		match.Left.Refs = []string{d.IMEI}
+		match.Left.Refs = []xid.ID{d.ID}
 	}
 	return
 }
@@ -2159,7 +2160,7 @@ type equalTimeOp struct {
 	pos     Pos
 }
 
-func (n equalTimeOp) refIDs() (refs map[string]Token) { return }
+func (n equalTimeOp) refIDs() (refs map[xid.ID]Token) { return }
 
 func (n equalTimeOp) evaluate(_ context.Context, d *Device, _ *State, _ reference, _ *specProps) (match Match, err error) {
 	values := mapper{device: d}
@@ -2193,7 +2194,7 @@ type equalStrOp struct {
 	pos     Pos
 }
 
-func (n equalStrOp) refIDs() (refs map[string]Token) { return }
+func (n equalStrOp) refIDs() (refs map[xid.ID]Token) { return }
 
 func (n equalStrOp) evaluate(_ context.Context, d *Device, _ *State, _ reference, _ *specProps) (match Match, err error) {
 	values := mapper{device: d}
@@ -2225,7 +2226,7 @@ type equalIntOp struct {
 	pos     Pos
 }
 
-func (n equalIntOp) refIDs() (refs map[string]Token) { return }
+func (n equalIntOp) refIDs() (refs map[xid.ID]Token) { return }
 
 func (n equalIntOp) evaluate(_ context.Context, d *Device, _ *State, _ reference, _ *specProps) (match Match, err error) {
 	values := mapper{device: d}
@@ -2257,7 +2258,7 @@ type equalFloatOp struct {
 	pos     Pos
 }
 
-func (n equalFloatOp) refIDs() (refs map[string]Token) { return }
+func (n equalFloatOp) refIDs() (refs map[xid.ID]Token) { return }
 
 func (n equalFloatOp) evaluate(_ context.Context, d *Device, _ *State, _ reference, _ *specProps) (match Match, err error) {
 	values := mapper{device: d}
@@ -2364,10 +2365,6 @@ func (rr radiusRing) SegmentAt(index int) geometry.Segment {
 		seg.B = rr.points[index+1]
 	}
 	return seg
-}
-
-func hasMatches(m []Match) bool {
-	return len(m) > 0
 }
 
 type InvalidExprError struct {
@@ -2501,5 +2498,14 @@ func bucket(s string, numBuckets int) int {
 	}
 	hash := fnv.New64a()
 	_, _ = hash.Write([]byte(s))
+	return int(hash.Sum64() % uint64(numBuckets))
+}
+
+func bucketFromID(s xid.ID, numBuckets int) int {
+	if numBuckets == 1 {
+		return 0
+	}
+	hash := fnv.New64a()
+	_, _ = hash.Write(s.Bytes())
 	return int(hash.Sum64() % uint64(numBuckets))
 }

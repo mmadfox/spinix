@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rs/xid"
 )
 
 type Parser struct {
@@ -126,10 +128,14 @@ func (p *Parser) parseLayerProp() (Expr, error) {
 	if tok != IDENT && tok != STRING && tok != ILLEGAL {
 		return nil, p.error(tok, lit, fmt.Sprintf("got %v, expected %v", tok, STRING))
 	}
-	return &BaseLit{
-		Kind: LAYER,
-		Expr: &StringLit{Value: lit, Pos: p.s.Offset()},
-		Pos:  p.s.Offset(),
+	id, err := xid.FromString(lit)
+	if err != nil {
+		return nil, p.error(tok, lit, err.Error())
+	}
+	return &IDLit{
+		Kind:  LAYER,
+		Value: id,
+		Pos:   p.s.Offset(),
 	}, nil
 }
 
@@ -343,7 +349,7 @@ func (p *Parser) parseDevicesLit() (Expr, error) {
 	}
 	// for all devices
 	if len(object.Ref) > 0 {
-		devices.Ref = make([]string, len(object.Ref))
+		devices.Ref = make([]xid.ID, len(object.Ref))
 		copy(devices.Ref, object.Ref)
 	}
 	tok := p.s.NextTok()
@@ -446,7 +452,7 @@ func (p *Parser) parseObjectLit(kind Token) (expr Expr, err error) {
 
 	obj := &ObjectLit{
 		Kind: kind,
-		Ref:  make([]string, 0, 1),
+		Ref:  make([]xid.ID, 0, 1),
 	}
 
 	badToken := func(tok Token) bool {
@@ -523,7 +529,11 @@ func (p *Parser) parseObjectLit(kind Token) (expr Expr, err error) {
 				continue
 			}
 			unique[lit] = struct{}{}
-			obj.Ref = append(obj.Ref, lit)
+			ref, err := xid.FromString(lit)
+			if err != nil {
+				return nil, p.error(tok, lit, err.Error())
+			}
+			obj.Ref = append(obj.Ref, ref)
 		}
 	}
 }
