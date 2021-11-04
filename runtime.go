@@ -1755,7 +1755,7 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 			d.DetectRegion()
 			if err := ref.devices.Each(ctx, d.RegionID(), d.RegionSize(),
 				func(ctx context.Context, otherDevice *Device) error {
-					if otherDevice.IMEI == d.IMEI {
+					if otherDevice.ID == d.ID {
 						return nil
 					}
 					switch n.right.Kind {

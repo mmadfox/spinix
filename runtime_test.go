@@ -15,6 +15,46 @@ type rTestCase struct {
 	err      bool
 }
 
+func TestRuntimeNotIntersectsDevicesDevices(t *testing.T) {
+	specs := []rTestCase{
+		{ // @ <- all devices
+			spec: []string{
+				`devices(c5vj26evvhfjvfseauk0) :radius 1km NINTERSECTS devices(@) :radius 1km`,
+				`devices(c5vj26evvhfjvfseauk0) :bbox 1km NINTERSECTS devices(@) :bbox 1km`,
+				`devices(c5vj26evvhfjvfseauk0) :radius 1km NINTERSECTS devices(c5vj26evvhfjvfseauog) :radius 500m`,
+				`devices(c5vj26evvhfjvfseauk0) NINTERSECTS devices(c5vj26evvhfjvfseauog) :radius 500m`,
+				`devices(c5vj26evvhfjvfseauk0) NINTERSECTS devices(c5vj26evvhfjvfseauog) :bbox 500m`,
+				`devices(c5vj26evvhfjvfseauk0) :bbox 500m NINTERSECTS devices(c5vj26evvhfjvfseauog) :bbox 500m`,
+				`devices(c5vj26evvhfjvfseauk0) :bbox 500m NINTERSECTS devices(c5vj26evvhfjvfseauog)`,
+				`devices(c5vj26evvhfjvfseauk0) :bbox 500m NINTERSECTS devices(c5vj26evvhfjvfseauog)`,
+			},
+			target: makeDevice("c5vj26evvhfjvfseauk0", 42.9246289, -72.2876353),
+			match:  []Match{match(DEVICE, DEVICES, NINTERSECTS)},
+			populate: func(refs reference) {
+				_, _ = refs.devices.InsertOrReplace(context.TODO(),
+					makeDevice("c5vj26evvhfjvfseauog", 42.9152319, -72.2498989))
+			},
+		},
+		{
+			spec: []string{
+				`devices(c5vj26evvhfjvfseauk0) NINTERSECTS devices(c5vj26evvhfjvfseauog)`,
+				`devices(c5vj26evvhfjvfseauk0)  NINTERSECTS devices(@)`,
+				`devices(c5vj26evvhfjvfseauk0) :radius 300m  NINTERSECTS devices(@)`,
+				`devices(c5vj26evvhfjvfseauk0)  NINTERSECTS devices(@) :bbox 300m`,
+				`devices(c5vj26evvhfjvfseauk0)  NINTERSECTS devices(@) :radius 300m`,
+			},
+			target: makeDevice("c5vj26evvhfjvfseauk0", 42.9246289, -72.2876353),
+			match:  []Match{match(DEVICE, DEVICES, NINTERSECTS)},
+			populate: func(refs reference) {
+				_, _ = refs.devices.InsertOrReplace(context.TODO(),
+					makeDevice("c5vj26evvhfjvfseauog", 42.9152319, -72.2498989))
+			},
+		},
+	}
+
+	assertRuntimeTestCase(t, specs)
+}
+
 func TestRuntimeIntersectsDevicesDevices(t *testing.T) {
 	specs := []rTestCase{
 		{ // @ <- all devices
@@ -41,6 +81,7 @@ func TestRuntimeIntersectsDevicesDevices(t *testing.T) {
 				`devices(c5vj26evvhfjvfseauk0)  INTERSECTS devices(@)`,
 				`devices(c5vj26evvhfjvfseauk0) :radius 300m  INTERSECTS devices(@)`,
 				`devices(c5vj26evvhfjvfseauk0)  INTERSECTS devices(@) :bbox 300m`,
+				`devices(c5vj26evvhfjvfseauk0)  INTERSECTS devices(@) :radius 300m`,
 			},
 			target: makeDevice("c5vj26evvhfjvfseauk0", 42.9214863, -72.2759164),
 			match:  []Match{match(DEVICE, DEVICES, INTERSECTS)},
