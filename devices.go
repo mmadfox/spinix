@@ -27,6 +27,7 @@ type Devices interface {
 
 type Device struct {
 	ID            DeviceID `json:"id"`
+	Layer         LayerID  `json:"layerId"`
 	IMEI          string   `json:"imei"`
 	Owner         string   `json:"owner"`
 	Brand         string   `json:"brand"`

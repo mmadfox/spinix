@@ -21,8 +21,8 @@ const (
 	// Minimum distance in meters.
 	// Used to round off the distance to avoid noise.
 	minDistMeters = 50
-
-	numBucket = 256
+	numBucket     = 256
+	dateLayout    = "2006-01-02"
 )
 
 type evaluater interface {
@@ -132,11 +132,7 @@ func (s *spec) checkTrigger(state *State, device *Device) bool {
 }
 
 func (s *spec) evaluate(ctx context.Context, rid RuleID, d *Device, r reference) (matches []Match, ok bool, err error) {
-	if d == nil {
-		return matches, false, nil
-	}
-
-	if len(s.nodes) == 0 {
+	if d == nil || len(s.nodes) == 0 || s.props.layer != d.Layer {
 		return
 	}
 
@@ -781,7 +777,7 @@ func e2range(left, right Expr, not bool) (evaluater, error) {
 				var pattern string
 				switch lhs.Kind {
 				case DATE:
-					pattern = "2006-01-02"
+					pattern = dateLayout
 				default:
 					pattern = time.RFC3339
 				}
@@ -1149,7 +1145,7 @@ func (n nearOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference
 		devicePoint = geometry.Point{X: d.Latitude, Y: d.Longitude}
 	}
 
-	// device -> objects(polygon, circle, rect, ...)
+	// device -> objects(polygon, circle, rect, .n..)
 	if n.object != nil {
 		for i := 0; i < len(n.object.Ref); i++ {
 			objectID := n.object.Ref[i]
@@ -1679,6 +1675,10 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 			return match, err
 		}
 
+		if d.Layer != otherDevice.Layer {
+			continue
+		}
+
 		switch n.right.Kind {
 		case RADIUS, BBOX:
 			// circle
@@ -1755,7 +1755,7 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 			d.DetectRegion()
 			if err := ref.devices.Each(ctx, d.RegionID(), d.RegionSize(),
 				func(ctx context.Context, otherDevice *Device) error {
-					if otherDevice.ID == d.ID {
+					if otherDevice.ID == d.ID || d.Layer != otherDevice.Layer {
 						return nil
 					}
 					switch n.right.Kind {
@@ -1828,6 +1828,9 @@ func (n intersectsDevicesOp) evaluate(ctx context.Context, d *Device, _ *State, 
 			// INTERSECTS
 			if err := ref.devices.Near(ctx, d.Latitude, d.Longitude, meters,
 				func(ctx context.Context, otherDevice *Device) error {
+					if d.Layer != otherDevice.Layer {
+						return nil
+					}
 					switch n.right.Kind {
 					case RADIUS, BBOX:
 						// circle
@@ -2406,7 +2409,7 @@ func (m mapper) stringVal(keyword Token) (v string) {
 		v = dt.Weekday().String()
 	case DATE:
 		dt := time.Unix(m.device.DateTime, 0)
-		v = dt.Format("2006-01-02")
+		v = dt.Format(dateLayout)
 	case DATETIME:
 		dt := time.Unix(m.device.DateTime, 0)
 		v = dt.Format(time.RFC3339)

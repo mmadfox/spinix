@@ -59,6 +59,7 @@ func TestRuntimeIntersectsDevicesDevices(t *testing.T) {
 	specs := []rTestCase{
 		{ // @ <- all devices
 			spec: []string{
+				`devices(@) :radius 1km INTERSECTS devices(c5vj26evvhfjvfseauk0) :radius 1km`,
 				`devices(c5vj26evvhfjvfseauk0) :radius 1km INTERSECTS devices(@) :radius 1km`,
 				`devices(c5vj26evvhfjvfseauk0) :bbox 1km INTERSECTS devices(@) :bbox 1km`,
 				`devices(c5vj26evvhfjvfseauk0) :radius 1km INTERSECTS devices(c5vj26evvhfjvfseauog) :radius 500m`,
@@ -89,6 +90,12 @@ func TestRuntimeIntersectsDevicesDevices(t *testing.T) {
 				_, _ = refs.devices.InsertOrReplace(context.TODO(),
 					makeDevice("c5vj26evvhfjvfseauog", 42.9214863, -72.2759164))
 			},
+		},
+		{
+			spec: []string{
+				`devices(c5vj26evvhfjvfseauk0) INTERSECTS devices(c5vj26evvhfjvfseauog) { :layer c5vj26evvhfjvfseaumg } `,
+			},
+			target: makeDevice("c5vj26evvhfjvfseauk0", 42.9214863, -72.2759164),
 		},
 	}
 
