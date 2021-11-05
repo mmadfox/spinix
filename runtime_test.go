@@ -55,10 +55,39 @@ func TestRuntimeNotIntersectsDevicesDevices(t *testing.T) {
 	assertRuntimeTestCase(t, specs)
 }
 
+func TestRuntimeIntersectsDevicesObjects(t *testing.T) {
+	specs := []rTestCase{
+		{ // @ <- all devices
+			spec: []string{
+				`devices(c5vj26evvhfjvfseauk0) INTERSECTS polygon(c5vj26evvhfjvfseaulg)`,
+				`devices(c5vj26evvhfjvfseauk0) :radius 1km INTERSECTS polygon(@)`,
+				`polygon(c5vj26evvhfjvfseaulg) INTERSECTS devices(c5vj26evvhfjvfseauk0)`,
+			},
+			target: makeDevice("c5vj26evvhfjvfseauk0", 42.9236075, -72.2792333),
+			match:  []Match{match(DEVICE, POLY, INTERSECTS)},
+			populate: func(refs reference) {
+				obj := str2obj("c5vj26evvhfjvfseaulg", `
+-72.2800060, 42.9238589
+-72.2802743, 42.9231989
+-72.2790616, 42.9232461
+-72.2787397, 42.9239689
+-72.2799953, 42.9238746
+-72.2800060, 42.9238589
+`)
+				ctx := context.TODO()
+				_ = refs.objects.Add(ctx, obj)
+			},
+		},
+	}
+
+	assertRuntimeTestCase(t, specs)
+}
+
 func TestRuntimeIntersectsDevicesDevices(t *testing.T) {
 	specs := []rTestCase{
 		{ // @ <- all devices
 			spec: []string{
+				`device :radius 1km INTERSECTS devices(@) :radius 1km`,
 				`devices(@) :radius 1km INTERSECTS devices(c5vj26evvhfjvfseauk0) :radius 1km`,
 				`devices(c5vj26evvhfjvfseauk0) :radius 1km INTERSECTS devices(@) :radius 1km`,
 				`devices(c5vj26evvhfjvfseauk0) :bbox 1km INTERSECTS devices(@) :bbox 1km`,
@@ -96,6 +125,12 @@ func TestRuntimeIntersectsDevicesDevices(t *testing.T) {
 				`devices(c5vj26evvhfjvfseauk0) INTERSECTS devices(c5vj26evvhfjvfseauog) { :layer c5vj26evvhfjvfseaumg } `,
 			},
 			target: makeDevice("c5vj26evvhfjvfseauk0", 42.9214863, -72.2759164),
+		},
+		{
+			err: true,
+			spec: []string{
+				`devices(@) INTERSECTS devices(@)`,
+			},
 		},
 	}
 
@@ -178,6 +213,12 @@ func assertRuntimeTestCase(t *testing.T, cases []rTestCase) {
 			}
 		}
 	}
+}
+
+func str2obj(id string, coords string) *GeoObject {
+	obj := polyFromString(coords)
+	cid, _ := xid.FromString(id)
+	return NewGeoObject(cid, DefaultLayer, obj)
 }
 
 func did(id string) xid.ID {

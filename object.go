@@ -17,7 +17,7 @@ import (
 	"github.com/tidwall/geojson"
 )
 
-var DefaultLayer = xid.New()
+var DefaultLayer = xid.NilID()
 
 var ErrObjectNotFound = errors.New("spinix/objects: not found")
 
@@ -119,8 +119,7 @@ func (o *objects) Near(ctx context.Context, lid LayerID, lat, lon, meters float6
 		meters = normalizeDistance(meters, SmallRegionSize)
 	}
 	ri := regionsFromLatLon(lat, lon, meters, SmallRegionSize)
-	ring := makeRadiusRing(lat, lon, meters, steps)
-	circle := geojson.NewPolygon(&geometry.Poly{Exterior: ring})
+	bbox := calcRect(lat, lon, meters)
 	next := true
 	for _, regionID := range ri.regions {
 		region, err := o.regionIndex.regionByID(regionID)
@@ -129,15 +128,16 @@ func (o *objects) Near(ctx context.Context, lid LayerID, lat, lon, meters float6
 		}
 		region.mu.RLock()
 		region.index.Search(
-			[2]float64{ring.rect.Min.X, ring.rect.Min.Y},
-			[2]float64{ring.rect.Max.X, ring.rect.Max.Y},
+			[2]float64{bbox.Min.X, bbox.Min.Y},
+			[2]float64{bbox.Max.X, bbox.Max.Y},
 			func(min, max [2]float64, value interface{}) bool {
 				obj := value.(*GeoObject)
-				if circle.Contains(obj.Data()) && lid == obj.Layer() {
-					if err = fn(ctx, obj); err != nil {
-						next = false
-						return false
-					}
+				if obj.Layer() != lid {
+					return true
+				}
+				if err = fn(ctx, obj); err != nil {
+					next = false
+					return false
 				}
 				return true
 			},
@@ -172,7 +172,7 @@ func (o *objects) Lookup(_ context.Context, id ObjectID) (*GeoObject, error) {
 func (o *objects) Add(_ context.Context, obj *GeoObject) error {
 	last, err := o.hashIndex.get(obj.ID())
 	if err == nil && last != nil {
-		return fmt.Errorf("spinix/objects: object %s already exists", obj.ID())
+		return fmt.Errorf("spinix/objects: object %s already refExists", obj.ID())
 	}
 	for _, regionID := range obj.RegionID() {
 		region, err := o.regionIndex.regionByID(regionID)

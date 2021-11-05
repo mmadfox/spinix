@@ -9,7 +9,6 @@ import (
 	"github.com/rs/xid"
 
 	"github.com/tidwall/geojson/geo"
-	"github.com/tidwall/geojson/geometry"
 	"github.com/tidwall/rtree"
 )
 
@@ -171,7 +170,7 @@ func (d *devices) Near(ctx context.Context, lat, lon, meters float64, fn DeviceI
 		meters = normalizeDistance(meters, TinyRegionSize)
 	}
 	ri := regionsFromLatLon(lat, lon, meters, TinyRegionSize)
-	points, bbox := makeCircle(lat, lon, meters, steps)
+	bbox := calcRect(lat, lon, meters)
 	next := true
 	for _, regionID := range ri.regions {
 		region, err := d.regionIndex.regionByID(regionID)
@@ -184,11 +183,9 @@ func (d *devices) Near(ctx context.Context, lat, lon, meters float64, fn DeviceI
 			[2]float64{bbox.Max.X, bbox.Max.Y},
 			func(min, max [2]float64, value interface{}) bool {
 				device := value.(*Device)
-				if contains(geometry.Point{X: device.Latitude, Y: device.Longitude}, points) {
-					if err = fn(ctx, device); err != nil {
-						next = false
-						return false
-					}
+				if err = fn(ctx, device); err != nil {
+					next = false
+					return false
 				}
 				return true
 			},

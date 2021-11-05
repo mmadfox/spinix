@@ -355,7 +355,7 @@ func (i ruleIndex) set(rule *Rule) error {
 	defer bucket.Unlock()
 	_, ok := bucket.index[rule.ID()]
 	if ok {
-		return fmt.Errorf("spinix/rule: rule %s already exists", rule.ID())
+		return fmt.Errorf("spinix/rule: rule %s already refExists", rule.ID())
 	}
 	bucket.index[rule.ID()] = rule
 	return nil
