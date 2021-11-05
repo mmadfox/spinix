@@ -15,6 +15,27 @@ type rTestCase struct {
 	err      bool
 }
 
+func TestRuntimeInDevicesDevices(t *testing.T) {
+	specs := []rTestCase{
+		{ // @ <- all devices
+			spec: []string{
+				`device :radius 1km IN devices(@) :radius 100m`,
+				`device :radius 1km IN devices(@)`,
+				`device :bbox 1km IN devices(@)`,
+				`devices(c5vj26evvhfjvfseauk0) :radius 2km IN devices(c5vj26evvhfjvfseauog)`,
+			},
+			target: makeDevice("c5vj26evvhfjvfseauk0", 42.9236468, -72.2793728),
+			match:  []Match{match(DEVICE, DEVICES, IN)},
+			populate: func(refs reference) {
+				_, _ = refs.devices.InsertOrReplace(context.TODO(),
+					makeDevice("c5vj26evvhfjvfseauog", 42.9229004, -72.2791582))
+			},
+		},
+	}
+
+	assertRuntimeTestCase(t, specs)
+}
+
 func TestRuntimeNotIntersectsDevicesDevices(t *testing.T) {
 	specs := []rTestCase{
 		{ // @ <- all devices
@@ -57,7 +78,7 @@ func TestRuntimeNotIntersectsDevicesDevices(t *testing.T) {
 
 func TestRuntimeIntersectsDevicesObjects(t *testing.T) {
 	specs := []rTestCase{
-		{ // @ <- all devices
+		{ // @ <- all objects
 			spec: []string{
 				`devices(c5vj26evvhfjvfseauk0) INTERSECTS polygon(c5vj26evvhfjvfseaulg)`,
 				`devices(c5vj26evvhfjvfseauk0) :radius 1km INTERSECTS polygon(@)`,

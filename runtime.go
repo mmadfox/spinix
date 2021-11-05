@@ -12,8 +12,6 @@ import (
 
 	"github.com/rs/xid"
 
-	"github.com/tidwall/geojson"
-
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
 )
@@ -535,44 +533,6 @@ func e2in(left, right Expr, not bool) (evaluater, error) {
 		op = NIN
 	}
 	switch lhs := left.(type) {
-	// devices -> devices
-	// device -> devices
-	// devices -> objects
-	// device -> objects(polygon, circle, rect, ...)
-	case *DeviceLit:
-		switch lhs.Unit {
-		case DistanceMeters, DistanceKilometers:
-			if lhs.Value <= 0 {
-				return nil, &InvalidExprError{
-					Left:  left,
-					Right: right,
-					Op:    op,
-					Pos:   lhs.Pos,
-					Msg:   fmt.Sprintf("invalid distance value %s", lhs.Kind),
-				}
-			}
-		}
-
-		switch rhs := right.(type) {
-		case *ObjectLit:
-			if !isObjectToken(rhs.Kind) {
-				return nil, &InvalidExprError{
-					Left:  left,
-					Right: right,
-					Op:    op,
-					Pos:   rhs.Pos,
-					Msg: fmt.Sprintf("got %s, expected [%s]",
-						rhs.Kind, group2str(objectTokenGroup)),
-				}
-			}
-			return inObjectOp{
-				device: lhs,
-				object: rhs,
-				pos:    lhs.Pos,
-				not:    not,
-			}, nil
-		}
-
 	// ident -> int, float, string
 	case *IdentLit:
 		rhs, ok := right.(*ListLit)
@@ -581,7 +541,7 @@ func e2in(left, right Expr, not bool) (evaluater, error) {
 				Left:  left,
 				Right: right,
 				Op:    op,
-				Msg:   "expected [left .. right]",
+				Msg:   fmt.Sprintf("got %s, expected RANGE [value .. value]", rhs),
 			}
 		}
 
@@ -652,12 +612,7 @@ func e2in(left, right Expr, not bool) (evaluater, error) {
 		}
 	}
 
-	return nil, &InvalidExprError{
-		Left:  left,
-		Right: right,
-		Op:    op,
-		Msg:   "illegal",
-	}
+	return e2sp(left, right, op)
 }
 
 func e2range(left, right Expr, not bool) (evaluater, error) {
@@ -1316,10 +1271,18 @@ func (n spObjectOp) evaluate(ctx context.Context, target *Device, _ *State, ref 
 				if n.op == NINTERSECTS && !o.Data().Spatial().IntersectsPoly(targetRadius) {
 					matchOk = true
 				}
-				if n.op == NEAR && o.Data().Spatial().WithinPoly(targetRadius) {
+				if n.op == NEAR && (o.Data().Spatial().WithinPoly(targetRadius) ||
+					o.Data().Spatial().IntersectsPoly(targetRadius)) {
 					matchOk = true
 				}
-				if n.op == NNEAR && !o.Data().Spatial().WithinPoly(targetRadius) {
+				if n.op == NNEAR && (!o.Data().Spatial().WithinPoly(targetRadius) ||
+					!o.Data().Spatial().IntersectsPoly(targetRadius)) {
+					matchOk = true
+				}
+				if n.op == IN && o.Data().Spatial().WithinPoly(targetRadius) {
+					matchOk = true
+				}
+				if n.op == NIN && !o.Data().Spatial().WithinPoly(targetRadius) {
 					matchOk = true
 				}
 			case BBOX:
@@ -1332,14 +1295,39 @@ func (n spObjectOp) evaluate(ctx context.Context, target *Device, _ *State, ref 
 				if n.op == NINTERSECTS && !o.Data().Spatial().IntersectsRect(targetRadius.Rect()) {
 					matchOk = true
 				}
-				if n.op == NEAR && o.Data().Spatial().WithinRect(targetRadius.Rect()) {
+				if n.op == NEAR && (o.Data().Spatial().WithinRect(targetRadius.Rect()) ||
+					o.Data().Spatial().IntersectsRect(targetRadius.Rect())) {
 					matchOk = true
 				}
-				if n.op == NNEAR && !o.Data().Spatial().WithinRect(targetRadius.Rect()) {
+				if n.op == NNEAR && (!o.Data().Spatial().WithinRect(targetRadius.Rect()) ||
+					!o.Data().Spatial().IntersectsRect(targetRadius.Rect())) {
+					matchOk = true
+				}
+				if n.op == IN && o.Data().Spatial().WithinRect(targetRadius.Rect()) {
+					matchOk = true
+				}
+				if n.op == NIN && !o.Data().Spatial().WithinRect(targetRadius.Rect()) {
 					matchOk = true
 				}
 			default:
-				if o.Data().Spatial().IntersectsPoint(targetPoint) {
+				if n.op == INTERSECTS && o.Data().Spatial().IntersectsPoint(targetPoint) {
+					matchOk = true
+				}
+				if n.op == NINTERSECTS && !o.Data().Spatial().IntersectsPoint(targetPoint) {
+					matchOk = true
+				}
+				if n.op == NEAR && (o.Data().Spatial().IntersectsPoint(targetPoint) ||
+					o.Data().Spatial().WithinPoint(targetPoint)) {
+					matchOk = true
+				}
+				if n.op == NNEAR && (!o.Data().Spatial().IntersectsPoint(targetPoint) ||
+					!o.Data().Spatial().WithinPoint(targetPoint)) {
+					matchOk = true
+				}
+				if n.op == IN && o.Data().Spatial().WithinPoint(targetPoint) {
+					matchOk = true
+				}
+				if n.op == NIN && !o.Data().Spatial().WithinPoint(targetPoint) {
 					matchOk = true
 				}
 			}
@@ -1559,10 +1547,16 @@ func (n spDevicesOp) evaluate(ctx context.Context, target *Device, _ *State, ref
 						if n.op == NINTERSECTS && !targetRadius.IntersectsPoly(otherRadius) {
 							matchOk = true
 						}
-						if n.op == NEAR && targetRadius.ContainsPoly(otherRadius) {
+						if n.op == NEAR && (targetRadius.ContainsPoly(otherRadius) || targetRadius.IntersectsPoly(otherRadius)) {
 							matchOk = true
 						}
-						if n.op == NNEAR && !targetRadius.ContainsPoly(otherRadius) {
+						if n.op == NNEAR && (!targetRadius.ContainsPoly(otherRadius) || !targetRadius.IntersectsPoly(otherRadius)) {
+							matchOk = true
+						}
+						if n.op == IN && targetRadius.ContainsPoly(otherRadius) {
+							matchOk = true
+						}
+						if n.op == NIN && !targetRadius.ContainsPoly(otherRadius) {
 							matchOk = true
 						}
 					}
@@ -1573,6 +1567,18 @@ func (n spDevicesOp) evaluate(ctx context.Context, target *Device, _ *State, ref
 							matchOk = true
 						}
 						if n.op == NINTERSECTS && !otherRadius.IntersectsPoint(targetPoint) {
+							matchOk = true
+						}
+						if n.op == NEAR && (otherRadius.IntersectsPoint(targetPoint) || otherRadius.ContainsPoint(targetPoint)) {
+							matchOk = true
+						}
+						if n.op == NNEAR && (!otherRadius.IntersectsPoint(targetPoint) || !otherRadius.ContainsPoint(targetPoint)) {
+							matchOk = true
+						}
+						if n.op == IN && otherRadius.ContainsPoint(targetPoint) {
+							matchOk = true
+						}
+						if n.op == NIN && !otherRadius.ContainsPoint(targetPoint) {
 							matchOk = true
 						}
 					}
@@ -1586,10 +1592,16 @@ func (n spDevicesOp) evaluate(ctx context.Context, target *Device, _ *State, ref
 						if n.op == NINTERSECTS && !otherRadius.IntersectsRect(targetRadius.Rect()) {
 							matchOk = true
 						}
-						if n.op == NEAR && targetRadius.ContainsRect(otherRadius.Rect()) {
+						if n.op == NEAR && (targetRadius.ContainsRect(otherRadius.Rect()) || otherRadius.IntersectsRect(targetRadius.Rect())) {
 							matchOk = true
 						}
-						if n.op == NNEAR && !targetRadius.ContainsRect(otherRadius.Rect()) {
+						if n.op == NNEAR && (!targetRadius.ContainsRect(otherRadius.Rect()) || !otherRadius.IntersectsRect(targetRadius.Rect())) {
+							matchOk = true
+						}
+						if n.op == IN && otherRadius.ContainsRect(targetRadius.Rect()) {
+							matchOk = true
+						}
+						if n.op == NIN && !otherRadius.ContainsRect(targetRadius.Rect()) {
 							matchOk = true
 						}
 					}
@@ -1600,6 +1612,18 @@ func (n spDevicesOp) evaluate(ctx context.Context, target *Device, _ *State, ref
 							matchOk = true
 						}
 						if n.op == NINTERSECTS && !otherRadius.IntersectsPoint(targetPoint) {
+							matchOk = true
+						}
+						if n.op == NEAR && (otherRadius.ContainsPoint(targetPoint) || otherRadius.IntersectsPoint(targetPoint)) {
+							matchOk = true
+						}
+						if n.op == NNEAR && (!otherRadius.ContainsPoint(targetPoint) || !otherRadius.IntersectsPoint(targetPoint)) {
+							matchOk = true
+						}
+						if n.op == IN && otherRadius.ContainsPoint(targetPoint) {
+							matchOk = true
+						}
+						if n.op == NIN && !otherRadius.ContainsPoint(targetPoint) {
 							matchOk = true
 						}
 					}
@@ -1618,16 +1642,24 @@ func (n spDevicesOp) evaluate(ctx context.Context, target *Device, _ *State, ref
 
 				// with targetRadius
 				if targetRadius != nil {
-					if n.op == INTERSECTS && otherPoint.IntersectsPoly(targetRadius) {
+					if n.op == INTERSECTS && targetRadius.IntersectsPoint(otherPoint) {
 						matchOk = true
 					}
-					if n.op == NINTERSECTS && !otherPoint.IntersectsPoly(targetRadius) {
+					if n.op == NINTERSECTS && !targetRadius.IntersectsPoint(otherPoint) {
 						matchOk = true
 					}
-					if n.op == NEAR && targetRadius.ContainsPoint(otherPoint) {
+					if n.op == NEAR && (targetRadius.ContainsPoint(otherPoint) ||
+						targetRadius.IntersectsPoint(otherPoint)) {
 						matchOk = true
 					}
-					if n.op == NNEAR && !targetRadius.ContainsPoint(otherPoint) {
+					if n.op == NNEAR && (!targetRadius.ContainsPoint(otherPoint) ||
+						!targetRadius.IntersectsPoint(otherPoint)) {
+						matchOk = true
+					}
+					if n.op == IN && targetRadius.ContainsPoint(otherPoint) {
+						matchOk = true
+					}
+					if n.op == NIN && !targetRadius.ContainsPoint(otherPoint) {
 						matchOk = true
 					}
 				}
@@ -1640,10 +1672,18 @@ func (n spDevicesOp) evaluate(ctx context.Context, target *Device, _ *State, ref
 					if n.op == NINTERSECTS && !otherPoint.IntersectsPoint(targetPoint) {
 						matchOk = true
 					}
-					if n.op == NEAR && targetPoint.ContainsPoint(otherPoint) {
+					if n.op == NEAR && (targetPoint.ContainsPoint(otherPoint) ||
+						otherPoint.IntersectsPoint(targetPoint)) {
 						matchOk = true
 					}
-					if n.op == NNEAR && !targetPoint.ContainsPoint(otherPoint) {
+					if n.op == NNEAR && (!targetPoint.ContainsPoint(otherPoint) ||
+						!otherPoint.IntersectsPoint(targetPoint)) {
+						matchOk = true
+					}
+					if n.op == IN && otherPoint.ContainsPoint(targetPoint) {
+						matchOk = true
+					}
+					if n.op == NIN && !otherPoint.ContainsPoint(targetPoint) {
 						matchOk = true
 					}
 				}
@@ -1667,75 +1707,6 @@ func (n spDevicesOp) evaluate(ctx context.Context, target *Device, _ *State, ref
 		match.Operator = n.op
 		match.Pos = n.pos
 		match.Right.Keyword = DEVICES
-	}
-	return
-}
-
-type inObjectOp struct {
-	device *DeviceLit
-	object *ObjectLit
-	pos    Pos
-	not    bool
-}
-
-func (n inObjectOp) refIDs() (refs map[xid.ID]Token) {
-	if n.object != nil && len(n.object.Ref) > 0 {
-		refs = make(map[xid.ID]Token)
-		for i := 0; i < len(n.object.Ref); i++ {
-			refs[n.object.Ref[i]] = n.object.Kind
-		}
-	}
-	return
-}
-
-func (n inObjectOp) evaluate(ctx context.Context, d *Device, _ *State, ref reference, _ *specProps) (match Match, err error) {
-	match.Left.Keyword = DEVICE
-	match.Right.Keyword = n.object.Kind
-	match.Pos = n.pos
-
-	if n.not {
-		match.Operator = NIN
-	} else {
-		match.Operator = IN
-	}
-
-	var deviceRadius *geojson.Polygon
-	var devicePoint *geojson.Point
-
-	if n.device.hasRadius() {
-		ring := makeRadiusRing(d.Latitude, d.Longitude, n.device.meters(), n.device.steps())
-		deviceRadius = geojson.NewPolygon(&geometry.Poly{Exterior: ring})
-	} else {
-		devicePoint = geojson.NewPoint(geometry.Point{X: d.Latitude, Y: d.Longitude})
-	}
-
-	for _, objectID := range n.object.Ref {
-		object, err := ref.objects.Lookup(ctx, objectID)
-		if err != nil {
-			if errors.Is(err, ErrObjectNotFound) {
-				continue
-			}
-			return match, err
-		}
-
-		if deviceRadius != nil {
-			if ok := object.data.Contains(deviceRadius); ok {
-				match.Ok = true
-			}
-		} else {
-			if ok := object.data.Contains(devicePoint); ok {
-				match.Ok = true
-			}
-		}
-		if n.not {
-			match.Ok = !match.Ok
-		}
-		if match.Ok {
-			if match.Right.Refs == nil {
-				match.Right.Refs = make([]xid.ID, 0, len(n.object.Ref))
-			}
-			match.Right.Refs = append(match.Right.Refs, objectID)
-		}
 	}
 	return
 }
