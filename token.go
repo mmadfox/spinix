@@ -71,6 +71,7 @@ const (
 	RANGE       // RANGE
 	NRANGE      // NOT RANGE
 	NEAR        // NEAR
+	NNEAR       // NOT NEAR
 	INTERSECTS  // INTERSECTS
 	NINTERSECTS // NOT INTERSECTS
 
@@ -148,6 +149,7 @@ var tokens = [...]string{
 	INTERSECTS:  "INTERSECTS",
 	NINTERSECTS: "NINTERSECTS",
 	NEAR:        "NEAR",
+	NNEAR:       "NNEAR",
 	RANGE:       "RANGE",
 	NRANGE:      "NRANGE",
 	IN:          "IN",

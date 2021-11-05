@@ -102,6 +102,41 @@ func TestRuntimeIntersectsDevicesDevices(t *testing.T) {
 	assertRuntimeTestCase(t, specs)
 }
 
+func TestRuntimeNearDevicesDevices(t *testing.T) {
+	specs := []rTestCase{
+		{ // @ <- all devices
+			spec: []string{
+				`devices(c5vj26evvhfjvfseauk0) :radius 500m NEAR devices(@)`,
+				`devices(c5vj26evvhfjvfseauk0) :bbox 500m NEAR devices(@) :bbox 10m`,
+				`devices(@) NEAR devices(c5vj26evvhfjvfseauk0) :radius 500m`,
+			},
+			target: makeDevice("c5vj26evvhfjvfseauk0", 42.9214863, -72.2794802),
+			match:  []Match{match(DEVICE, DEVICES, NEAR)},
+			populate: func(refs reference) {
+				_, _ = refs.devices.InsertOrReplace(context.TODO(),
+					makeDevice("c5vj26evvhfjvfseauog", 42.9240239, -72.2787075))
+				_, _ = refs.devices.InsertOrReplace(context.TODO(),
+					makeDevice("c5vj26evvhfjvfseaukg", 42.9226333, -72.2732452))
+			},
+		},
+		{
+			spec: []string{
+				`device NEAR devices(@)`,
+			},
+			target: makeDevice("c5vj26evvhfjvfseauk0", 42.9214863, -72.2794802),
+			match:  []Match{match(DEVICE, DEVICES, NEAR)},
+			populate: func(refs reference) {
+				_, _ = refs.devices.InsertOrReplace(context.TODO(),
+					makeDevice("c5vj26evvhfjvfseauog", 42.9214863, -72.2794802))
+				_, _ = refs.devices.InsertOrReplace(context.TODO(),
+					makeDevice("c5vj26evvhfjvfseaukg", 42.9214863, -72.2794802))
+			},
+		},
+	}
+
+	assertRuntimeTestCase(t, specs)
+}
+
 func assertRuntimeTestCase(t *testing.T, cases []rTestCase) {
 	for i, tc := range cases {
 		refs := defaultRefs()
@@ -125,7 +160,7 @@ func assertRuntimeTestCase(t *testing.T, cases []rTestCase) {
 				t.Fatal(err)
 			}
 			if have, want := len(matches), len(tc.match); have != want {
-				t.Fatalf("%d specFromString(%s) => got %v, expected %v", i, specstr, have, want)
+				t.Fatalf("%d specFromString(%s) => got %v, expected %v matching", i, specstr, have, want)
 			}
 			for i, m := range matches {
 				if have, want := m.Ok, tc.match[i].Ok; have != want {

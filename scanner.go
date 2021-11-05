@@ -191,6 +191,8 @@ func (s *Scanner) Next() (tok Token, lit string) {
 				tok = NINTERSECTS
 			case "near", "nearby":
 				tok = NEAR
+			case "nnear":
+				tok = NNEAR
 			case "and":
 				tok = AND
 			case "or":

@@ -13,6 +13,9 @@ func TestParser(t *testing.T) {
 	}{
 		// successfully
 		{
+			spec: `device nnear circle(c5vj1kevvhfjur1l9gug)`,
+		},
+		{
 			spec: `devices(c5vj1kevvhfjur1l9gug, c5vj26evvhfjvfseauk0, c5vj26evvhfjvfseauo0) :radius 1km INTERSECTS objects(@) { :layer c5vj26evvhfjvfseauo0 }`,
 		},
 		{
