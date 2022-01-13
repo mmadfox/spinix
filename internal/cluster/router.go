@@ -28,14 +28,14 @@ func NewRouter(
 	return &router
 }
 
-func (r *Router) handleNodeJoin(n Node) {
+func (r *Router) handleNodeJoin(n *Node) {
 	_ = r.hd.Add(n.Host())
 }
 
-func (r *Router) handleNodeLeave(n Node) {
+func (r *Router) handleNodeLeave(n *Node) {
 	r.hd.Remove(n.Host())
 }
 
-func (r *Router) handleNodeUpdate(n Node) {
+func (r *Router) handleNodeUpdate(n *Node) {
 
 }

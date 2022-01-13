@@ -9,8 +9,8 @@ type delegate struct {
 
 var _ memberlist.Delegate = (*delegate)(nil)
 
-func newDelegate(n Node) (delegate, error) {
-	data, err := EncodeNodeToMeta(n)
+func newDelegate(n *Node) (delegate, error) {
+	data, err := encodeNodeToMeta(n)
 	if err != nil {
 		return delegate{}, err
 	}

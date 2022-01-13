@@ -3,7 +3,7 @@ package cluster
 import (
 	"encoding/binary"
 	"fmt"
-	"net"
+	"sync"
 	"time"
 
 	"github.com/mmadfox/spinix/internal/hash"
@@ -14,15 +14,13 @@ import (
 type Node struct {
 	id        uint64
 	host      string
-	addr      net.Addr
-	port      uint16
 	hash      uint64
 	birthdate int64
 }
 
-func NodeFromString(host string) Node {
+func nodeFromString(host string) *Node {
 	birthdate := time.Now().UnixNano()
-	return Node{
+	return &Node{
 		id:        host2id(host, birthdate),
 		host:      host,
 		hash:      hash.StringToUint64(host),
@@ -58,7 +56,7 @@ func (n Node) String() string {
 		n.host, n.id, n.hash, n.birthdate)
 }
 
-func EncodeNodeToMeta(n Node) ([]byte, error) {
+func encodeNodeToMeta(n *Node) ([]byte, error) {
 	return msgpack.Marshal(struct {
 		ID        uint64
 		Host      string
@@ -72,7 +70,7 @@ func EncodeNodeToMeta(n Node) ([]byte, error) {
 	})
 }
 
-func DecodeNodeFromMeta(meta []byte) (Node, error) {
+func decodeNodeFromMeta(meta []byte) (*Node, error) {
 	n := struct {
 		ID        uint64
 		Host      string
@@ -80,9 +78,9 @@ func DecodeNodeFromMeta(meta []byte) (Node, error) {
 		Birthdate int64
 	}{}
 	if err := msgpack.Unmarshal(meta, &n); err != nil {
-		return Node{}, err
+		return nil, err
 	}
-	return Node{
+	return &Node{
 		id:        n.ID,
 		host:      n.Host,
 		hash:      n.Hash,
@@ -90,14 +88,29 @@ func DecodeNodeFromMeta(meta []byte) (Node, error) {
 	}, nil
 }
 
-func CompareNodeByID(a, b Node) bool {
+type nodeList struct {
+	mu    sync.RWMutex
+	store map[uint64]*Node
+}
+
+func newNodeList() *nodeList {
+	return &nodeList{store: make(map[uint64]*Node)}
+}
+
+func (nl *nodeList) add(n *Node) {
+	nl.mu.Lock()
+	defer nl.mu.Unlock()
+	nl.store[n.ID()] = n
+}
+
+func compareNodeByID(a, b *Node) bool {
 	return a.ID() == b.ID()
 }
 
-func CompareNodeByHost(a, b Node) bool {
+func compareNodeByHost(a, b *Node) bool {
 	return a.Host() == b.Host()
 }
 
-func CompareNodeByHash(a, b Node) bool {
+func compareNodeByHash(a, b *Node) bool {
 	return a.Hash() == b.Hash()
 }
