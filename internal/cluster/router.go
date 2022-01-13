@@ -7,20 +7,23 @@ import (
 )
 
 type Router struct {
-	mu sync.RWMutex
-	hd *h3geodist.Distributed
-	ml *Memberlist
-	nl *nodeList
+	mu  sync.RWMutex
+	hd  *h3geodist.Distributed
+	ml  *Memberlist
+	nl  *nodeList
+	cli *Client
 }
 
 func NewRouter(
 	hd *h3geodist.Distributed,
 	ml *Memberlist,
+	cli *Client,
 ) *Router {
 	router := Router{
-		hd: hd,
-		ml: ml,
-		nl: newNodeList(),
+		hd:  hd,
+		ml:  ml,
+		nl:  newNodeList(),
+		cli: cli,
 	}
 
 	ml.OnJoinFunc(router.handleNodeJoin)
