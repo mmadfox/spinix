@@ -79,6 +79,26 @@ func (c *Memberlist) OnChangeFunc(fn func()) {
 	c.onChangeFunc = append(c.onChangeFunc, fn)
 }
 
+func (c *Memberlist) Coordinator() (*Node, error) {
+	nodes, err := c.Nodes()
+	if err != nil {
+		return nil, err
+	}
+	if len(nodes) == 0 {
+		return nil, fmt.Errorf("cluster/memberlist: there is no node in memberlist")
+	}
+	oldest := nodes[0]
+	return oldest, nil
+}
+
+func (c *Memberlist) IsCoordinator() bool {
+	oldest, err := c.Coordinator()
+	if err != nil {
+		return false
+	}
+	return oldest.ID() == c.owner.ID()
+}
+
 func (c *Memberlist) ListenAndServe() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -98,6 +118,10 @@ func (c *Memberlist) Join(peers []string) (n int, err error) {
 		return -1, fmt.Errorf("cluster/memberlist: first run the memberlist and then join peers")
 	}
 	return c.list.Join(peers)
+}
+
+func (c *Memberlist) NumNodes() int {
+	return c.list.NumMembers()
 }
 
 func (c *Memberlist) Shutdown() error {

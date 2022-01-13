@@ -103,6 +103,22 @@ func (nl *nodeList) add(n *Node) {
 	nl.store[n.ID()] = n
 }
 
+func (nl *nodeList) remove(n *Node) {
+	nl.mu.Lock()
+	defer nl.mu.Unlock()
+	delete(nl.store, n.ID())
+}
+
+func (nl *nodeList) removeByHost(host string) {
+	nl.mu.Lock()
+	defer nl.mu.Unlock()
+	for id, node := range nl.store {
+		if node.Host() == host {
+			delete(nl.store, id)
+		}
+	}
+}
+
 func compareNodeByID(a, b *Node) bool {
 	return a.ID() == b.ID()
 }
