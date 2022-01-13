@@ -24,7 +24,7 @@ type Memberlist struct {
 
 func NewMemberlist(c *memberlist.Config) (*Memberlist, error) {
 	if c == nil {
-		return nil, fmt.Errorf("cluster/memberlist: config nil pointer")
+		return nil, fmt.Errorf("cluster/memberlist: config cannot be nil")
 	}
 	name := fmt.Sprintf("%s:%d", c.BindAddr, c.BindPort)
 	owner := nodeFromString(name)
