@@ -10,7 +10,7 @@ type delegate struct {
 var _ memberlist.Delegate = (*delegate)(nil)
 
 func newDelegate(n Node) (delegate, error) {
-	data, err := EncodeNode(n)
+	data, err := EncodeNodeToMeta(n)
 	if err != nil {
 		return delegate{}, err
 	}

@@ -31,10 +31,10 @@ func TestNode_EncodeDecode(t *testing.T) {
 	}
 	for _, host := range testCases {
 		node := NodeFromString(host)
-		data, err := EncodeNode(node)
+		data, err := EncodeNodeToMeta(node)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, data)
-		node2, err := DecodeNode(data)
+		node2, err := DecodeNodeFromMeta(data)
 		assert.Nil(t, err)
 		require.True(t, CompareNodeByHost(node, node2))
 		require.True(t, CompareNodeByID(node, node2))

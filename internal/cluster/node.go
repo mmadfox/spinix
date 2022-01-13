@@ -3,6 +3,7 @@ package cluster
 import (
 	"encoding/binary"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/mmadfox/spinix/internal/hash"
@@ -13,6 +14,8 @@ import (
 type Node struct {
 	id        uint64
 	host      string
+	addr      net.Addr
+	port      uint16
 	hash      uint64
 	birthdate int64
 }
@@ -55,7 +58,7 @@ func (n Node) String() string {
 		n.host, n.id, n.hash, n.birthdate)
 }
 
-func EncodeNode(n Node) ([]byte, error) {
+func EncodeNodeToMeta(n Node) ([]byte, error) {
 	return msgpack.Marshal(struct {
 		ID        uint64
 		Host      string
@@ -69,14 +72,14 @@ func EncodeNode(n Node) ([]byte, error) {
 	})
 }
 
-func DecodeNode(data []byte) (Node, error) {
+func DecodeNodeFromMeta(meta []byte) (Node, error) {
 	n := struct {
 		ID        uint64
 		Host      string
 		Hash      uint64
 		Birthdate int64
 	}{}
-	if err := msgpack.Unmarshal(data, &n); err != nil {
+	if err := msgpack.Unmarshal(meta, &n); err != nil {
 		return Node{}, err
 	}
 	return Node{

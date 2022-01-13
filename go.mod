@@ -27,6 +27,7 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.0 // indirect
 	github.com/miekg/dns v1.1.26 // indirect
+	github.com/mmadfox/go-h3geo-dist v0.2.0 // indirect
 	github.com/mmcloughlin/globe v0.0.0-20200201185603-653bb586373c // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
@@ -37,6 +38,7 @@ require (
 	github.com/tidwall/pinhole v0.0.0-20210130162507-d8644a7c3d19 // indirect
 	github.com/tidwall/pretty v1.1.0 // indirect
 	github.com/tidwall/sjson v1.1.6 // indirect
+	github.com/uber/h3-go/v3 v3.7.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410 // indirect
