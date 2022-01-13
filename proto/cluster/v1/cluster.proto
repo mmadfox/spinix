@@ -1,2 +1,13 @@
 syntax = "proto3";
 
+package cluster.v1;
+
+option go_package = "proto/cluster/v1;clusterv1";
+
+service ClusterService {
+    rpc SyncNode(SyncNodeRequest) returns (SyncNodeResponse);
+}
+
+message SyncNodeRequest {}
+
+message SyncNodeResponse {}
