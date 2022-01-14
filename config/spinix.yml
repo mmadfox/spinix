@@ -7,7 +7,9 @@ cluster:
   grpc_client_pool_init_count: 3
   grpc_client_pool_capacity: 5
 
-  h3geo_cell_level: 2
+  h3dist_level: 3
+  h3dist_vnodes: 64
+  h3dist_replicas: 9
 
   join_retry_interval: 50ms
   max_join_attempts: 3

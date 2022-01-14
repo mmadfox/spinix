@@ -3,8 +3,6 @@ package cluster
 import (
 	"time"
 
-	h3geodist "github.com/mmadfox/go-h3geo-dist"
-
 	"google.golang.org/grpc"
 
 	"github.com/hashicorp/memberlist"
@@ -19,7 +17,9 @@ type Options struct {
 	GRPCClientInitPoolCount   int           `yaml:"grpc_client_pool_init_count"`
 	GRPCClientPoolCapacity    int           `yaml:"grpc_client_pool_capacity"`
 
-	H3DistCellLevel int `yaml:"h3geo_cell_level"`
+	H3DistLevel    int    `yaml:"h3dist_level"`
+	H3DistVNodes   uint64 `yaml:"h3dist_vnodes"`
+	H3DistReplicas int    `yaml:"h3dist_replicas"`
 
 	JoinRetryInterval time.Duration `yaml:"join_retry_interval"`
 	MaxJoinAttempts   int           `yaml:"max_join_attempts"`
@@ -48,8 +48,7 @@ type Options struct {
 	HandoffQueueDepth       *int           `yaml:"memberlist_handoff_queue_depth"`
 	UDPBufferSize           *int           `yaml:"memberlist_udp_buffer_size"`
 
-	GRPCClientDialOpts []grpc.DialOption  `yaml:"-"`
-	H3DistOpts         []h3geodist.Option `yaml:"-"`
+	GRPCClientDialOpts []grpc.DialOption `yaml:"-"`
 }
 
 func toMemberlistConf(o *Options) *memberlist.Config {

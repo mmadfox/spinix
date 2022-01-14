@@ -33,6 +33,7 @@ require (
 	github.com/mmcloughlin/globe v0.0.0-20200201185603-653bb586373c // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/tidwall/geoindex v1.4.4 // indirect
 	github.com/tidwall/gjson v1.7.4 // indirect
 	github.com/tidwall/match v1.0.3 // indirect
