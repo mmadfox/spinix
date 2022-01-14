@@ -8,50 +8,32 @@ import (
 	"github.com/hashicorp/memberlist"
 )
 
-type Memberlist struct {
+type nodeman struct {
+	owner        *nodeInfo
 	config       *memberlist.Config
-	owner        *Node
 	list         *memberlist.Memberlist
 	mu           sync.RWMutex
 	wg           sync.WaitGroup
 	stopCh       chan struct{}
 	eventsCh     chan memberlist.NodeEvent
-	onJoinFunc   []func(*Node)
-	onLeaveFunc  []func(*Node)
-	onUpdateFunc []func(*Node)
+	onJoinFunc   []func(*nodeInfo)
+	onLeaveFunc  []func(*nodeInfo)
+	onUpdateFunc []func(*nodeInfo)
 	onChangeFunc []func()
 }
 
-func NewMemberlist(c *memberlist.Config) (*Memberlist, error) {
-	if c == nil {
-		return nil, fmt.Errorf("cluster/memberlist: config cannot be nil")
-	}
-	name := fmt.Sprintf("%s:%d", c.BindAddr, c.BindPort)
-	owner := nodeFromString(name)
-	dg, err := newDelegate(owner)
-	if err != nil {
-		return nil, err
-	}
+func nodemanFromMemberlistConfig(owner *nodeInfo, c *memberlist.Config) (*nodeman, error) {
 	eventsCh := make(chan memberlist.NodeEvent, 256)
-	c.Delegate = dg
 	c.Events = &memberlist.ChannelEventDelegate{Ch: eventsCh}
-	c.Name = name
-	return &Memberlist{
-		owner:    owner,
-		config:   c,
-		eventsCh: eventsCh,
-	}, nil
+	c.Delegate = newDelegate(owner)
+	return &nodeman{config: c, eventsCh: eventsCh, owner: owner}, nil
 }
 
-func (c *Memberlist) Owner() *Node {
-	return c.owner
-}
-
-func (c *Memberlist) Nodes() ([]*Node, error) {
+func (c *nodeman) Nodes() ([]*nodeInfo, error) {
 	members := c.list.Members()
-	nodes := make([]*Node, 0, len(members))
+	nodes := make([]*nodeInfo, 0, len(members))
 	for i := 0; i < len(members); i++ {
-		node, err := decodeNodeFromMeta(members[i].Meta)
+		node, err := decodeNodeInfo(members[i].Meta)
 		if err != nil {
 			return nil, err
 		}
@@ -63,35 +45,39 @@ func (c *Memberlist) Nodes() ([]*Node, error) {
 	return nodes, nil
 }
 
-func (c *Memberlist) OnLeaveFunc(fn func(*Node)) {
+func (c *nodeman) OnLeaveFunc(fn func(*nodeInfo)) {
 	c.onLeaveFunc = append(c.onLeaveFunc, fn)
 }
 
-func (c *Memberlist) OnJoinFunc(fn func(*Node)) {
+func (c *nodeman) OnJoinFunc(fn func(*nodeInfo)) {
 	c.onJoinFunc = append(c.onJoinFunc, fn)
 }
 
-func (c *Memberlist) OnUpdateFunc(fn func(*Node)) {
+func (c *nodeman) OnUpdateFunc(fn func(*nodeInfo)) {
 	c.onUpdateFunc = append(c.onUpdateFunc, fn)
 }
 
-func (c *Memberlist) OnChangeFunc(fn func()) {
+func (c *nodeman) OnChangeFunc(fn func()) {
 	c.onChangeFunc = append(c.onChangeFunc, fn)
 }
 
-func (c *Memberlist) Coordinator() (*Node, error) {
+func (c *nodeman) Owner() *nodeInfo {
+	return c.owner
+}
+
+func (c *nodeman) Coordinator() (*nodeInfo, error) {
 	nodes, err := c.Nodes()
 	if err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
-		return nil, fmt.Errorf("cluster/memberlist: there is no node in memberlist")
+		return nil, fmt.Errorf("cluster/memberlist: there is no nodeInfo in memberlist")
 	}
 	oldest := nodes[0]
 	return oldest, nil
 }
 
-func (c *Memberlist) IsCoordinator() bool {
+func (c *nodeman) IsCoordinator() bool {
 	oldest, err := c.Coordinator()
 	if err != nil {
 		return false
@@ -99,7 +85,7 @@ func (c *Memberlist) IsCoordinator() bool {
 	return oldest.ID() == c.owner.ID()
 }
 
-func (c *Memberlist) ListenAndServe() error {
+func (c *nodeman) ListenAndServe() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	ml, err := memberlist.Create(c.config)
@@ -113,18 +99,18 @@ func (c *Memberlist) ListenAndServe() error {
 	return nil
 }
 
-func (c *Memberlist) Join(peers []string) (n int, err error) {
+func (c *nodeman) Join(peers []string) (n int, err error) {
 	if c.list == nil {
 		return -1, fmt.Errorf("cluster/memberlist: first run the memberlist and then join peers")
 	}
 	return c.list.Join(peers)
 }
 
-func (c *Memberlist) NumNodes() int {
+func (c *nodeman) NumNodes() int {
 	return c.list.NumMembers()
 }
 
-func (c *Memberlist) Shutdown() error {
+func (c *nodeman) Shutdown() error {
 	if c.list == nil {
 		return nil
 	}
@@ -136,7 +122,7 @@ func (c *Memberlist) Shutdown() error {
 	return c.list.Shutdown()
 }
 
-func (c *Memberlist) isClosed() bool {
+func (c *nodeman) isClosed() bool {
 	select {
 	case <-c.stopCh:
 		return true
@@ -145,18 +131,18 @@ func (c *Memberlist) isClosed() bool {
 	return false
 }
 
-func (c *Memberlist) dispatchEvents() {
+func (c *nodeman) dispatchEvents() {
 	defer c.wg.Done()
 	for {
 		select {
 		case <-c.stopCh:
 			return
 		case e := <-c.eventsCh:
-			node, err := decodeNodeFromMeta(e.Node.Meta)
+			node, err := decodeNodeInfo(e.Node.Meta)
 			if err != nil {
 				continue
 			}
-			if compareNodeByHost(c.owner, node) {
+			if compareNodeByAddr(c.owner, node) {
 				continue
 			}
 			switch e.Event {
@@ -179,3 +165,27 @@ func (c *Memberlist) dispatchEvents() {
 		}
 	}
 }
+
+// delegate is a struct which implements memberlist.Delegate interface.
+type delegate struct {
+	meta []byte
+}
+
+var _ memberlist.Delegate = (*delegate)(nil)
+
+func newDelegate(n *nodeInfo) delegate {
+	data, _ := encodeNodeInfo(n)
+	return delegate{meta: data}
+}
+
+func (d delegate) NodeMeta(_ int) []byte {
+	return d.meta
+}
+
+func (d delegate) NotifyMsg(_ []byte) {}
+
+func (d delegate) GetBroadcasts(_, _ int) [][]byte { return nil }
+
+func (d delegate) LocalState(_ bool) []byte { return nil }
+
+func (d delegate) MergeRemoteState(_ []byte, _ bool) {}

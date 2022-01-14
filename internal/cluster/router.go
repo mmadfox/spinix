@@ -9,14 +9,14 @@ import (
 type Router struct {
 	mu  sync.RWMutex
 	hd  *h3geodist.Distributed
-	ml  *Memberlist
-	nl  *nodeList
+	ml  *nodeman
+	nl  *nodeInfoList
 	cli *Client
 }
 
 func NewRouter(
 	hd *h3geodist.Distributed,
-	ml *Memberlist,
+	ml *nodeman,
 	cli *Client,
 ) *Router {
 	router := Router{
@@ -34,22 +34,22 @@ func NewRouter(
 	return &router
 }
 
-func (r *Router) handleNodeJoin(n *Node) {
-	if err := r.hd.Add(n.Host()); err != nil {
+func (r *Router) handleNodeJoin(n *nodeInfo) {
+	if err := r.hd.Add(n.Addr()); err != nil {
 		return
 	}
 	r.nl.add(n)
 }
 
-func (r *Router) handleNodeLeave(n *Node) {
-	r.hd.Remove(n.Host())
+func (r *Router) handleNodeLeave(n *nodeInfo) {
+	r.hd.Remove(n.Addr())
 	r.nl.remove(n)
 }
 
-func (r *Router) handleNodeUpdate(n *Node) {
-	r.nl.removeByHost(n.Host())
-	r.hd.Remove(n.Host())
-	if err := r.hd.Add(n.Host()); err != nil {
+func (r *Router) handleNodeUpdate(n *nodeInfo) {
+	r.nl.removeByAddr(n.Addr())
+	r.hd.Remove(n.Addr())
+	if err := r.hd.Add(n.Addr()); err != nil {
 		return
 	}
 	r.nl.add(n)

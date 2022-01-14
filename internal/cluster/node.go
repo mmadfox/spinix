@@ -6,127 +6,118 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mmadfox/spinix/internal/hash"
+	"github.com/golang/protobuf/proto"
+	clusterv1 "github.com/mmadfox/spinix/gen/proto/go/cluster/v1"
 
-	"github.com/vmihailenco/msgpack/v5"
+	"github.com/mmadfox/spinix/internal/hash"
 )
 
-type Node struct {
-	id        uint64
-	host      string
-	hash      uint64
-	birthdate int64
+type nodeInfo struct {
+	id        uint64 // hash from addr + birthdate
+	addr      string // GRPC server address
+	addrHash  uint64 // hash from addr
+	birthdate int64  // unix nano
 }
 
-func nodeFromString(host string) *Node {
+func nodeInfoFromAddr(addr string) *nodeInfo {
 	birthdate := time.Now().UnixNano()
-	return &Node{
-		id:        host2id(host, birthdate),
-		host:      host,
-		hash:      hash.StringToUint64(host),
+	return &nodeInfo{
+		id:        makeNodeID(addr, birthdate),
+		addr:      addr,
+		addrHash:  hash.StringToUint64(addr),
 		birthdate: birthdate,
 	}
 }
 
-func host2id(host string, birthdate int64) uint64 {
-	buf := make([]byte, 8+len(host))
+func makeNodeID(addr string, birthdate int64) uint64 {
+	buf := make([]byte, 8+len(addr))
 	binary.BigEndian.PutUint64(buf, uint64(birthdate))
-	buf = append(buf, []byte(host)...)
+	buf = append(buf, []byte(addr)...)
 	return hash.BytesToUint64(buf)
 }
 
-func (n Node) ID() uint64 {
+func (n nodeInfo) ID() uint64 {
 	return n.id
 }
 
-func (n Node) Host() string {
-	return n.host
+func (n nodeInfo) Addr() string {
+	return n.addr
 }
 
-func (n Node) Hash() uint64 {
-	return n.hash
+func (n nodeInfo) AddrHash() uint64 {
+	return n.addrHash
 }
 
-func (n Node) Birthdate() int64 {
+func (n nodeInfo) Birthdate() int64 {
 	return n.birthdate
 }
 
-func (n Node) String() string {
-	return fmt.Sprintf("Node{Host: %s, ID: %d, Hash: %d, Birthdate: %d}",
-		n.host, n.id, n.hash, n.birthdate)
+func (n nodeInfo) String() string {
+	return fmt.Sprintf("nodeInfo{Addr: %s, ID: %d, AddrHash: %d, Birthdate: %d}",
+		n.addr, n.id, n.addrHash, n.birthdate)
 }
 
-func encodeNodeToMeta(n *Node) ([]byte, error) {
-	return msgpack.Marshal(struct {
-		ID        uint64
-		Host      string
-		Hash      uint64
-		Birthdate int64
-	}{
-		ID:        n.id,
-		Host:      n.host,
-		Hash:      n.hash,
-		Birthdate: n.birthdate,
+func encodeNodeInfo(n *nodeInfo) ([]byte, error) {
+	return proto.Marshal(&clusterv1.NodeInfo{
+		Id:        n.ID(),
+		Host:      n.Addr(),
+		Hash:      n.AddrHash(),
+		Birthdate: n.Birthdate(),
 	})
 }
 
-func decodeNodeFromMeta(meta []byte) (*Node, error) {
-	n := struct {
-		ID        uint64
-		Host      string
-		Hash      uint64
-		Birthdate int64
-	}{}
-	if err := msgpack.Unmarshal(meta, &n); err != nil {
+func decodeNodeInfo(meta []byte) (*nodeInfo, error) {
+	ni := clusterv1.NodeInfo{}
+	if err := proto.Unmarshal(meta, &ni); err != nil {
 		return nil, err
 	}
-	return &Node{
-		id:        n.ID,
-		host:      n.Host,
-		hash:      n.Hash,
-		birthdate: n.Birthdate,
+	return &nodeInfo{
+		id:        ni.GetId(),
+		addr:      ni.GetHost(),
+		addrHash:  ni.GetHash(),
+		birthdate: ni.GetBirthdate(),
 	}, nil
 }
 
-type nodeList struct {
+type nodeInfoList struct {
 	mu    sync.RWMutex
-	store map[uint64]*Node
+	store map[uint64]*nodeInfo
 }
 
-func newNodeList() *nodeList {
-	return &nodeList{store: make(map[uint64]*Node)}
+func newNodeList() *nodeInfoList {
+	return &nodeInfoList{store: make(map[uint64]*nodeInfo)}
 }
 
-func (nl *nodeList) add(n *Node) {
+func (nl *nodeInfoList) add(n *nodeInfo) {
 	nl.mu.Lock()
 	defer nl.mu.Unlock()
 	nl.store[n.ID()] = n
 }
 
-func (nl *nodeList) remove(n *Node) {
+func (nl *nodeInfoList) remove(n *nodeInfo) {
 	nl.mu.Lock()
 	defer nl.mu.Unlock()
 	delete(nl.store, n.ID())
 }
 
-func (nl *nodeList) removeByHost(host string) {
+func (nl *nodeInfoList) removeByAddr(addr string) {
 	nl.mu.Lock()
 	defer nl.mu.Unlock()
 	for id, node := range nl.store {
-		if node.Host() == host {
+		if node.Addr() == addr {
 			delete(nl.store, id)
 		}
 	}
 }
 
-func compareNodeByID(a, b *Node) bool {
+func compareNodeByID(a, b *nodeInfo) bool {
 	return a.ID() == b.ID()
 }
 
-func compareNodeByHost(a, b *Node) bool {
-	return a.Host() == b.Host()
+func compareNodeByAddr(a, b *nodeInfo) bool {
+	return a.Addr() == b.Addr()
 }
 
-func compareNodeByHash(a, b *Node) bool {
-	return a.Hash() == b.Hash()
+func compareNodeByAddrHash(a, b *nodeInfo) bool {
+	return a.AddrHash() == b.AddrHash()
 }

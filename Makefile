@@ -1,4 +1,4 @@
 
 .PHONY: proto
 proto:
-	buf generate
+	@buf generate
