@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNodeManager_Join(t *testing.T) {
+func TestClusterNodeManager_Join(t *testing.T) {
 	nodeman1 := testNodeManager(t)
 	nodeman2 := testNodeManager(t)
 	nodeman3 := testNodeManager(t)

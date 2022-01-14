@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNode_FromString(t *testing.T) {
+func TestClusterNode_FromString(t *testing.T) {
 	testCases := []string{
 		"127.0.0.1:2000",
 		"127.0.0.2:2000",
@@ -23,7 +23,7 @@ func TestNode_FromString(t *testing.T) {
 	}
 }
 
-func TestNode_EncodeDecode(t *testing.T) {
+func TestClusterNode_EncodeDecode(t *testing.T) {
 	testCases := []string{
 		"127.0.0.1:2000",
 		"127.0.0.2:2000",
