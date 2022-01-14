@@ -6,20 +6,20 @@ import (
 	h3geodist "github.com/mmadfox/go-h3geo-dist"
 )
 
-type Router struct {
+type router struct {
 	mu  sync.RWMutex
 	hd  *h3geodist.Distributed
 	ml  *nodeman
 	nl  *nodeInfoList
-	cli *Client
+	cli *client
 }
 
-func NewRouter(
+func newRouter(
 	hd *h3geodist.Distributed,
 	ml *nodeman,
-	cli *Client,
-) *Router {
-	router := Router{
+	cli *client,
+) *router {
+	router := router{
 		hd:  hd,
 		ml:  ml,
 		nl:  newNodeList(),
@@ -34,19 +34,19 @@ func NewRouter(
 	return &router
 }
 
-func (r *Router) handleNodeJoin(n *nodeInfo) {
+func (r *router) handleNodeJoin(n *nodeInfo) {
 	if err := r.hd.Add(n.Addr()); err != nil {
 		return
 	}
 	r.nl.add(n)
 }
 
-func (r *Router) handleNodeLeave(n *nodeInfo) {
+func (r *router) handleNodeLeave(n *nodeInfo) {
 	r.hd.Remove(n.Addr())
 	r.nl.remove(n)
 }
 
-func (r *Router) handleNodeUpdate(n *nodeInfo) {
+func (r *router) handleNodeUpdate(n *nodeInfo) {
 	r.nl.removeByAddr(n.Addr())
 	r.hd.Remove(n.Addr())
 	if err := r.hd.Add(n.Addr()); err != nil {
@@ -55,7 +55,7 @@ func (r *Router) handleNodeUpdate(n *nodeInfo) {
 	r.nl.add(n)
 }
 
-func (r *Router) handleChangeState() {
+func (r *router) handleChangeState() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

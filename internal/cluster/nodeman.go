@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/memberlist"
 )
@@ -26,6 +27,7 @@ func nodemanFromMemberlistConfig(owner *nodeInfo, c *memberlist.Config) (*nodema
 	eventsCh := make(chan memberlist.NodeEvent, 256)
 	c.Events = &memberlist.ChannelEventDelegate{Ch: eventsCh}
 	c.Delegate = newDelegate(owner)
+	c.Name = owner.Addr()
 	return &nodeman{config: c, eventsCh: eventsCh, owner: owner}, nil
 }
 
@@ -63,6 +65,10 @@ func (c *nodeman) OnChangeFunc(fn func()) {
 
 func (c *nodeman) Owner() *nodeInfo {
 	return c.owner
+}
+
+func (c *nodeman) Addr() string {
+	return c.owner.Addr()
 }
 
 func (c *nodeman) Coordinator() (*nodeInfo, error) {
@@ -104,6 +110,10 @@ func (c *nodeman) Join(peers []string) (n int, err error) {
 		return -1, fmt.Errorf("cluster/memberlist: first run the memberlist and then join peers")
 	}
 	return c.list.Join(peers)
+}
+
+func (c *nodeman) Leave(timeout time.Duration) error {
+	return c.list.Leave(timeout)
 }
 
 func (c *nodeman) NumNodes() int {

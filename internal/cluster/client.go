@@ -7,15 +7,15 @@ import (
 	"github.com/mmadfox/spinix/internal/transport"
 )
 
-type Client struct {
+type client struct {
 	pool *transport.Pool
 }
 
-func NewClient(pool *transport.Pool) *Client {
-	return &Client{pool: pool}
+func newClient(pool *transport.Pool) *client {
+	return &client{pool: pool}
 }
 
-func (c *Client) SyncNode(ctx context.Context, addr string, req *pb.SyncNodeRequest) (*pb.SyncNodeResponse, error) {
+func (c *client) SyncNode(ctx context.Context, addr string, req *pb.SyncNodeRequest) (*pb.SyncNodeResponse, error) {
 	conn, err := c.pool.Conn(ctx, addr)
 	if err != nil {
 		return nil, err

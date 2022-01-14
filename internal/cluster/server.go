@@ -8,8 +8,7 @@ import (
 
 type Server struct {
 	pb.ClusterServiceServer
-
-	router *Router
+	cluster *Cluster
 }
 
 func (s *Server) SyncNode(ctx context.Context, req *pb.SyncNodeRequest) (*pb.SyncNodeResponse, error) {
