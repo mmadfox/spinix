@@ -1,12 +1,21 @@
 cluster:
-  grpc_addr: 127.0.0.1
-  grpc_port: 9000
+  grpc_server_addr: 127.0.0.1
+  grpc_server_port: 9000
+
+  grpc_client_idle_timeout: 60s
+  grpc_client_max_life_duration: 600s
+  grpc_client_pool_init_count: 3
+  grpc_client_pool_capacity: 5
+
+  h3geo_cell_level: 2
+
   join_retry_interval: 50ms
   max_join_attempts: 3
   peers:
     - 127.0.0.1:9000
     - 127.0.0.2:9000
     - 127.0.0.3:9000
+
   memberlist_bind_addr: 127.0.0.1
   memberlist_bind_port: 11000
   memberlist_advertise_addr: 127.0.0.1

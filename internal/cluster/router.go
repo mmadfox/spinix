@@ -25,12 +25,6 @@ func newRouter(
 		nl:  newNodeList(),
 		cli: cli,
 	}
-
-	ml.OnJoinFunc(router.handleNodeJoin)
-	ml.OnLeaveFunc(router.handleNodeLeave)
-	ml.OnUpdateFunc(router.handleNodeUpdate)
-	ml.OnChangeFunc(router.handleChangeState)
-
 	return &router
 }
 
