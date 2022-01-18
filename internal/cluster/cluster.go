@@ -23,6 +23,7 @@ type Cluster struct {
 	server      *server
 	balancer    *balancer
 	logger      *zap.Logger
+	coordinator *coordinator
 }
 
 func New(grpcServer *grpc.Server, logger *zap.Logger, opts *Options) (*Cluster, error) {
@@ -48,6 +49,9 @@ func New(grpcServer *grpc.Server, logger *zap.Logger, opts *Options) (*Cluster, 
 	if err := setupServer(cluster, grpcServer); err != nil {
 		return nil, err
 	}
+
+	setupCoordinator(cluster)
+
 	return cluster, nil
 }
 
@@ -97,7 +101,7 @@ func (c *Cluster) handleNodeUpdate(ni *nodeInfo) {
 }
 
 func (c *Cluster) handleChangeState() {
-
+	c.coordinator.Synchronize()
 }
 
 func setupRouter(c *Cluster) error {
@@ -119,6 +123,14 @@ func setupRouter(c *Cluster) error {
 func setupServer(c *Cluster, grpcServer *grpc.Server) error {
 	c.server = newServer(grpcServer)
 	return nil
+}
+
+func setupCoordinator(c *Cluster) {
+	c.coordinator = &coordinator{
+		client:      c.client,
+		logger:      c.logger,
+		nodeManager: c.nodeManager,
+	}
 }
 
 func setupBalancer(c *Cluster) error {
