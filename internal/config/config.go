@@ -3,6 +3,8 @@ package config
 import (
 	"io/ioutil"
 
+	"github.com/mmadfox/spinix/internal/cluster"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,6 +21,10 @@ func newConfig() *Config {
 func (c *Config) prepare() {
 	c.Cluster.GRPCServerAddr = c.GRPC.ServerAddr
 	c.Cluster.GRPCServerPort = c.GRPC.ServerPort
+}
+
+func (c *Config) ClusterOptions() *cluster.Options {
+	return &c.Cluster.Options
 }
 
 func (c *Config) sanitize() {

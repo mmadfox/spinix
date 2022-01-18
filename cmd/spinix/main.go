@@ -56,7 +56,7 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
-	c, err := cluster.New(grpcServer, logger, &conf.Cluster.Options)
+	c, err := cluster.New(grpcServer, logger, conf.ClusterOptions())
 	if err != nil {
 		sugarLogger.Errorf("failed to init cluster: %v", err)
 		os.Exit(1)
@@ -71,7 +71,7 @@ func main() {
 			logger.Info("shutdown: GRPC server")
 			grpcServer.GracefulStop()
 			_ = grpcListener.Close()
-		}, interruptOrder(1))
+		}, interruptPosition(1))
 	}
 
 	{
@@ -83,7 +83,7 @@ func main() {
 			if err := c.Shutdown(); err != nil {
 				sugarLogger.Error(err)
 			}
-		}, interruptOrder(2))
+		}, interruptPosition(2))
 	}
 
 	{
@@ -98,7 +98,7 @@ func terminate(ctx context.Context) (execute func() error, interrupt func(error)
 	return execute, interrupt, 0
 }
 
-func interruptOrder(n int) int {
+func interruptPosition(n int) int {
 	return n
 }
 

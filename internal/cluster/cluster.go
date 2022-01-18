@@ -80,9 +80,10 @@ func (c *Cluster) handleNodeJoin(ni *nodeInfo) {
 	if err := c.router.AddNode(ni); err != nil {
 		c.logger.Error("Node join error",
 			zap.String("host", ni.Addr()), zap.Error(err))
-	} else {
-		c.logger.Info("Node joined", zap.String("host", ni.Addr()))
+		return
 	}
+
+	c.logger.Info("Node joined", zap.String("host", ni.Addr()))
 }
 
 func (c *Cluster) handleNodeLeave(ni *nodeInfo) {
@@ -95,9 +96,11 @@ func (c *Cluster) handleNodeUpdate(ni *nodeInfo) {
 	if err := c.router.UpdateNode(ni); err != nil {
 		c.logger.Error("Node update",
 			zap.String("host", ni.Addr()), zap.Error(err))
-	} else {
-		c.logger.Info("Node updated", zap.String("host", ni.Addr()))
+		return
 	}
+
+	c.logger.Info("Node updated", zap.String("host", ni.Addr()))
+
 }
 
 func (c *Cluster) handleChangeState() {
