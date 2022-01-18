@@ -3,20 +3,43 @@ package config
 import (
 	"io/ioutil"
 
-	"github.com/mmadfox/spinix/internal/cluster"
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Cluster cluster.Options `yaml:"cluster"`
+	GRPC    grpc        `yaml:"grpc"`
+	Logger  logger      `yaml:"logger"`
+	Cluster clusterConf `yaml:"cluster"`
+}
+
+func newConfig() *Config {
+	return &Config{}
+}
+
+func (c *Config) prepare() {
+	c.Cluster.GRPCServerAddr = c.GRPC.ServerAddr
+	c.Cluster.GRPCServerPort = c.GRPC.ServerPort
+}
+
+func (c *Config) sanitize() {
+
+}
+
+func (c *Config) validate() error {
+	return nil
 }
 
 func FromBytes(data []byte) (*Config, error) {
-	var conf Config
-	if err := yaml.Unmarshal(data, &conf); err != nil {
+	conf := newConfig()
+	if err := yaml.Unmarshal(data, conf); err != nil {
 		return nil, err
 	}
-	return &conf, nil
+	conf.sanitize()
+	conf.prepare()
+	if err := conf.validate(); err != nil {
+		return nil, err
+	}
+	return conf, nil
 }
 
 func FromFile(filename string) (*Config, error) {

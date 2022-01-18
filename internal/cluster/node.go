@@ -3,8 +3,6 @@ package cluster
 import (
 	"encoding/binary"
 	"fmt"
-	"net"
-	"strconv"
 	"sync"
 	"time"
 
@@ -32,8 +30,7 @@ func nodeInfoFromAddr(addr string) *nodeInfo {
 }
 
 func makeNodeInfo(addr string, port int) *nodeInfo {
-	host := net.JoinHostPort(addr, strconv.Itoa(port))
-	return nodeInfoFromAddr(host)
+	return nodeInfoFromAddr(joinAddrPort(addr, port))
 }
 
 func makeNodeID(addr string, birthdate int64) uint64 {

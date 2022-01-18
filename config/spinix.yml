@@ -1,7 +1,21 @@
-cluster:
-  grpc_server_addr: 127.0.0.1
-  grpc_server_port: 9000
+grpc:
+  server_addr: 127.0.0.1
+  server_port: 9000
 
+logger:
+  name: spinix
+  env: production # development
+  level: info # debug, warn, error, dpanic, panic, fatal
+  development: true
+  disableCaller: false
+  disableStacktrace: true
+  encoding: json # console
+  outputPaths:
+    - stderr
+  errorOutputPaths:
+    - stderr
+
+cluster:
   grpc_client_idle_timeout: 60s
   grpc_client_max_life_duration: 600s
   grpc_client_pool_init_count: 3
@@ -15,12 +29,11 @@ cluster:
   max_join_attempts: 3
   peers:
     - 127.0.0.1:9000
-    - 127.0.0.2:9000
-    - 127.0.0.3:9000
 
+  memberlist_default_conf: local # wan, lan
   memberlist_bind_addr: 127.0.0.1
   memberlist_bind_port: 11000
-  memberlist_advertise_addr: 127.0.0.1
+  # memberlist_advertise_addr:
   memberlist_advertise_port: 12000
   memberlist_enable_compression: true
   memberlist_indirect_checks: 3

@@ -1,7 +1,16 @@
-cluster:
-  grpc_server_addr: 127.0.0.1
-  grpc_server_port: 9000
+grpc:
+  server_addr: 127.0.0.1
+  server_port: 9000
 
+logger:
+  name: spinix
+  level: info
+  formatter: json # text
+  report_caller: true # false
+  fields:
+    key: val
+
+cluster:
   grpc_client_idle_timeout: 60s
   grpc_client_max_life_duration: 600s
   grpc_client_pool_init_count: 3

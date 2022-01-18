@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/memberlist"
 )
 
+const eventQueueCapacity = 256
+
 type nodeman struct {
 	owner        *nodeInfo
 	config       *memberlist.Config
@@ -24,9 +26,13 @@ type nodeman struct {
 }
 
 func nodemanFromMemberlistConfig(owner *nodeInfo, c *memberlist.Config) (*nodeman, error) {
-	eventsCh := make(chan memberlist.NodeEvent, 256)
+	eventsCh := make(chan memberlist.NodeEvent, eventQueueCapacity)
 	c.Events = &memberlist.ChannelEventDelegate{Ch: eventsCh}
-	c.Delegate = newDelegate(owner)
+	ownerMeta, err := encodeNodeInfo(owner)
+	if err != nil {
+		return nil, err
+	}
+	c.Delegate = delegate{meta: ownerMeta}
 	c.Name = owner.Addr()
 	return &nodeman{config: c, eventsCh: eventsCh, owner: owner}, nil
 }
@@ -107,12 +113,15 @@ func (c *nodeman) ListenAndServe() error {
 
 func (c *nodeman) Join(peers []string) (n int, err error) {
 	if c.list == nil {
-		return -1, fmt.Errorf("cluster/memberlist: first run the memberlist and then join peers")
+		return -1, fmt.Errorf("cluster/memberlist: first run the nodeman and then join peers")
 	}
 	return c.list.Join(peers)
 }
 
 func (c *nodeman) Leave(timeout time.Duration) error {
+	if c.list == nil {
+		return nil
+	}
 	return c.list.Leave(timeout)
 }
 
@@ -182,11 +191,6 @@ type delegate struct {
 }
 
 var _ memberlist.Delegate = (*delegate)(nil)
-
-func newDelegate(n *nodeInfo) delegate {
-	data, _ := encodeNodeInfo(n)
-	return delegate{meta: data}
-}
 
 func (d delegate) NodeMeta(_ int) []byte {
 	return d.meta

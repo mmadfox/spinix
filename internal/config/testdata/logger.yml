@@ -1,0 +1,11 @@
+logger:
+  env: production # development
+  level: info # debug, warn, error, dpanic, panic, fatal
+  development: true
+  disableCaller: false
+  disableStacktrace: false
+  encoding: json # console
+  outputPaths:
+    - stderr
+  errorOutputPaths:
+    - stderr

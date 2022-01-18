@@ -1,6 +1,8 @@
 package cluster
 
 import (
+	"net"
+	"strconv"
 	"time"
 
 	"google.golang.org/grpc"
@@ -25,6 +27,7 @@ type Options struct {
 	MaxJoinAttempts   int           `yaml:"max_join_attempts"`
 	Peers             []string      `yaml:"peers"`
 
+	MemberlistDefaultConf   string         `yaml:"memberlist_default_conf"`
 	BindAddr                string         `yaml:"memberlist_bind_addr"`
 	BindPort                int            `yaml:"memberlist_bind_port"`
 	AdvertiseAddr           *string        `yaml:"memberlist_advertise_addr"`
@@ -52,7 +55,17 @@ type Options struct {
 }
 
 func toMemberlistConf(o *Options) *memberlist.Config {
-	conf := memberlist.DefaultLANConfig()
+	var conf *memberlist.Config
+	switch o.MemberlistDefaultConf {
+	case "local":
+		conf = memberlist.DefaultLocalConfig()
+	case "wan":
+		conf = memberlist.DefaultWANConfig()
+	case "lan":
+		conf = memberlist.DefaultLANConfig()
+	default:
+		conf = memberlist.DefaultLocalConfig()
+	}
 	if len(o.BindAddr) > 0 {
 		conf.BindAddr = o.BindAddr
 	}
@@ -120,4 +133,8 @@ func toMemberlistConf(o *Options) *memberlist.Config {
 		conf.UDPBufferSize = *o.UDPBufferSize
 	}
 	return conf
+}
+
+func joinAddrPort(addr string, port int) string {
+	return net.JoinHostPort(addr, strconv.Itoa(port))
 }

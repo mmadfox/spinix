@@ -2,8 +2,10 @@ package cluster
 
 import (
 	"fmt"
+	"sync"
+	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	h3geodist "github.com/mmadfox/go-h3geo-dist"
 
@@ -13,15 +15,17 @@ import (
 )
 
 type Cluster struct {
+	wg          sync.WaitGroup
 	opts        *Options
 	nodeManager *nodeman
 	router      *router
 	client      *client
+	server      *server
 	balancer    *balancer
-	logger      *logrus.Logger
+	logger      *zap.Logger
 }
 
-func New(logger *logrus.Logger, opts *Options) (*Cluster, error) {
+func New(grpcServer *grpc.Server, logger *zap.Logger, opts *Options) (*Cluster, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("cluster: options cannot be nil")
 	}
@@ -41,35 +45,54 @@ func New(logger *logrus.Logger, opts *Options) (*Cluster, error) {
 	if err := setupBalancer(cluster); err != nil {
 		return nil, err
 	}
+	if err := setupServer(cluster, grpcServer); err != nil {
+		return nil, err
+	}
 	return cluster, nil
 }
 
-func (c *Cluster) Run() error {
-	return c.nodeManager.ListenAndServe()
+func (c *Cluster) Run() (err error) {
+	if err = c.nodeManager.ListenAndServe(); err != nil {
+		return err
+	}
+	// TODO:
+	for i := 0; i < 3; i++ {
+		time.Sleep(50 * time.Millisecond)
+		if _, err = c.nodeManager.Join(c.opts.Peers); err == nil {
+			break
+		}
+	}
+	c.wg.Add(1)
+	c.wg.Wait()
+	return
 }
 
 func (c *Cluster) Shutdown() error {
+	defer c.wg.Done()
 	return c.nodeManager.Shutdown()
 }
 
 func (c *Cluster) handleNodeJoin(ni *nodeInfo) {
 	if err := c.router.AddNode(ni); err != nil {
-		c.logger.Errorf("Node %s join error: %v", ni.Addr(), err)
+		c.logger.Error("Node join error",
+			zap.String("host", ni.Addr()), zap.Error(err))
 	} else {
-		c.logger.Infof("Node joined: %s", ni)
+		c.logger.Info("Node joined", zap.String("host", ni.Addr()))
 	}
 }
 
 func (c *Cluster) handleNodeLeave(ni *nodeInfo) {
 	c.router.RemoveNode(ni)
-	c.logger.Infof("Node leaved: %s", ni)
+	c.client.Close(ni.Addr())
+	c.logger.Info("Node leaved", zap.String("host", ni.Addr()))
 }
 
 func (c *Cluster) handleNodeUpdate(ni *nodeInfo) {
 	if err := c.router.UpdateNode(ni); err != nil {
-		c.logger.Errorf("Node %s update error: %v", ni.Addr(), err)
+		c.logger.Error("Node update",
+			zap.String("host", ni.Addr()), zap.Error(err))
 	} else {
-		c.logger.Infof("Node updated: %s", ni)
+		c.logger.Info("Node updated", zap.String("host", ni.Addr()))
 	}
 }
 
@@ -93,6 +116,11 @@ func setupRouter(c *Cluster) error {
 	return nil
 }
 
+func setupServer(c *Cluster, grpcServer *grpc.Server) error {
+	c.server = newServer(grpcServer)
+	return nil
+}
+
 func setupBalancer(c *Cluster) error {
 	return nil
 }
@@ -100,6 +128,7 @@ func setupBalancer(c *Cluster) error {
 func setupNodeManager(c *Cluster) error {
 	owner := makeNodeInfo(c.opts.GRPCServerAddr, c.opts.GRPCServerPort)
 	nodeManagerConf := toMemberlistConf(c.opts)
+	nodeManagerConf.Logger = zap.NewStdLog(c.logger)
 	nodeManager, err := nodemanFromMemberlistConfig(owner, nodeManagerConf)
 	if err != nil {
 		return err
@@ -115,7 +144,7 @@ func setupClient(c *Cluster) error {
 		Init:            c.opts.GRPCClientInitPoolCount,
 		Capacity:        c.opts.GRPCClientPoolCapacity,
 		NewConn: func(addr string) (*grpc.ClientConn, error) {
-			return grpc.Dial(addr, c.opts.GRPCClientDialOpts...)
+			return grpc.Dial(addr)
 		},
 	})
 	if err != nil {

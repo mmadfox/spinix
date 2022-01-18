@@ -12,9 +12,13 @@ func TestConfig_FromFile(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, conf)
 
+	// grpc
+	assert.Equal(t, "127.0.0.1", conf.GRPC.ServerAddr)
+	assert.Equal(t, 9000, conf.GRPC.ServerPort)
+
+	// logger
+
 	// cluster
-	assert.Equal(t, "127.0.0.1", conf.Cluster.GRPCServerAddr)
-	assert.Equal(t, 9000, conf.Cluster.GRPCServerPort)
 	assert.Equal(t, 50*time.Millisecond, conf.Cluster.JoinRetryInterval)
 	assert.Equal(t, 3, conf.Cluster.MaxJoinAttempts)
 	assert.Len(t, conf.Cluster.Peers, 3)
