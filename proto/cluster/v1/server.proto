@@ -5,9 +5,14 @@ package cluster.v1;
 option go_package = "proto/cluster/v1;clusterv1";
 
 service ClusterService {
-    rpc SyncNode(SyncNodeRequest) returns (SyncNodeResponse);
+    rpc VNodeStats(VNodeStatsRequest) returns (VNodeStatsResponse);
+    rpc UpdateRouter(UpdateRouterRequest) returns (UpdateRouterResponse);
 }
 
-message SyncNodeRequest {}
+message VNodeStatsRequest {}
 
-message SyncNodeResponse {}
+message VNodeStatsResponse {}
+
+message UpdateRouterRequest {}
+
+message UpdateRouterResponse {}

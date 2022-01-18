@@ -20,14 +20,14 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type SyncNodeRequest struct {
+type VNodeStatsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 }
 
-func (x *SyncNodeRequest) Reset() {
-	*x = SyncNodeRequest{}
+func (x *VNodeStatsRequest) Reset() {
+	*x = VNodeStatsRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_cluster_v1_server_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -35,13 +35,13 @@ func (x *SyncNodeRequest) Reset() {
 	}
 }
 
-func (x *SyncNodeRequest) String() string {
+func (x *VNodeStatsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SyncNodeRequest) ProtoMessage() {}
+func (*VNodeStatsRequest) ProtoMessage() {}
 
-func (x *SyncNodeRequest) ProtoReflect() protoreflect.Message {
+func (x *VNodeStatsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_cluster_v1_server_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -53,19 +53,19 @@ func (x *SyncNodeRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SyncNodeRequest.ProtoReflect.Descriptor instead.
-func (*SyncNodeRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use VNodeStatsRequest.ProtoReflect.Descriptor instead.
+func (*VNodeStatsRequest) Descriptor() ([]byte, []int) {
 	return file_cluster_v1_server_proto_rawDescGZIP(), []int{0}
 }
 
-type SyncNodeResponse struct {
+type VNodeStatsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 }
 
-func (x *SyncNodeResponse) Reset() {
-	*x = SyncNodeResponse{}
+func (x *VNodeStatsResponse) Reset() {
+	*x = VNodeStatsResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_cluster_v1_server_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -73,13 +73,13 @@ func (x *SyncNodeResponse) Reset() {
 	}
 }
 
-func (x *SyncNodeResponse) String() string {
+func (x *VNodeStatsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SyncNodeResponse) ProtoMessage() {}
+func (*VNodeStatsResponse) ProtoMessage() {}
 
-func (x *SyncNodeResponse) ProtoReflect() protoreflect.Message {
+func (x *VNodeStatsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_cluster_v1_server_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -91,9 +91,85 @@ func (x *SyncNodeResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SyncNodeResponse.ProtoReflect.Descriptor instead.
-func (*SyncNodeResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use VNodeStatsResponse.ProtoReflect.Descriptor instead.
+func (*VNodeStatsResponse) Descriptor() ([]byte, []int) {
 	return file_cluster_v1_server_proto_rawDescGZIP(), []int{1}
+}
+
+type UpdateRouterRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *UpdateRouterRequest) Reset() {
+	*x = UpdateRouterRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_cluster_v1_server_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UpdateRouterRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRouterRequest) ProtoMessage() {}
+
+func (x *UpdateRouterRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cluster_v1_server_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRouterRequest.ProtoReflect.Descriptor instead.
+func (*UpdateRouterRequest) Descriptor() ([]byte, []int) {
+	return file_cluster_v1_server_proto_rawDescGZIP(), []int{2}
+}
+
+type UpdateRouterResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *UpdateRouterResponse) Reset() {
+	*x = UpdateRouterResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_cluster_v1_server_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UpdateRouterResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRouterResponse) ProtoMessage() {}
+
+func (x *UpdateRouterResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cluster_v1_server_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRouterResponse.ProtoReflect.Descriptor instead.
+func (*UpdateRouterResponse) Descriptor() ([]byte, []int) {
+	return file_cluster_v1_server_proto_rawDescGZIP(), []int{3}
 }
 
 var File_cluster_v1_server_proto protoreflect.FileDescriptor
@@ -101,17 +177,26 @@ var File_cluster_v1_server_proto protoreflect.FileDescriptor
 var file_cluster_v1_server_proto_rawDesc = []byte{
 	0x0a, 0x17, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x2f, 0x76, 0x31, 0x2f, 0x73, 0x65, 0x72,
 	0x76, 0x65, 0x72, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x0a, 0x63, 0x6c, 0x75, 0x73, 0x74,
-	0x65, 0x72, 0x2e, 0x76, 0x31, 0x22, 0x11, 0x0a, 0x0f, 0x53, 0x79, 0x6e, 0x63, 0x4e, 0x6f, 0x64,
-	0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x12, 0x0a, 0x10, 0x53, 0x79, 0x6e, 0x63,
-	0x4e, 0x6f, 0x64, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x32, 0x57, 0x0a, 0x0e,
-	0x43, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x45,
-	0x0a, 0x08, 0x53, 0x79, 0x6e, 0x63, 0x4e, 0x6f, 0x64, 0x65, 0x12, 0x1b, 0x2e, 0x63, 0x6c, 0x75,
-	0x73, 0x74, 0x65, 0x72, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x79, 0x6e, 0x63, 0x4e, 0x6f, 0x64, 0x65,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1c, 0x2e, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65,
-	0x72, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x79, 0x6e, 0x63, 0x4e, 0x6f, 0x64, 0x65, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x1c, 0x5a, 0x1a, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x63,
-	0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x2f, 0x76, 0x31, 0x3b, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65,
-	0x72, 0x76, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x72, 0x2e, 0x76, 0x31, 0x22, 0x13, 0x0a, 0x11, 0x56, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x74,
+	0x61, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x14, 0x0a, 0x12, 0x56, 0x4e,
+	0x6f, 0x64, 0x65, 0x53, 0x74, 0x61, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x15, 0x0a, 0x13, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x16, 0x0a, 0x14, 0x55, 0x70, 0x64, 0x61, 0x74,
+	0x65, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x32,
+	0xb0, 0x01, 0x0a, 0x0e, 0x43, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x53, 0x65, 0x72, 0x76, 0x69,
+	0x63, 0x65, 0x12, 0x4b, 0x0a, 0x0a, 0x56, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x74, 0x61, 0x74, 0x73,
+	0x12, 0x1d, 0x2e, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x2e, 0x76, 0x31, 0x2e, 0x56, 0x4e,
+	0x6f, 0x64, 0x65, 0x53, 0x74, 0x61, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
+	0x1e, 0x2e, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x2e, 0x76, 0x31, 0x2e, 0x56, 0x4e, 0x6f,
+	0x64, 0x65, 0x53, 0x74, 0x61, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x51, 0x0a, 0x0c, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x12,
+	0x1f, 0x2e, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x2e, 0x76, 0x31, 0x2e, 0x55, 0x70, 0x64,
+	0x61, 0x74, 0x65, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x20, 0x2e, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x2e, 0x76, 0x31, 0x2e, 0x55, 0x70,
+	0x64, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x42, 0x1c, 0x5a, 0x1a, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x63, 0x6c, 0x75, 0x73,
+	0x74, 0x65, 0x72, 0x2f, 0x76, 0x31, 0x3b, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x76, 0x31,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -126,16 +211,20 @@ func file_cluster_v1_server_proto_rawDescGZIP() []byte {
 	return file_cluster_v1_server_proto_rawDescData
 }
 
-var file_cluster_v1_server_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_cluster_v1_server_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_cluster_v1_server_proto_goTypes = []interface{}{
-	(*SyncNodeRequest)(nil),  // 0: cluster.v1.SyncNodeRequest
-	(*SyncNodeResponse)(nil), // 1: cluster.v1.SyncNodeResponse
+	(*VNodeStatsRequest)(nil),    // 0: cluster.v1.VNodeStatsRequest
+	(*VNodeStatsResponse)(nil),   // 1: cluster.v1.VNodeStatsResponse
+	(*UpdateRouterRequest)(nil),  // 2: cluster.v1.UpdateRouterRequest
+	(*UpdateRouterResponse)(nil), // 3: cluster.v1.UpdateRouterResponse
 }
 var file_cluster_v1_server_proto_depIdxs = []int32{
-	0, // 0: cluster.v1.ClusterService.SyncNode:input_type -> cluster.v1.SyncNodeRequest
-	1, // 1: cluster.v1.ClusterService.SyncNode:output_type -> cluster.v1.SyncNodeResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	0, // 0: cluster.v1.ClusterService.VNodeStats:input_type -> cluster.v1.VNodeStatsRequest
+	2, // 1: cluster.v1.ClusterService.UpdateRouter:input_type -> cluster.v1.UpdateRouterRequest
+	1, // 2: cluster.v1.ClusterService.VNodeStats:output_type -> cluster.v1.VNodeStatsResponse
+	3, // 3: cluster.v1.ClusterService.UpdateRouter:output_type -> cluster.v1.UpdateRouterResponse
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -148,7 +237,7 @@ func file_cluster_v1_server_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_cluster_v1_server_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SyncNodeRequest); i {
+			switch v := v.(*VNodeStatsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -160,7 +249,31 @@ func file_cluster_v1_server_proto_init() {
 			}
 		}
 		file_cluster_v1_server_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SyncNodeResponse); i {
+			switch v := v.(*VNodeStatsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_cluster_v1_server_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*UpdateRouterRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_cluster_v1_server_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*UpdateRouterResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -178,7 +291,7 @@ func file_cluster_v1_server_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_cluster_v1_server_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

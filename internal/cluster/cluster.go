@@ -19,7 +19,7 @@ type Cluster struct {
 	opts        *Options
 	nodeManager *nodeman
 	router      *router
-	client      *client
+	client      *pool
 	server      *server
 	balancer    *balancer
 	logger      *zap.Logger
@@ -192,6 +192,6 @@ func setupClient(c *Cluster) error {
 	if err != nil {
 		return err
 	}
-	c.client = newClient(pool)
+	c.client = newPool(pool)
 	return nil
 }

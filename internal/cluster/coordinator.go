@@ -8,7 +8,7 @@ import (
 
 type coordinator struct {
 	mu          sync.RWMutex
-	client      *client
+	client      *pool
 	nodeManager *nodeman
 	logger      *zap.Logger
 }

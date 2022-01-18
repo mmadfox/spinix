@@ -12,7 +12,7 @@ type router struct {
 	mu         sync.RWMutex
 	hd         *h3geodist.Distributed
 	nl         *nodeInfoList
-	cli        *client
+	cli        *pool
 	routes     map[uint64]*pb.Route
 	pVNodeList *vnodeList
 	sVNodeList *vnodeList
@@ -20,7 +20,7 @@ type router struct {
 
 func newRouter(
 	hd *h3geodist.Distributed,
-	cli *client,
+	cli *pool,
 ) *router {
 	router := router{
 		hd:  hd,
@@ -67,6 +67,14 @@ func (r *router) ChangeState() {
 	r.mu.Lock()
 	r.routes = routes
 	r.mu.Unlock()
+
+	if err := r.updateRoutersOnCluster(); err != nil {
+		return
+	}
+}
+
+func (r *router) updateRoutersOnCluster() error {
+	return nil
 }
 
 func (r *router) makePrimaryList(addr string, id uint64) []*pb.NodeInfo {
