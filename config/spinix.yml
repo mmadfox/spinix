@@ -30,7 +30,7 @@ cluster:
   peers:
     - 127.0.0.1:9000
 
-  memberlist_default_conf: local # wan, lan
+  memberlist_default_conf: wan # local, lan
   memberlist_bind_addr: 127.0.0.1
   memberlist_bind_port: 11000
   # memberlist_advertise_addr:
@@ -38,18 +38,18 @@ cluster:
   memberlist_enable_compression: true
   memberlist_indirect_checks: 3
   memberlist_retransmit_mult: 4
-  memberlist_suspicion_mult: 4
-  memberlist_tcp_timeout: 10s
-  memberlist_push_pull_interval: 30s
-  memberlist_probe_timeout: 500ms
-  memberlist_probe_interval: 1s
-  memberlist_gossip_interval: 200ms
-  memberlist_gossip_dead_time: 30s
+  memberlist_suspicion_mult: 8
+  memberlist_tcp_timeout: 30s
+  memberlist_push_pull_interval: 60s
+  memberlist_probe_timeout: 10s
+  memberlist_probe_interval: 5s
+  memberlist_gossip_interval: 500ms
+  memberlist_gossip_dead_time: 60s
+  memberlist_gossip_nodes: 4
+  memberlist_gossip_verify_outgoing: true
+  memberlist_gossip_verify_incoming: true
   memberlist_suspicion_max_timeout_mult: 6
   memberlist_awareness_max_multiplier: 8
-  memberlist_gossip_nodes: 3
-  memberlist_gossip_verify_incoming: true
-  memberlist_gossip_verify_outgoing: true
   memberlist_dns_config_path: /etc/resolv.conf
   memberlist_handoff_queue_depth: 1024
   memberlist_udp_buffer_size: 1400

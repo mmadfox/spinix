@@ -8,14 +8,6 @@ service ClusterService {
     rpc SyncNode(SyncNodeRequest) returns (SyncNodeResponse);
 }
 
-message NodeInfo {
-    uint64 id = 1;
-    string host = 2;
-    uint64 hash = 3;
-    int64 birthdate = 4;
-}
-
 message SyncNodeRequest {}
 
 message SyncNodeResponse {}
-

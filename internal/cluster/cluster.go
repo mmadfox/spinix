@@ -56,17 +56,13 @@ func New(grpcServer *grpc.Server, logger *zap.Logger, opts *Options) (*Cluster, 
 }
 
 func (c *Cluster) Run() (err error) {
+	c.wg.Add(1)
 	if err = c.nodeManager.ListenAndServe(); err != nil {
 		return err
 	}
-	// TODO:
-	for i := 0; i < 3; i++ {
-		time.Sleep(50 * time.Millisecond)
-		if _, err = c.nodeManager.Join(c.opts.Peers); err == nil {
-			break
-		}
+	if err := c.joinNodeToCluster(); err != nil {
+		return err
 	}
-	c.wg.Add(1)
 	c.wg.Wait()
 	return
 }
@@ -84,6 +80,27 @@ func (c *Cluster) handleNodeJoin(ni *nodeInfo) {
 	}
 
 	c.logger.Info("Node joined", zap.String("host", ni.Addr()))
+}
+
+func (c *Cluster) joinNodeToCluster() (err error) {
+	for i := 0; i < c.opts.MaxJoinAttempts; i++ {
+		if _, err = c.nodeManager.Join(c.opts.Peers); err == nil {
+			return
+		}
+
+		if err != nil {
+			c.logger.Info("Node join error", zap.Error(err))
+		}
+
+		c.logger.Info("Waiting for next join",
+			zap.Int("maxJoinAttempts", c.opts.MaxJoinAttempts),
+			zap.Int("curJoinAttempts", i),
+			zap.Duration("joinRetryInterval", c.opts.JoinRetryInterval),
+		)
+
+		<-time.After(c.opts.JoinRetryInterval)
+	}
+	return
 }
 
 func (c *Cluster) handleNodeLeave(ni *nodeInfo) {

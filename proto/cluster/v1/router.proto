@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package cluster.v1;
+
+option go_package = "proto/cluster/v1;clusterv1";
+
+import "cluster/v1/nodeinfo.proto";
+
+message Route {
+  uint64 vnode = 1;
+  repeated cluster.v1.NodeInfo primary = 2;
+  repeated cluster.v1.NodeInfo secondary = 3;
+}

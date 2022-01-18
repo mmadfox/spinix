@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package cluster.v1;
+
+option go_package = "proto/cluster/v1;clusterv1";
+
+message NodeInfo {
+  uint64 id = 1;
+  string host = 2;
+  uint64 hash = 3;
+  int64 birthdate = 4;
+}

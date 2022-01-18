@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.19.1
-// source: cluster/v1/cluster.proto
+// source: cluster/v1/server.proto
 
 package clusterv1
 
@@ -99,5 +99,5 @@ var ClusterService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "cluster/v1/cluster.proto",
+	Metadata: "cluster/v1/server.proto",
 }
