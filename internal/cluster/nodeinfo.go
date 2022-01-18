@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	clusterv1 "github.com/mmadfox/spinix/gen/proto/go/cluster/v1"
+	pb "github.com/mmadfox/spinix/gen/proto/go/cluster/v1"
 
 	"github.com/mmadfox/spinix/internal/hash"
 )
@@ -59,6 +60,15 @@ func (n nodeInfo) Birthdate() int64 {
 func (n nodeInfo) String() string {
 	return fmt.Sprintf("nodeInfo{Addr: %s, ID: %d, AddrHash: %d, Birthdate: %d}",
 		n.addr, n.id, n.addrHash, n.birthdate)
+}
+
+func (n nodeInfo) ToProto() *pb.NodeInfo {
+	return &pb.NodeInfo{
+		Id:        n.id,
+		Host:      n.addr,
+		Hash:      n.addrHash,
+		Birthdate: n.birthdate,
+	}
 }
 
 func encodeNodeInfo(n *nodeInfo) ([]byte, error) {

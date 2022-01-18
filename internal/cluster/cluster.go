@@ -23,6 +23,8 @@ type Cluster struct {
 	server      *server
 	balancer    *balancer
 	logger      *zap.Logger
+	pVNodeList  *vnodeList
+	sVNodeList  *vnodeList
 	coordinator *coordinator
 }
 
@@ -117,11 +119,13 @@ func (c *Cluster) handleNodeUpdate(ni *nodeInfo) {
 	}
 
 	c.logger.Info("Node updated", zap.String("host", ni.Addr()))
-
 }
 
 func (c *Cluster) handleChangeState() {
+	c.router.ChangeState()
 	c.coordinator.Synchronize()
+
+	c.logger.Info("Changed node state")
 }
 
 func setupRouter(c *Cluster) error {
@@ -132,11 +136,17 @@ func setupRouter(c *Cluster) error {
 	if err != nil {
 		return err
 	}
+
 	c.router = newRouter(h3dist, c.client)
 	c.nodeManager.OnJoinFunc(c.handleNodeJoin)
 	c.nodeManager.OnLeaveFunc(c.handleNodeLeave)
 	c.nodeManager.OnUpdateFunc(c.handleNodeUpdate)
 	c.nodeManager.OnChangeFunc(c.handleChangeState)
+
+	c.pVNodeList = newVNodeList(h3dist.VNodes(), Primary)
+	c.sVNodeList = newVNodeList(h3dist.VNodes(), Secondary)
+	c.router.pVNodeList = c.pVNodeList
+	c.router.sVNodeList = c.sVNodeList
 	return nil
 }
 

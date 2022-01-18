@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/golang/protobuf v1.4.3
 	github.com/hashicorp/memberlist v0.3.1
-	github.com/mmadfox/go-h3geo-dist v0.3.0
+	github.com/mmadfox/go-h3geo-dist v0.4.0
 	github.com/mmadfox/run v1.2.0
 	github.com/mmcloughlin/spherand v0.0.0-20200201191112-cd5c4c9261aa
 	github.com/processout/grpc-go-pool v1.2.1
