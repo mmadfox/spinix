@@ -4,18 +4,25 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/hashicorp/memberlist"
 )
 
-const eventQueueCapacity = 256
+const (
+	eventQueueCapacity  = 256
+	leaveClusterTimeout = 10 * time.Second
+)
 
 type nodeman struct {
 	owner        *nodeInfo
 	config       *memberlist.Config
 	list         *memberlist.Memberlist
 	mu           sync.RWMutex
+	shutdown     int32
 	wg           sync.WaitGroup
 	stopCh       chan struct{}
 	eventsCh     chan memberlist.NodeEvent
@@ -34,7 +41,12 @@ func nodemanFromMemberlistConfig(owner *nodeInfo, c *memberlist.Config) (*nodema
 	}
 	c.Delegate = delegate{meta: ownerMeta}
 	c.Name = owner.Addr()
-	return &nodeman{config: c, eventsCh: eventsCh, owner: owner}, nil
+	return &nodeman{
+		config:   c,
+		eventsCh: eventsCh,
+		owner:    owner,
+		stopCh:   make(chan struct{}),
+	}, nil
 }
 
 func (c *nodeman) Nodes() ([]*nodeInfo, error) {
@@ -98,17 +110,43 @@ func (c *nodeman) IsCoordinator() bool {
 }
 
 func (c *nodeman) ListenAndServe() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	ml, err := memberlist.Create(c.config)
 	if err != nil {
 		return err
 	}
+
+	c.mu.Lock()
 	c.list = ml
-	c.stopCh = make(chan struct{})
+	c.mu.Unlock()
+
 	c.wg.Add(1)
+
 	go c.dispatchEvents()
 	return nil
+}
+
+func (c *nodeman) Shutdown() (err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.hasShutdown() {
+		return
+	}
+	if c.list == nil {
+		return
+	}
+
+	atomic.StoreInt32(&c.shutdown, 1)
+	close(c.stopCh)
+	c.wg.Wait()
+
+	if er := c.list.Leave(leaveClusterTimeout); er != nil {
+		err = multierror.Append(err, err)
+	}
+	if er := c.list.Shutdown(); er != nil {
+		err = multierror.Append(err, er)
+	}
+	return
 }
 
 func (c *nodeman) Join(peers []string) (n int, err error) {
@@ -129,30 +167,19 @@ func (c *nodeman) NumNodes() int {
 	return c.list.NumMembers()
 }
 
-func (c *nodeman) Shutdown() error {
-	if c.list == nil {
-		return nil
-	}
-	if c.isClosed() {
-		return nil
-	}
-	close(c.stopCh)
-	c.wg.Wait()
-	return c.list.Shutdown()
-}
-
-func (c *nodeman) isClosed() bool {
-	select {
-	case <-c.stopCh:
-		return true
-	default:
-	}
-	return false
+func (c *nodeman) hasShutdown() bool {
+	return atomic.LoadInt32(&c.shutdown) == 1
 }
 
 func (c *nodeman) dispatchEvents() {
 	defer c.wg.Done()
 	for {
+		select {
+		case <-c.stopCh:
+			return
+		default:
+		}
+
 		select {
 		case <-c.stopCh:
 			return
@@ -165,6 +192,8 @@ func (c *nodeman) dispatchEvents() {
 				continue
 			}
 			switch e.Event {
+			default:
+				continue
 			case memberlist.NodeLeave:
 				for i := 0; i < len(c.onLeaveFunc); i++ {
 					c.onLeaveFunc[i](node)

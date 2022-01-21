@@ -21,12 +21,14 @@ cluster:
   grpc_client_pool_init_count: 3
   grpc_client_pool_capacity: 5
 
+  coordiantor_update_push_interval: 1m
+
   h3dist_level: 3
   h3dist_vnodes: 64
   h3dist_replicas: 9
 
-  join_retry_interval: 50ms
-  max_join_attempts: 3
+  join_retry_interval: 500ms
+  max_join_attempts: 9
   peers:
     - 127.0.0.1:9000
 

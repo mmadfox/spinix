@@ -27,6 +27,8 @@ type Options struct {
 	MaxJoinAttempts   int           `yaml:"max_join_attempts"`
 	Peers             []string      `yaml:"peers"`
 
+	CoordinatorPushInterval time.Duration `yaml:"coordinator_update_push_interval"`
+
 	MemberlistDefaultConf   string         `yaml:"memberlist_default_conf"`
 	BindAddr                string         `yaml:"memberlist_bind_addr"`
 	BindPort                int            `yaml:"memberlist_bind_port"`

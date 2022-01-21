@@ -40,9 +40,9 @@ func (c client) Close() error {
 }
 
 func (c client) VNodeStats(ctx context.Context, in *pb.VNodeStatsRequest, opts ...grpc.CallOption) (*pb.VNodeStatsResponse, error) {
-	return nil, nil
+	return &pb.VNodeStatsResponse{}, nil
 }
 
-func (c client) UpdateRouter(ctx context.Context, in *pb.UpdateRouterRequest, opts ...grpc.CallOption) (*pb.UpdateRouterResponse, error) {
-	return nil, nil
+func (c client) Synchronize(ctx context.Context, in *pb.SynchronizeRequest, opts ...grpc.CallOption) (*pb.SynchronizeResponse, error) {
+	return &pb.SynchronizeResponse{}, nil
 }

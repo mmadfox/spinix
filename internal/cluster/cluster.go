@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
+
 	"go.uber.org/zap"
 
 	h3geodist "github.com/mmadfox/go-h3geo-dist"
@@ -26,6 +28,7 @@ type Cluster struct {
 	pVNodeList  *vnodeList
 	sVNodeList  *vnodeList
 	coordinator *coordinator
+	h3dist      *h3geodist.Distributed
 }
 
 func New(grpcServer *grpc.Server, logger *zap.Logger, opts *Options) (*Cluster, error) {
@@ -36,24 +39,21 @@ func New(grpcServer *grpc.Server, logger *zap.Logger, opts *Options) (*Cluster, 
 		opts:   opts,
 		logger: logger,
 	}
+	if err := setupH3GeoDist(cluster); err != nil {
+		return nil, err
+	}
+	setupRouter(cluster)
 	if err := setupClient(cluster); err != nil {
 		return nil, err
 	}
 	if err := setupNodeManager(cluster); err != nil {
 		return nil, err
 	}
-	if err := setupRouter(cluster); err != nil {
-		return nil, err
-	}
 	if err := setupBalancer(cluster); err != nil {
 		return nil, err
 	}
-	if err := setupServer(cluster, grpcServer); err != nil {
-		return nil, err
-	}
-
+	setupServer(cluster, grpcServer)
 	setupCoordinator(cluster)
-
 	return cluster, nil
 }
 
@@ -65,13 +65,25 @@ func (c *Cluster) Run() (err error) {
 	if err := c.joinNodeToCluster(); err != nil {
 		return err
 	}
+	if err := c.coordinator.Run(); err != nil {
+		return err
+	}
 	c.wg.Wait()
 	return
 }
 
-func (c *Cluster) Shutdown() error {
+func (c *Cluster) Shutdown() (err error) {
 	defer c.wg.Done()
-	return c.nodeManager.Shutdown()
+	if er := c.nodeManager.Shutdown(); er != nil {
+		err = multierror.Append(err, err)
+	}
+	if er := c.balancer.Shutdown(); er != nil {
+		err = multierror.Append(err, er)
+	}
+	if er := c.coordinator.Shutdown(); er != nil {
+		err = multierror.Append(err, er)
+	}
+	return
 }
 
 func (c *Cluster) handleNodeJoin(ni *nodeInfo) {
@@ -80,26 +92,25 @@ func (c *Cluster) handleNodeJoin(ni *nodeInfo) {
 			zap.String("host", ni.Addr()), zap.Error(err))
 		return
 	}
-
 	c.logger.Info("Node joined", zap.String("host", ni.Addr()))
 }
 
 func (c *Cluster) joinNodeToCluster() (err error) {
 	for i := 0; i < c.opts.MaxJoinAttempts; i++ {
+		if c.nodeManager.hasShutdown() {
+			return
+		}
 		if _, err = c.nodeManager.Join(c.opts.Peers); err == nil {
 			return
 		}
-
 		if err != nil {
-			c.logger.Info("Node join error", zap.Error(err))
+			c.logger.Error("Node join", zap.Error(err))
 		}
-
 		c.logger.Info("Waiting for next join",
 			zap.Int("maxJoinAttempts", c.opts.MaxJoinAttempts),
-			zap.Int("curJoinAttempts", i),
+			zap.Int("currentJoinAttempts", i),
 			zap.Duration("joinRetryInterval", c.opts.JoinRetryInterval),
 		)
-
 		<-time.After(c.opts.JoinRetryInterval)
 	}
 	return
@@ -117,18 +128,14 @@ func (c *Cluster) handleNodeUpdate(ni *nodeInfo) {
 			zap.String("host", ni.Addr()), zap.Error(err))
 		return
 	}
-
 	c.logger.Info("Node updated", zap.String("host", ni.Addr()))
 }
 
 func (c *Cluster) handleChangeState() {
-	c.router.ChangeState()
 	c.coordinator.Synchronize()
-
-	c.logger.Info("Changed node state")
 }
 
-func setupRouter(c *Cluster) error {
+func setupH3GeoDist(c *Cluster) error {
 	h3dist, err := h3geodist.New(c.opts.H3DistLevel,
 		h3geodist.WithVNodes(c.opts.H3DistVNodes),
 		h3geodist.WithReplicationFactor(c.opts.H3DistReplicas),
@@ -136,30 +143,28 @@ func setupRouter(c *Cluster) error {
 	if err != nil {
 		return err
 	}
-
-	c.router = newRouter(h3dist, c.client)
-	c.nodeManager.OnJoinFunc(c.handleNodeJoin)
-	c.nodeManager.OnLeaveFunc(c.handleNodeLeave)
-	c.nodeManager.OnUpdateFunc(c.handleNodeUpdate)
-	c.nodeManager.OnChangeFunc(c.handleChangeState)
-
 	c.pVNodeList = newVNodeList(h3dist.VNodes(), Primary)
 	c.sVNodeList = newVNodeList(h3dist.VNodes(), Secondary)
-	c.router.pVNodeList = c.pVNodeList
-	c.router.sVNodeList = c.sVNodeList
+	c.h3dist = h3dist
 	return nil
 }
 
-func setupServer(c *Cluster, grpcServer *grpc.Server) error {
+func setupRouter(c *Cluster) {
+	c.router = newRouter(c.h3dist, c.client, c.logger, c.pVNodeList, c.sVNodeList)
+}
+
+func setupServer(c *Cluster, grpcServer *grpc.Server) {
 	c.server = newServer(grpcServer)
-	return nil
 }
 
 func setupCoordinator(c *Cluster) {
 	c.coordinator = &coordinator{
-		client:      c.client,
-		logger:      c.logger,
-		nodeManager: c.nodeManager,
+		client:       c.client,
+		logger:       c.logger,
+		nodeManager:  c.nodeManager,
+		router:       c.router,
+		closeCh:      make(chan struct{}),
+		pushInterval: c.opts.CoordinatorPushInterval,
 	}
 }
 
@@ -176,6 +181,10 @@ func setupNodeManager(c *Cluster) error {
 		return err
 	}
 	c.nodeManager = nodeManager
+	c.nodeManager.OnJoinFunc(c.handleNodeJoin)
+	c.nodeManager.OnLeaveFunc(c.handleNodeLeave)
+	c.nodeManager.OnUpdateFunc(c.handleNodeUpdate)
+	c.nodeManager.OnChangeFunc(c.handleChangeState)
 	return nil
 }
 

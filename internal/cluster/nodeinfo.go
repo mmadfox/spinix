@@ -3,7 +3,6 @@ package cluster
 import (
 	"encoding/binary"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -91,37 +90,6 @@ func decodeNodeInfo(meta []byte) (*nodeInfo, error) {
 		addrHash:  ni.GetHash(),
 		birthdate: ni.GetBirthdate(),
 	}, nil
-}
-
-type nodeInfoList struct {
-	mu    sync.RWMutex
-	store map[uint64]*nodeInfo
-}
-
-func newNodeList() *nodeInfoList {
-	return &nodeInfoList{store: make(map[uint64]*nodeInfo)}
-}
-
-func (nl *nodeInfoList) add(n *nodeInfo) {
-	nl.mu.Lock()
-	defer nl.mu.Unlock()
-	nl.store[n.ID()] = n
-}
-
-func (nl *nodeInfoList) remove(n *nodeInfo) {
-	nl.mu.Lock()
-	defer nl.mu.Unlock()
-	delete(nl.store, n.ID())
-}
-
-func (nl *nodeInfoList) removeByAddr(addr string) {
-	nl.mu.Lock()
-	defer nl.mu.Unlock()
-	for id, node := range nl.store {
-		if node.Addr() == addr {
-			delete(nl.store, id)
-		}
-	}
 }
 
 func compareNodeByID(a, b *nodeInfo) bool {

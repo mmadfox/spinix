@@ -10,3 +10,9 @@ message NodeInfo {
   uint64 hash = 3;
   int64 birthdate = 4;
 }
+
+message Route {
+  uint64 vnode_id = 1;
+  repeated NodeInfo primary = 2;
+  repeated NodeInfo secondary = 3;
+}

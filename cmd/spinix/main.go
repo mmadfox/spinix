@@ -67,9 +67,9 @@ func main() {
 			sugarLogger.Infof("Run: GRPC server on %s", conf.GRPCAddr())
 			return grpcServer.Serve(grpcListener)
 		}, func(err error) {
-			logger.Info("Shutdown: GRPC server")
 			grpcServer.GracefulStop()
 			_ = grpcListener.Close()
+			logger.Info("Shutdown: GRPC server")
 		}, interruptPosition(1))
 	}
 
@@ -78,10 +78,10 @@ func main() {
 			sugarLogger.Infof("Run: Cluster service on %s", conf.ClusterAddr())
 			return c.Run()
 		}, func(err error) {
-			logger.Info("Shutdown: Cluster service")
 			if err := c.Shutdown(); err != nil {
 				sugarLogger.Error(err)
 			}
+			logger.Info("Shutdown: Cluster service")
 		}, interruptPosition(2))
 	}
 

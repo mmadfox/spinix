@@ -23,7 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ClusterServiceClient interface {
 	VNodeStats(ctx context.Context, in *VNodeStatsRequest, opts ...grpc.CallOption) (*VNodeStatsResponse, error)
-	UpdateRouter(ctx context.Context, in *UpdateRouterRequest, opts ...grpc.CallOption) (*UpdateRouterResponse, error)
+	Synchronize(ctx context.Context, in *SynchronizeRequest, opts ...grpc.CallOption) (*SynchronizeResponse, error)
 }
 
 type clusterServiceClient struct {
@@ -43,9 +43,9 @@ func (c *clusterServiceClient) VNodeStats(ctx context.Context, in *VNodeStatsReq
 	return out, nil
 }
 
-func (c *clusterServiceClient) UpdateRouter(ctx context.Context, in *UpdateRouterRequest, opts ...grpc.CallOption) (*UpdateRouterResponse, error) {
-	out := new(UpdateRouterResponse)
-	err := c.cc.Invoke(ctx, "/cluster.v1.ClusterService/UpdateRouter", in, out, opts...)
+func (c *clusterServiceClient) Synchronize(ctx context.Context, in *SynchronizeRequest, opts ...grpc.CallOption) (*SynchronizeResponse, error) {
+	out := new(SynchronizeResponse)
+	err := c.cc.Invoke(ctx, "/cluster.v1.ClusterService/Synchronize", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (c *clusterServiceClient) UpdateRouter(ctx context.Context, in *UpdateRoute
 // for forward compatibility
 type ClusterServiceServer interface {
 	VNodeStats(context.Context, *VNodeStatsRequest) (*VNodeStatsResponse, error)
-	UpdateRouter(context.Context, *UpdateRouterRequest) (*UpdateRouterResponse, error)
+	Synchronize(context.Context, *SynchronizeRequest) (*SynchronizeResponse, error)
 }
 
 // UnimplementedClusterServiceServer should be embedded to have forward compatible implementations.
@@ -67,8 +67,8 @@ type UnimplementedClusterServiceServer struct {
 func (UnimplementedClusterServiceServer) VNodeStats(context.Context, *VNodeStatsRequest) (*VNodeStatsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VNodeStats not implemented")
 }
-func (UnimplementedClusterServiceServer) UpdateRouter(context.Context, *UpdateRouterRequest) (*UpdateRouterResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateRouter not implemented")
+func (UnimplementedClusterServiceServer) Synchronize(context.Context, *SynchronizeRequest) (*SynchronizeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Synchronize not implemented")
 }
 
 // UnsafeClusterServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -100,20 +100,20 @@ func _ClusterService_VNodeStats_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ClusterService_UpdateRouter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateRouterRequest)
+func _ClusterService_Synchronize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SynchronizeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClusterServiceServer).UpdateRouter(ctx, in)
+		return srv.(ClusterServiceServer).Synchronize(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/cluster.v1.ClusterService/UpdateRouter",
+		FullMethod: "/cluster.v1.ClusterService/Synchronize",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClusterServiceServer).UpdateRouter(ctx, req.(*UpdateRouterRequest))
+		return srv.(ClusterServiceServer).Synchronize(ctx, req.(*SynchronizeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -130,8 +130,8 @@ var ClusterService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ClusterService_VNodeStats_Handler,
 		},
 		{
-			MethodName: "UpdateRouter",
-			Handler:    _ClusterService_UpdateRouter_Handler,
+			MethodName: "Synchronize",
+			Handler:    _ClusterService_Synchronize_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

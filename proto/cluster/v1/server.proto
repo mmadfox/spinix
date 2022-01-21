@@ -4,15 +4,23 @@ package cluster.v1;
 
 option go_package = "proto/cluster/v1;clusterv1";
 
+import "cluster/v1/cluster.proto";
+
 service ClusterService {
     rpc VNodeStats(VNodeStatsRequest) returns (VNodeStatsResponse);
-    rpc UpdateRouter(UpdateRouterRequest) returns (UpdateRouterResponse);
+    rpc Synchronize(SynchronizeRequest) returns (SynchronizeResponse);
 }
 
 message VNodeStatsRequest {}
 
 message VNodeStatsResponse {}
 
-message UpdateRouterRequest {}
+message SynchronizeRequest {
+    string coordinator_id = 1;
+    repeated cluster.v1.Route routes = 2;
+}
 
-message UpdateRouterResponse {}
+message SynchronizeResponse {
+    repeated int64 primary_ids = 1;
+    repeated int64 secondary_ids = 2;
+}
