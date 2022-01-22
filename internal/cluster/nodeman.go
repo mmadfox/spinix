@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -17,8 +18,12 @@ const (
 	leaveClusterTimeout = 10 * time.Second
 )
 
+var (
+	ErrNodeNotFound = errors.New("cluster: node not found")
+)
+
 type nodeman struct {
-	owner        *nodeInfo
+	owner        nodeInfo
 	config       *memberlist.Config
 	list         *memberlist.Memberlist
 	mu           sync.RWMutex
@@ -26,16 +31,16 @@ type nodeman struct {
 	wg           sync.WaitGroup
 	stopCh       chan struct{}
 	eventsCh     chan memberlist.NodeEvent
-	onJoinFunc   []func(*nodeInfo)
-	onLeaveFunc  []func(*nodeInfo)
-	onUpdateFunc []func(*nodeInfo)
+	onJoinFunc   []func(nodeInfo)
+	onLeaveFunc  []func(nodeInfo)
+	onUpdateFunc []func(nodeInfo)
 	onChangeFunc []func()
 }
 
-func nodemanFromMemberlistConfig(owner *nodeInfo, c *memberlist.Config) (*nodeman, error) {
+func nodemanFromMemberlistConfig(owner nodeInfo, c *memberlist.Config) (*nodeman, error) {
 	eventsCh := make(chan memberlist.NodeEvent, eventQueueCapacity)
 	c.Events = &memberlist.ChannelEventDelegate{Ch: eventsCh}
-	ownerMeta, err := encodeNodeInfo(owner)
+	ownerMeta, err := encodeNodeInfo(&owner)
 	if err != nil {
 		return nil, err
 	}
@@ -49,9 +54,9 @@ func nodemanFromMemberlistConfig(owner *nodeInfo, c *memberlist.Config) (*nodema
 	}, nil
 }
 
-func (c *nodeman) Nodes() ([]*nodeInfo, error) {
+func (c *nodeman) Nodes() ([]nodeInfo, error) {
 	members := c.list.Members()
-	nodes := make([]*nodeInfo, 0, len(members))
+	nodes := make([]nodeInfo, 0, len(members))
 	for i := 0; i < len(members); i++ {
 		node, err := decodeNodeInfo(members[i].Meta)
 		if err != nil {
@@ -65,15 +70,15 @@ func (c *nodeman) Nodes() ([]*nodeInfo, error) {
 	return nodes, nil
 }
 
-func (c *nodeman) OnLeaveFunc(fn func(*nodeInfo)) {
+func (c *nodeman) OnLeaveFunc(fn func(nodeInfo)) {
 	c.onLeaveFunc = append(c.onLeaveFunc, fn)
 }
 
-func (c *nodeman) OnJoinFunc(fn func(*nodeInfo)) {
+func (c *nodeman) OnJoinFunc(fn func(nodeInfo)) {
 	c.onJoinFunc = append(c.onJoinFunc, fn)
 }
 
-func (c *nodeman) OnUpdateFunc(fn func(*nodeInfo)) {
+func (c *nodeman) OnUpdateFunc(fn func(nodeInfo)) {
 	c.onUpdateFunc = append(c.onUpdateFunc, fn)
 }
 
@@ -81,7 +86,7 @@ func (c *nodeman) OnChangeFunc(fn func()) {
 	c.onChangeFunc = append(c.onChangeFunc, fn)
 }
 
-func (c *nodeman) Owner() *nodeInfo {
+func (c *nodeman) Owner() nodeInfo {
 	return c.owner
 }
 
@@ -89,13 +94,13 @@ func (c *nodeman) Addr() string {
 	return c.owner.Addr()
 }
 
-func (c *nodeman) Coordinator() (*nodeInfo, error) {
+func (c *nodeman) Coordinator() (nodeInfo, error) {
 	nodes, err := c.Nodes()
 	if err != nil {
-		return nil, err
+		return nodeInfo{}, err
 	}
 	if len(nodes) == 0 {
-		return nil, fmt.Errorf("cluster/memberlist: there is no nodeInfo in memberlist")
+		return nodeInfo{}, fmt.Errorf("cluster/memberlist: there is no nodeInfo in memberlist")
 	}
 	oldest := nodes[0]
 	return oldest, nil
@@ -107,6 +112,40 @@ func (c *nodeman) IsCoordinator() bool {
 		return false
 	}
 	return oldest.ID() == c.owner.ID()
+}
+
+func (c *nodeman) FindNodeByAddr(addr string) (nodeInfo, error) {
+	nodes, err := c.Nodes()
+	if err != nil {
+		return nodeInfo{}, err
+	}
+	for i := 0; i < len(nodes); i++ {
+		if nodes[i].Addr() == addr {
+			return nodes[i], nil
+		}
+	}
+	return nodeInfo{}, ErrNodeNotFound
+}
+
+func (c *nodeman) FindNodeByID(id uint64) (nodeInfo, error) {
+	nodes, err := c.Nodes()
+	if err != nil {
+		return nodeInfo{}, err
+	}
+	for i := 0; i < len(nodes); i++ {
+		if nodes[i].ID() == id {
+			return nodes[i], nil
+		}
+	}
+	return nodeInfo{}, ErrNodeNotFound
+}
+
+func (c *nodeman) ValidateOwner() error {
+	_, err := c.FindNodeByAddr(c.owner.addr)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *nodeman) ListenAndServe() error {

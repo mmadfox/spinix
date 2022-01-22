@@ -31,7 +31,7 @@ func TestClusterNode_EncodeDecode(t *testing.T) {
 	}
 	for _, host := range testCases {
 		node := nodeInfoFromAddr(host)
-		data, err := encodeNodeInfo(node)
+		data, err := encodeNodeInfo(&node)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, data)
 		node2, err := decodeNodeInfo(data)

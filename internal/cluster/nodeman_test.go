@@ -14,17 +14,17 @@ func TestClusterNodeManager_Join(t *testing.T) {
 	nodeman1 := testNodeManager(t)
 	nodeman2 := testNodeManager(t)
 	nodeman3 := testNodeManager(t)
-	nodes := make([]*nodeInfo, 0)
+	nodes := make([]nodeInfo, 0)
 
 	// node-1 start
-	nodeman1.OnJoinFunc(func(ni *nodeInfo) {
+	nodeman1.OnJoinFunc(func(ni nodeInfo) {
 		nodes = append(nodes, ni)
 	})
 	assert.Nil(t, nodeman1.ListenAndServe())
 	time.Sleep(10 * time.Millisecond)
 
 	// node-2 join to node-1
-	nodeman2.OnJoinFunc(func(ni *nodeInfo) {
+	nodeman2.OnJoinFunc(func(ni nodeInfo) {
 		nodes = append(nodes, ni)
 	})
 	assert.Nil(t, nodeman2.ListenAndServe())
@@ -36,7 +36,7 @@ func TestClusterNodeManager_Join(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// node-3 join to node-1
-	nodeman3.OnJoinFunc(func(ni *nodeInfo) {
+	nodeman3.OnJoinFunc(func(ni nodeInfo) {
 		nodes = append(nodes, ni)
 	})
 	assert.Nil(t, nodeman3.ListenAndServe())

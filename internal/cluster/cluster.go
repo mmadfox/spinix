@@ -59,15 +59,35 @@ func New(grpcServer *grpc.Server, logger *zap.Logger, opts *Options) (*Cluster, 
 
 func (c *Cluster) Run() (err error) {
 	c.wg.Add(1)
+
+	c.nodeManager.OnJoinFunc(c.handleNodeJoin)
+	c.nodeManager.OnLeaveFunc(c.handleNodeLeave)
+	c.nodeManager.OnUpdateFunc(c.handleNodeUpdate)
+	c.nodeManager.OnChangeFunc(c.handleChangeState)
+
 	if err = c.nodeManager.ListenAndServe(); err != nil {
 		return err
 	}
+
 	if err := c.joinNodeToCluster(); err != nil {
 		return err
 	}
+
+	if err := c.router.AddNode(c.nodeManager.Owner()); err != nil {
+		return err
+	}
+
+	c.coordinator.UpdateNumNodes()
+
 	if err := c.coordinator.Run(); err != nil {
 		return err
 	}
+
+	c.logger.Info("Cluster running",
+		zap.String("node", c.nodeManager.Owner().String()),
+		zap.Bool("isCoordinator", c.nodeManager.IsCoordinator()),
+	)
+
 	c.wg.Wait()
 	return
 }
@@ -86,7 +106,7 @@ func (c *Cluster) Shutdown() (err error) {
 	return
 }
 
-func (c *Cluster) handleNodeJoin(ni *nodeInfo) {
+func (c *Cluster) handleNodeJoin(ni nodeInfo) {
 	if err := c.router.AddNode(ni); err != nil {
 		c.logger.Error("Node join error",
 			zap.String("host", ni.Addr()), zap.Error(err))
@@ -96,15 +116,17 @@ func (c *Cluster) handleNodeJoin(ni *nodeInfo) {
 }
 
 func (c *Cluster) joinNodeToCluster() (err error) {
+	var joinOk bool
 	for i := 0; i < c.opts.MaxJoinAttempts; i++ {
 		if c.nodeManager.hasShutdown() {
-			return
+			break
 		}
 		if _, err = c.nodeManager.Join(c.opts.Peers); err == nil {
-			return
+			joinOk = true
+			break
 		}
 		if err != nil {
-			c.logger.Error("Node join", zap.Error(err))
+			c.logger.Error("Node join error", zap.Error(err))
 		}
 		c.logger.Info("Waiting for next join",
 			zap.Int("maxJoinAttempts", c.opts.MaxJoinAttempts),
@@ -113,16 +135,19 @@ func (c *Cluster) joinNodeToCluster() (err error) {
 		)
 		<-time.After(c.opts.JoinRetryInterval)
 	}
+	if joinOk && err == nil {
+		err = c.nodeManager.ValidateOwner()
+	}
 	return
 }
 
-func (c *Cluster) handleNodeLeave(ni *nodeInfo) {
+func (c *Cluster) handleNodeLeave(ni nodeInfo) {
 	c.router.RemoveNode(ni)
 	c.client.Close(ni.Addr())
 	c.logger.Info("Node leaved", zap.String("host", ni.Addr()))
 }
 
-func (c *Cluster) handleNodeUpdate(ni *nodeInfo) {
+func (c *Cluster) handleNodeUpdate(ni nodeInfo) {
 	if err := c.router.UpdateNode(ni); err != nil {
 		c.logger.Error("Node update",
 			zap.String("host", ni.Addr()), zap.Error(err))
@@ -181,10 +206,6 @@ func setupNodeManager(c *Cluster) error {
 		return err
 	}
 	c.nodeManager = nodeManager
-	c.nodeManager.OnJoinFunc(c.handleNodeJoin)
-	c.nodeManager.OnLeaveFunc(c.handleNodeLeave)
-	c.nodeManager.OnUpdateFunc(c.handleNodeUpdate)
-	c.nodeManager.OnChangeFunc(c.handleChangeState)
 	return nil
 }
 

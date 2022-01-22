@@ -1,7 +1,9 @@
 package cluster
 
 import (
+	"strings"
 	"sync"
+	"sync/atomic"
 
 	pb "github.com/mmadfox/spinix/gen/proto/go/cluster/v1"
 	"go.uber.org/zap"
@@ -14,6 +16,7 @@ type router struct {
 	hd         *h3geodist.Distributed
 	nl         *nodeInfoList
 	cli        *pool
+	numNodes   int32
 	routes     map[uint64]*pb.Route
 	pVNodeList *vnodeList
 	sVNodeList *vnodeList
@@ -38,7 +41,19 @@ func newRouter(
 	return &router
 }
 
-func (r *router) AddNode(n *nodeInfo) error {
+func (r *router) String() string {
+	return r.nl.String()
+}
+
+func (r *router) UpdateNumNodes(val int) {
+	atomic.StoreInt32(&r.numNodes, int32(val))
+}
+
+func (r *router) NumNodes() int32 {
+	return atomic.LoadInt32(&r.numNodes)
+}
+
+func (r *router) AddNode(n nodeInfo) error {
 	if err := r.hd.Add(n.Addr()); err != nil {
 		return err
 	}
@@ -46,12 +61,12 @@ func (r *router) AddNode(n *nodeInfo) error {
 	return nil
 }
 
-func (r *router) RemoveNode(n *nodeInfo) {
+func (r *router) RemoveNode(n nodeInfo) {
 	r.hd.Remove(n.Addr())
 	r.nl.remove(n)
 }
 
-func (r *router) UpdateNode(n *nodeInfo) error {
+func (r *router) UpdateNode(n nodeInfo) error {
 	r.nl.removeByAddr(n.Addr())
 	r.hd.Remove(n.Addr())
 	if err := r.hd.Add(n.Addr()); err != nil {
@@ -63,20 +78,30 @@ func (r *router) UpdateNode(n *nodeInfo) error {
 
 type nodeInfoList struct {
 	mu    sync.RWMutex
-	store map[uint64]*nodeInfo
+	store map[uint64]nodeInfo
 }
 
 func newNodeList() *nodeInfoList {
-	return &nodeInfoList{store: make(map[uint64]*nodeInfo)}
+	return &nodeInfoList{store: make(map[uint64]nodeInfo)}
 }
 
-func (nl *nodeInfoList) add(n *nodeInfo) {
+func (nl *nodeInfoList) String() string {
+	nl.mu.RLock()
+	defer nl.mu.RUnlock()
+	nodes := make([]string, 0, len(nl.store))
+	for _, ni := range nl.store {
+		nodes = append(nodes, ni.Addr())
+	}
+	return strings.Join(nodes, ",")
+}
+
+func (nl *nodeInfoList) add(n nodeInfo) {
 	nl.mu.Lock()
 	defer nl.mu.Unlock()
 	nl.store[n.ID()] = n
 }
 
-func (nl *nodeInfoList) remove(n *nodeInfo) {
+func (nl *nodeInfoList) remove(n nodeInfo) {
 	nl.mu.Lock()
 	defer nl.mu.Unlock()
 	delete(nl.store, n.ID())
@@ -91,45 +116,3 @@ func (nl *nodeInfoList) removeByAddr(addr string) {
 		}
 	}
 }
-
-//func (r *router) ChangeState() {
-//	routes := make(map[uint64]*pb.Route)
-//	r.hd.EachVNode(func(vnode uint64, addr string) bool {
-//		route := &pb.Route{
-//			Vnode:     vnode,
-//			Primary:   r.makePrimaryList(addr, vnode),
-//			Secondary: r.makeSecondaryList(addr, vnode),
-//		}
-//		routes[vnode] = route
-//		return true
-//	})
-//	r.mu.Lock()
-//	r.routes = routes
-//	r.mu.Unlock()
-//}
-
-//func (r *router) makePrimaryList(addr string, id uint64) []*pb.NodeInfo {
-//	//ctx := context.Background()
-//	//client, err := r.cli.NewClient(ctx, addr)
-//	//if err != nil {
-//	//	log.Println(err)
-//	//	return []*pb.NodeInfo{}
-//	//}
-//	//log.Println("CLI", client)
-//	//resp, err := client.VNodeStats(ctx, &pb.VNodeStatsRequest{})
-//	//log.Println(addr, resp, err)
-//	vn := r.pVNodeList.ByID(id)
-//	owners := make([]nodeInfo, len(vn.owners))
-//	copy(owners, vn.owners)
-//	nodeInfo := nodeInfoFromAddr(addr)
-//	if len(owners) == 0 {
-//		return []*pb.NodeInfo{nodeInfo.ToProto()}
-//	}
-//	log.Println("owners", len(owners))
-//	return nil
-//}
-//
-//func (r *router) makeSecondaryList(addr string, id uint64) []*pb.NodeInfo {
-//	// TODO:
-//	return nil
-//}

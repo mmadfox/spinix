@@ -19,9 +19,9 @@ type nodeInfo struct {
 	birthdate int64  // unix nano
 }
 
-func nodeInfoFromAddr(addr string) *nodeInfo {
+func nodeInfoFromAddr(addr string) nodeInfo {
 	birthdate := time.Now().UnixNano()
-	return &nodeInfo{
+	return nodeInfo{
 		id:        makeNodeID(addr, birthdate),
 		addr:      addr,
 		addrHash:  hash.StringToUint64(addr),
@@ -29,7 +29,7 @@ func nodeInfoFromAddr(addr string) *nodeInfo {
 	}
 }
 
-func makeNodeInfo(addr string, port int) *nodeInfo {
+func makeNodeInfo(addr string, port int) nodeInfo {
 	return nodeInfoFromAddr(joinAddrPort(addr, port))
 }
 
@@ -79,12 +79,12 @@ func encodeNodeInfo(n *nodeInfo) ([]byte, error) {
 	})
 }
 
-func decodeNodeInfo(meta []byte) (*nodeInfo, error) {
+func decodeNodeInfo(meta []byte) (nodeInfo, error) {
 	ni := clusterv1.NodeInfo{}
 	if err := proto.Unmarshal(meta, &ni); err != nil {
-		return nil, err
+		return nodeInfo{}, err
 	}
-	return &nodeInfo{
+	return nodeInfo{
 		id:        ni.GetId(),
 		addr:      ni.GetHost(),
 		addrHash:  ni.GetHash(),
@@ -92,14 +92,14 @@ func decodeNodeInfo(meta []byte) (*nodeInfo, error) {
 	}, nil
 }
 
-func compareNodeByID(a, b *nodeInfo) bool {
+func compareNodeByID(a, b nodeInfo) bool {
 	return a.ID() == b.ID()
 }
 
-func compareNodeByAddr(a, b *nodeInfo) bool {
+func compareNodeByAddr(a, b nodeInfo) bool {
 	return a.Addr() == b.Addr()
 }
 
-func compareNodeByAddrHash(a, b *nodeInfo) bool {
+func compareNodeByAddrHash(a, b nodeInfo) bool {
 	return a.AddrHash() == b.AddrHash()
 }

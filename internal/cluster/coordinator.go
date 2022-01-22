@@ -17,10 +17,24 @@ type coordinator struct {
 	logger       *zap.Logger
 	pushInterval time.Duration
 	shutdown     int32
+	owner        nodeInfo
+	bootstrapped int32
+}
+
+func (c *coordinator) Bootstrap() error {
+	return nil
+}
+
+func (c *coordinator) UpdateNumNodes() {
+	c.router.UpdateNumNodes(c.nodeManager.NumNodes())
 }
 
 func (c *coordinator) Run() error {
-	// TODO:
+	if c.nodeManager.IsCoordinator() {
+		if err := c.Bootstrap(); err != nil {
+			return err
+		}
+	}
 	go c.updateChangeStateByPushInterval()
 	return nil
 }
@@ -35,14 +49,29 @@ func (c *coordinator) Shutdown() error {
 }
 
 func (c *coordinator) Synchronize() {
+	c.UpdateNumNodes()
+
+	c.logger.Info("Synchronization of the coordinator",
+		zap.Int32("numNodes", c.router.NumNodes()),
+		zap.String("nodes", c.router.String()))
+
 	if !c.nodeManager.IsCoordinator() {
 		return
 	}
-	c.logger.Info("Synchronize coordinator")
+
+	c.logger.Info("Start synchronize coordinator")
 }
 
 func (c *coordinator) hasShutdown() bool {
 	return atomic.LoadInt32(&c.shutdown) == 1
+}
+
+func (c *coordinator) setBootstrapped() {
+	atomic.StoreInt32(&c.bootstrapped, 1)
+}
+
+func (c *coordinator) hasBootstrapped() bool {
+	return atomic.LoadInt32(&c.bootstrapped) == 1
 }
 
 func (c *coordinator) updateChangeStateByPushInterval() {
