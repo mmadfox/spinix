@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/grpc/credentials/insecure"
+
 	"github.com/hashicorp/go-multierror"
 
 	"go.uber.org/zap"
@@ -42,7 +44,9 @@ func New(grpcServer *grpc.Server, logger *zap.Logger, opts *Options) (*Cluster, 
 	if err := setupH3GeoDist(cluster); err != nil {
 		return nil, err
 	}
-	setupRouter(cluster)
+
+	cluster.router = newRouter(cluster.h3dist, logger)
+
 	if err := setupClient(cluster); err != nil {
 		return nil, err
 	}
@@ -56,9 +60,17 @@ func New(grpcServer *grpc.Server, logger *zap.Logger, opts *Options) (*Cluster, 
 	cluster.pVNodeList = newVNodeList(cluster.h3dist.VNodes(), Primary)
 	cluster.sVNodeList = newVNodeList(cluster.h3dist.VNodes(), Secondary)
 
-	setupCoordinator(cluster)
-	setupServer(cluster, grpcServer)
-
+	cluster.coordinator = &coordinator{
+		client:       cluster.client,
+		logger:       logger,
+		nodeManager:  cluster.nodeManager,
+		router:       cluster.router,
+		closeCh:      make(chan struct{}),
+		pushInterval: opts.CoordinatorPushInterval,
+		pVNodeList:   cluster.pVNodeList,
+		sVNodeList:   cluster.sVNodeList,
+	}
+	cluster.server = newServer(grpcServer, cluster.coordinator, logger)
 	return cluster, nil
 }
 
@@ -177,27 +189,6 @@ func setupH3GeoDist(c *Cluster) error {
 	return nil
 }
 
-func setupRouter(c *Cluster) {
-	c.router = newRouter(c.h3dist, c.client, c.logger, c.pVNodeList, c.sVNodeList)
-}
-
-func setupServer(c *Cluster, grpcServer *grpc.Server) {
-	c.server = newServer(grpcServer, c.coordinator, c.logger)
-}
-
-func setupCoordinator(c *Cluster) {
-	c.coordinator = &coordinator{
-		client:       c.client,
-		logger:       c.logger,
-		nodeManager:  c.nodeManager,
-		router:       c.router,
-		closeCh:      make(chan struct{}),
-		pushInterval: c.opts.CoordinatorPushInterval,
-		pVNodeList:   c.pVNodeList,
-		sVNodeList:   c.sVNodeList,
-	}
-}
-
 func setupBalancer(c *Cluster) error {
 	return nil
 }
@@ -221,7 +212,16 @@ func setupClient(c *Cluster) error {
 		Init:            c.opts.GRPCClientInitPoolCount,
 		Capacity:        c.opts.GRPCClientPoolCapacity,
 		NewConn: func(addr string) (*grpc.ClientConn, error) {
-			return grpc.Dial(addr)
+			var opts []grpc.DialOption
+			if len(c.opts.GRPCClientDialOpts) > 0 {
+				opts = append(opts, c.opts.GRPCClientDialOpts...)
+			} else {
+				// default options
+				opts = append(opts, grpc.WithTransportCredentials(
+					insecure.NewCredentials(),
+				))
+			}
+			return grpc.Dial(addr, opts...)
 		},
 	})
 	if err != nil {

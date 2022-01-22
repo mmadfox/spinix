@@ -1,9 +1,15 @@
 package cluster
 
 import (
+	"context"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/sync/errgroup"
+
+	"golang.org/x/sync/semaphore"
 
 	pb "github.com/mmadfox/spinix/gen/proto/go/cluster/v1"
 
@@ -35,7 +41,7 @@ func (c *coordinator) SyncVNode(r *pb.Route) {
 }
 
 func (c *coordinator) UpdateNumNodes() {
-	c.router.UpdateNumNodes(c.nodeManager.NumNodes())
+	c.router.SetNumNodes(c.nodeManager.NumNodes())
 }
 
 func (c *coordinator) FindNodeByID(id uint64) (nodeInfo, error) {
@@ -47,7 +53,7 @@ func (c *coordinator) NodeInfo() (nodeInfo, error) {
 }
 
 func (c *coordinator) VNodes() int {
-	return c.router.VNodes()
+	return c.router.NumVNodes()
 }
 
 func (c *coordinator) Run() error {
@@ -70,22 +76,16 @@ func (c *coordinator) Shutdown() error {
 }
 
 func (c *coordinator) Synchronize() {
-	c.UpdateNumNodes()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	c.logger.Info("Synchronization of the coordinator",
-		zap.Bool("isCoordinator", c.nodeManager.IsCoordinator()),
-		zap.Int32("numNodes", c.router.NumNodes()),
-		zap.String("nodes", c.router.String()))
+	c.UpdateNumNodes()
 
 	if !c.nodeManager.IsCoordinator() {
 		return
 	}
 
-	c.logger.Info("Start synchronize coordinator")
-
-	// TODO:
-
-	c.logger.Info("Stop synchronize coordinator")
+	c.updateRoutersOnCluster()
 }
 
 func (c *coordinator) hasShutdown() bool {
@@ -113,6 +113,66 @@ func (c *coordinator) updateChangeStateByPushInterval() {
 	}
 }
 
-func (c *coordinator) updateRoutersOnCluster() error {
-	return nil
+func (c *coordinator) updateRoutersOnCluster() {
+	newRoutes := c.makeRoutes()
+	c.router.SetRoutes(newRoutes)
+	if err := c.runWorkerPoolFor(newRoutes); err != nil {
+		c.logger.Error("Update routers on cluster", zap.Error(err))
+	}
+}
+
+func (c *coordinator) makeRoutes() []*pb.Route {
+	routes := make([]*pb.Route, 0, 4)
+	c.router.EachVNode(func(id uint64, addr string) bool {
+		route := &pb.Route{
+			VnodeId:   id,
+			Primary:   c.makePrimaryVNodes(id),
+			Secondary: c.makeSecondaryVNodes(id),
+		}
+		routes = append(routes, route)
+		return true
+	})
+	return routes
+}
+
+func (c *coordinator) runWorkerPoolFor(routes []*pb.Route) error {
+	var group errgroup.Group
+	sem := semaphore.NewWeighted(int64(runtime.NumCPU()))
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Millisecond)
+	defer cancel()
+	req := &pb.SynchronizeRequest{
+		CoordinatorId: c.nodeManager.Owner().ID(),
+		Routes:        routes,
+	}
+	c.router.EachNode(func(ni nodeInfo) {
+		addr := ni.Addr()
+		group.Go(func() error {
+			if err := sem.Acquire(ctx, 1); err != nil {
+				return err
+			}
+			defer sem.Release(1)
+			return c.updateRouterOnNode(ctx, addr, req)
+		})
+	})
+	return group.Wait()
+}
+
+func (c *coordinator) updateRouterOnNode(ctx context.Context, addr string, req *pb.SynchronizeRequest) error {
+	client, err := c.client.NewClient(ctx, addr)
+	if err != nil {
+		return err
+	}
+	_, err = client.Synchronize(ctx, req)
+	c.client.Close(addr)
+	return err
+}
+
+func (c *coordinator) makePrimaryVNodes(vnode uint64) []*pb.NodeInfo {
+	// TODO:
+	return []*pb.NodeInfo{}
+}
+
+func (c *coordinator) makeSecondaryVNodes(vnode uint64) []*pb.NodeInfo {
+	// TODO:
+	return []*pb.NodeInfo{}
 }

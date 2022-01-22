@@ -28,8 +28,8 @@ func newServer(grpcServer *grpc.Server, c *coordinator, logger *zap.Logger) *ser
 	return srv
 }
 
-func (s *server) VNodeStats(ctx context.Context, req *pb.VNodeStatsRequest) (*pb.VNodeStatsResponse, error) {
-	return nil, nil
+func (s *server) VNodeStats(_ context.Context, req *pb.VNodeStatsRequest) (*pb.VNodeStatsResponse, error) {
+	return &pb.VNodeStatsResponse{}, nil
 }
 
 func (s *server) Synchronize(_ context.Context, req *pb.SynchronizeRequest) (*pb.SynchronizeResponse, error) {

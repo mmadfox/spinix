@@ -12,31 +12,19 @@ import (
 )
 
 type router struct {
-	mu         sync.RWMutex
-	hd         *h3geodist.Distributed
-	nl         *nodeInfoList
-	cli        *pool
-	numNodes   int32
-	routes     map[uint64]*pb.Route
-	pVNodeList *vnodeList
-	sVNodeList *vnodeList
-	logger     *zap.Logger
+	mu       sync.RWMutex
+	hd       *h3geodist.Distributed
+	nl       *nodeInfoList
+	numNodes int32
+	routes   map[uint64]*pb.Route
+	logger   *zap.Logger
 }
 
-func newRouter(
-	hd *h3geodist.Distributed,
-	cli *pool,
-	logger *zap.Logger,
-	pVNodeList *vnodeList,
-	sVNodeList *vnodeList,
-) *router {
+func newRouter(hd *h3geodist.Distributed, logger *zap.Logger) *router {
 	router := router{
-		hd:         hd,
-		nl:         newNodeList(),
-		cli:        cli,
-		logger:     logger,
-		pVNodeList: pVNodeList,
-		sVNodeList: sVNodeList,
+		hd:     hd,
+		nl:     newNodeList(),
+		logger: logger,
 	}
 	return &router
 }
@@ -45,11 +33,11 @@ func (r *router) String() string {
 	return r.nl.String()
 }
 
-func (r *router) VNodes() int {
+func (r *router) NumVNodes() int {
 	return int(r.hd.VNodes())
 }
 
-func (r *router) UpdateNumNodes(val int) {
+func (r *router) SetNumNodes(val int) {
 	atomic.StoreInt32(&r.numNodes, int32(val))
 }
 
@@ -78,6 +66,39 @@ func (r *router) UpdateNode(n nodeInfo) error {
 	}
 	r.nl.add(n)
 	return nil
+}
+
+func (r *router) EachVNode(fn func(id uint64, addr string) bool) {
+	r.hd.EachVNode(fn)
+}
+
+func (r *router) EachNode(fn func(ni nodeInfo)) {
+	r.nl.mu.RLock()
+	defer r.nl.mu.RUnlock()
+	for _, ni := range r.nl.store {
+		fn(ni)
+	}
+}
+
+func (r *router) Routes() []*pb.Route {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	routes := make([]*pb.Route, 0, len(r.routes))
+	for _, route := range r.routes {
+		routes = append(routes, route)
+	}
+	return routes
+}
+
+func (r *router) SetRoutes(routes []*pb.Route) {
+	rm := make(map[uint64]*pb.Route)
+	for i := 0; i < len(routes); i++ {
+		route := routes[i]
+		rm[route.VnodeId] = route
+	}
+	r.mu.Lock()
+	r.routes = rm
+	r.mu.Unlock()
 }
 
 type nodeInfoList struct {
