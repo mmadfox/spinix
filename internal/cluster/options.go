@@ -26,6 +26,7 @@ type Options struct {
 	JoinRetryInterval time.Duration `yaml:"join_retry_interval"`
 	MaxJoinAttempts   int           `yaml:"max_join_attempts"`
 	Peers             []string      `yaml:"peers"`
+	BootstrapTimeout  time.Duration `yaml:"bootstrap_timeout"`
 
 	CoordinatorPushInterval time.Duration `yaml:"coordinator_update_push_interval"`
 

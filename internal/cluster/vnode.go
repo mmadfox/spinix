@@ -20,6 +20,10 @@ type vnode struct {
 	owners []nodeInfo
 }
 
+func (v *vnode) NoData() bool {
+	return true
+}
+
 func (v *vnode) SetOwners(owners []*pb.NodeInfo) {
 	v.mu.Lock()
 	defer v.mu.Unlock()

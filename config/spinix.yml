@@ -27,6 +27,7 @@ cluster:
   h3dist_vnodes: 64
   h3dist_replicas: 9
 
+  bootstrap_timeout: 5m
   join_retry_interval: 500ms
   max_join_attempts: 300
   peers:

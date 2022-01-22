@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -18,21 +19,25 @@ import (
 
 const (
 	updateRoutesTimeout = 15 * time.Minute
+	bootstrapInterval   = 100 * time.Millisecond
 )
 
+var ErrBootstrapTimeout = errors.New("cluster: bootstrap timeout")
+
 type coordinator struct {
-	mu           sync.RWMutex
-	client       *pool
-	nodeManager  *nodeman
-	router       *router
-	closeCh      chan struct{}
-	logger       *zap.Logger
-	pushInterval time.Duration
-	shutdown     int32
-	owner        nodeInfo
-	bootstrapped int32
-	pVNodeList   *vnodeList
-	sVNodeList   *vnodeList
+	mu               sync.RWMutex
+	client           *pool
+	nodeManager      *nodeman
+	router           *router
+	closeCh          chan struct{}
+	logger           *zap.Logger
+	pushInterval     time.Duration
+	bootstrapTimeout time.Duration
+	shutdown         int32
+	owner            nodeInfo
+	bootstrapped     int32
+	pVNodeList       *vnodeList
+	sVNodeList       *vnodeList
 }
 
 func (c *coordinator) Bootstrap() error {
@@ -41,20 +46,31 @@ func (c *coordinator) Bootstrap() error {
 	return nil
 }
 
-func (c *coordinator) SyncVNode(r *pb.Route) {
+func (c *coordinator) WaitBootstrap(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, c.bootstrapTimeout)
+	defer cancel()
+	return try(ctx, bootstrapInterval, func() error {
+		if c.hasBootstrapped() {
+			return nil
+		}
+		return ErrBootstrapTimeout
+	})
+}
+
+func (c *coordinator) SyncVNodeOwnersFromRoute(r *pb.Route) {
 	c.pVNodeList.ByID(r.VnodeId).SetOwners(r.GetPrimary())
 	c.sVNodeList.ByID(r.VnodeId).SetOwners(r.GetSecondary())
 }
 
-func (c *coordinator) UpdateNumNodes() {
+func (c *coordinator) SyncNumNodes() {
 	c.router.SetNumNodes(c.nodeManager.NumNodes())
 }
 
-func (c *coordinator) FindNodeByID(id uint64) (nodeInfo, error) {
+func (c *coordinator) FindNodeInfoByID(id uint64) (nodeInfo, error) {
 	return c.nodeManager.FindNodeByID(id)
 }
 
-func (c *coordinator) NodeInfo() (nodeInfo, error) {
+func (c *coordinator) Owner() (nodeInfo, error) {
 	return c.nodeManager.Coordinator()
 }
 
@@ -85,7 +101,7 @@ func (c *coordinator) Synchronize() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.UpdateNumNodes()
+	c.SyncNumNodes()
 	if !c.nodeManager.IsCoordinator() {
 		return
 	}
@@ -127,7 +143,7 @@ func (c *coordinator) updateRoutersOnCluster() {
 
 func (c *coordinator) makeRoutes() []*pb.Route {
 	routes := make([]*pb.Route, 0, 4)
-	c.router.EachVNode(func(id uint64, addr string) bool {
+	c.router.EachVNodeInfo(func(id uint64, addr string) bool {
 		route := &pb.Route{
 			VnodeId:   id,
 			Primary:   c.makePrimaryVNodes(id),
@@ -148,7 +164,7 @@ func (c *coordinator) runWorkerPoolFor(routes []*pb.Route) error {
 		CoordinatorId: c.nodeManager.Owner().ID(),
 		Routes:        routes,
 	}
-	c.router.EachNode(func(ni nodeInfo) {
+	c.router.EachNodeInfo(func(ni nodeInfo) {
 		addr := ni.Addr()
 		group.Go(func() error {
 			if err := sem.Acquire(ctx, 1); err != nil {
@@ -179,4 +195,23 @@ func (c *coordinator) makePrimaryVNodes(vnode uint64) []*pb.NodeInfo {
 func (c *coordinator) makeSecondaryVNodes(vnode uint64) []*pb.NodeInfo {
 	// TODO:
 	return []*pb.NodeInfo{}
+}
+
+func try(ctx context.Context, interval time.Duration, fn func() error) (err error) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	if err = fn(); err == nil {
+		return
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+			return err
+		case <-ticker.C:
+			if err = fn(); err == nil {
+				return
+			}
+		}
+	}
 }

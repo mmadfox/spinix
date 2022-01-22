@@ -61,14 +61,15 @@ func New(grpcServer *grpc.Server, logger *zap.Logger, opts *Options) (*Cluster, 
 	cluster.sVNodeList = newVNodeList(cluster.h3dist.VNodes(), Secondary)
 
 	cluster.coordinator = &coordinator{
-		client:       cluster.client,
-		logger:       logger,
-		nodeManager:  cluster.nodeManager,
-		router:       cluster.router,
-		closeCh:      make(chan struct{}),
-		pushInterval: opts.CoordinatorPushInterval,
-		pVNodeList:   cluster.pVNodeList,
-		sVNodeList:   cluster.sVNodeList,
+		client:           cluster.client,
+		logger:           logger,
+		nodeManager:      cluster.nodeManager,
+		router:           cluster.router,
+		closeCh:          make(chan struct{}),
+		pushInterval:     opts.CoordinatorPushInterval,
+		pVNodeList:       cluster.pVNodeList,
+		sVNodeList:       cluster.sVNodeList,
+		bootstrapTimeout: opts.BootstrapTimeout,
 	}
 	cluster.server = newServer(grpcServer, cluster.coordinator, logger)
 	return cluster, nil
@@ -94,7 +95,7 @@ func (c *Cluster) Run() (err error) {
 		return err
 	}
 
-	c.coordinator.UpdateNumNodes()
+	c.coordinator.SyncNumNodes()
 
 	if err := c.coordinator.Run(); err != nil {
 		return err

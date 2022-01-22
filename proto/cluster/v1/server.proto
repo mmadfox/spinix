@@ -21,6 +21,6 @@ message SynchronizeRequest {
 }
 
 message SynchronizeResponse {
-    repeated int64 primary_ids = 1;
-    repeated int64 secondary_ids = 2;
+    repeated uint64 report_for_primary_list = 1;
+    repeated uint64 report_for_secondary_list = 2;
 }

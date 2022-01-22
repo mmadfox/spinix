@@ -68,11 +68,11 @@ func (r *router) UpdateNode(n nodeInfo) error {
 	return nil
 }
 
-func (r *router) EachVNode(fn func(id uint64, addr string) bool) {
+func (r *router) EachVNodeInfo(fn func(id uint64, addr string) bool) {
 	r.hd.EachVNode(fn)
 }
 
-func (r *router) EachNode(fn func(ni nodeInfo)) {
+func (r *router) EachNodeInfo(fn func(ni nodeInfo)) {
 	r.nl.mu.RLock()
 	defer r.nl.mu.RUnlock()
 	for _, ni := range r.nl.store {
