@@ -52,8 +52,13 @@ func New(grpcServer *grpc.Server, logger *zap.Logger, opts *Options) (*Cluster, 
 	if err := setupBalancer(cluster); err != nil {
 		return nil, err
 	}
-	setupServer(cluster, grpcServer)
+
+	cluster.pVNodeList = newVNodeList(cluster.h3dist.VNodes(), Primary)
+	cluster.sVNodeList = newVNodeList(cluster.h3dist.VNodes(), Secondary)
+
 	setupCoordinator(cluster)
+	setupServer(cluster, grpcServer)
+
 	return cluster, nil
 }
 
@@ -168,8 +173,6 @@ func setupH3GeoDist(c *Cluster) error {
 	if err != nil {
 		return err
 	}
-	c.pVNodeList = newVNodeList(h3dist.VNodes(), Primary)
-	c.sVNodeList = newVNodeList(h3dist.VNodes(), Secondary)
 	c.h3dist = h3dist
 	return nil
 }
@@ -179,7 +182,7 @@ func setupRouter(c *Cluster) {
 }
 
 func setupServer(c *Cluster, grpcServer *grpc.Server) {
-	c.server = newServer(grpcServer)
+	c.server = newServer(grpcServer, c.coordinator, c.logger)
 }
 
 func setupCoordinator(c *Cluster) {
@@ -190,6 +193,8 @@ func setupCoordinator(c *Cluster) {
 		router:       c.router,
 		closeCh:      make(chan struct{}),
 		pushInterval: c.opts.CoordinatorPushInterval,
+		pVNodeList:   c.pVNodeList,
+		sVNodeList:   c.sVNodeList,
 	}
 }
 

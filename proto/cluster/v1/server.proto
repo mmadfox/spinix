@@ -16,7 +16,7 @@ message VNodeStatsRequest {}
 message VNodeStatsResponse {}
 
 message SynchronizeRequest {
-    string coordinator_id = 1;
+    uint64 coordinator_id = 1;
     repeated cluster.v1.Route routes = 2;
 }
 

@@ -45,6 +45,10 @@ func (r *router) String() string {
 	return r.nl.String()
 }
 
+func (r *router) VNodes() int {
+	return int(r.hd.VNodes())
+}
+
 func (r *router) UpdateNumNodes(val int) {
 	atomic.StoreInt32(&r.numNodes, int32(val))
 }
