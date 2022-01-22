@@ -16,6 +16,10 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	updateRoutesTimeout = 15 * time.Minute
+)
+
 type coordinator struct {
 	mu           sync.RWMutex
 	client       *pool
@@ -32,6 +36,8 @@ type coordinator struct {
 }
 
 func (c *coordinator) Bootstrap() error {
+	c.Synchronize()
+	c.markBootstrapped()
 	return nil
 }
 
@@ -136,7 +142,7 @@ func (c *coordinator) makeRoutes() []*pb.Route {
 func (c *coordinator) runWorkerPoolFor(routes []*pb.Route) error {
 	var group errgroup.Group
 	sem := semaphore.NewWeighted(int64(runtime.NumCPU()))
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), updateRoutesTimeout)
 	defer cancel()
 	req := &pb.SynchronizeRequest{
 		CoordinatorId: c.nodeManager.Owner().ID(),
