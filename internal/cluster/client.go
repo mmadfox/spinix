@@ -19,10 +19,12 @@ func (c *pool) Close(addr string) {
 	c.pool.ClosePool(addr)
 }
 
-func (c *pool) NewClient(ctx context.Context, addr string) (pb.ClusterServiceClient, error) {
+func (c *pool) NewClient(ctx context.Context, addr string) (pb.ClusterServiceClient, func(), error) {
 	conn, err := c.pool.Conn(ctx, addr)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return pb.NewClusterServiceClient(conn), nil
+	return pb.NewClusterServiceClient(conn), func() {
+		_ = conn.Close()
+	}, nil
 }

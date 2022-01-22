@@ -80,11 +80,9 @@ func (c *coordinator) Synchronize() {
 	defer c.mu.Unlock()
 
 	c.UpdateNumNodes()
-
 	if !c.nodeManager.IsCoordinator() {
 		return
 	}
-
 	c.updateRoutersOnCluster()
 }
 
@@ -158,12 +156,12 @@ func (c *coordinator) runWorkerPoolFor(routes []*pb.Route) error {
 }
 
 func (c *coordinator) updateRouterOnNode(ctx context.Context, addr string, req *pb.SynchronizeRequest) error {
-	client, err := c.client.NewClient(ctx, addr)
+	client, cleanup, err := c.client.NewClient(ctx, addr)
 	if err != nil {
 		return err
 	}
+	defer cleanup()
 	_, err = client.Synchronize(ctx, req)
-	c.client.Close(addr)
 	return err
 }
 
