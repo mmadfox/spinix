@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"context"
-	"errors"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -21,8 +20,6 @@ const (
 	updateRoutesTimeout = 15 * time.Minute
 	bootstrapInterval   = 100 * time.Millisecond
 )
-
-var ErrBootstrapTimeout = errors.New("cluster: bootstrap timeout")
 
 type coordinator struct {
 	mu               sync.RWMutex

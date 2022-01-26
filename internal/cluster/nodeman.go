@@ -1,7 +1,6 @@
 package cluster
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -16,10 +15,6 @@ import (
 const (
 	eventQueueCapacity  = 256
 	leaveClusterTimeout = 10 * time.Second
-)
-
-var (
-	ErrNodeNotFound = errors.New("cluster: node not found")
 )
 
 type nodeman struct {

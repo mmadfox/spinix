@@ -1,0 +1,5 @@
+syntax = "proto3";
+
+package tracker.v1;
+
+option go_package = "proto/tracker/v1;trackerv1";

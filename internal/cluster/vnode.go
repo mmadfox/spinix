@@ -13,18 +13,18 @@ const (
 	Secondary
 )
 
-type vnode struct {
+type VNode struct {
 	id     uint64
 	kind   VNodeKind
 	mu     sync.RWMutex
 	owners []nodeInfo
 }
 
-func (v *vnode) NoData() bool {
+func (v *VNode) NoData() bool {
 	return true
 }
 
-func (v *vnode) SetOwners(owners []*pb.NodeInfo) {
+func (v *VNode) SetOwners(owners []*pb.NodeInfo) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	v.owners = make([]nodeInfo, len(owners))
@@ -42,21 +42,21 @@ func (v *vnode) SetOwners(owners []*pb.NodeInfo) {
 type vnodeList struct {
 	count  uint64
 	kind   VNodeKind
-	vnodes map[uint64]*vnode
+	vnodes map[uint64]*VNode
 }
 
 func newVNodeList(count uint64, kind VNodeKind) *vnodeList {
 	vl := &vnodeList{
 		count:  count,
 		kind:   kind,
-		vnodes: make(map[uint64]*vnode),
+		vnodes: make(map[uint64]*VNode),
 	}
 	for i := uint64(0); i < count; i++ {
-		vl.vnodes[i] = &vnode{id: i, kind: kind, owners: make([]nodeInfo, 0)}
+		vl.vnodes[i] = &VNode{id: i, kind: kind, owners: make([]nodeInfo, 0)}
 	}
 	return vl
 }
 
-func (vl *vnodeList) ByID(vnode uint64) *vnode {
+func (vl *vnodeList) ByID(vnode uint64) *VNode {
 	return vl.vnodes[vnode]
 }

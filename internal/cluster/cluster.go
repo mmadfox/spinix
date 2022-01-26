@@ -1,8 +1,8 @@
 package cluster
 
 import (
-	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"google.golang.org/grpc/credentials/insecure"
@@ -30,12 +30,13 @@ type Cluster struct {
 	pVNodeList  *vnodeList
 	sVNodeList  *vnodeList
 	coordinator *coordinator
+	running     uint32
 	h3dist      *h3geodist.Distributed
 }
 
 func New(grpcServer *grpc.Server, logger *zap.Logger, opts *Options) (*Cluster, error) {
 	if opts == nil {
-		return nil, fmt.Errorf("cluster: options cannot be nil")
+		return nil, ErrNilOptions
 	}
 	cluster := &Cluster{
 		opts:   opts,
@@ -76,6 +77,11 @@ func New(grpcServer *grpc.Server, logger *zap.Logger, opts *Options) (*Cluster, 
 }
 
 func (c *Cluster) Run() (err error) {
+	if atomic.LoadUint32(&c.running) == 1 {
+		return ErrAlreadyRunning
+	}
+
+	atomic.StoreUint32(&c.running, 1)
 	c.wg.Add(1)
 
 	c.nodeManager.OnJoinFunc(c.handleNodeJoin)
@@ -111,6 +117,10 @@ func (c *Cluster) Run() (err error) {
 }
 
 func (c *Cluster) Shutdown() (err error) {
+	if atomic.LoadUint32(&c.running) == 0 {
+		return nil
+	}
+	atomic.StoreUint32(&c.running, 0)
 	defer c.wg.Done()
 	if er := c.nodeManager.Shutdown(); er != nil {
 		err = multierror.Append(err, err)
@@ -122,6 +132,18 @@ func (c *Cluster) Shutdown() (err error) {
 		err = multierror.Append(err, er)
 	}
 	return
+}
+
+func (c *Cluster) Join(peers []string) error {
+	if !c.isRunning() {
+		return ErrNotRunning
+	}
+	_, err := c.nodeManager.Join(peers)
+	return err
+}
+
+func (c *Cluster) isRunning() bool {
+	return atomic.LoadUint32(&c.running) == 1
 }
 
 func (c *Cluster) handleNodeJoin(ni nodeInfo) {
