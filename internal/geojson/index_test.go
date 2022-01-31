@@ -5,24 +5,47 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/tidwall/geojson"
 
 	"github.com/uber/h3-go"
-
-	"github.com/tidwall/geojson/geometry"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestIndex(t *testing.T) {
-	data, err := loadData("./testdata/feature_collection_1.json")
-	assert.NoError(t, err)
-	o, err := geojson.Parse(data, geojson.DefaultParseOptions)
-	assert.NoError(t, err)
-	cells := EnsureIndex(o, 5)
-	printCells(cells)
-	// TODO:
+	testCases := []struct {
+		filename string
+		cells    int
+		level    int
+	}{
+		{
+			filename: "feature_collection_1",
+			cells:    44,
+			level:    6,
+		},
+		{
+			filename: "feature_collection_2",
+			cells:    2,
+			level:    6,
+		},
+		{
+			filename: "feature_collection_3",
+			cells:    11,
+			level:    2,
+		},
+	}
+	for _, tc := range testCases {
+		data, err := loadData("./testdata/" + tc.filename + ".json")
+		assert.NoError(t, err)
+		object, err := geojson.Parse(data, geojson.DefaultParseOptions)
+		assert.NoError(t, err)
+		cells := EnsureIndex(object, tc.level)
+		assert.Equal(t, tc.cells, len(cells))
 
+		if !testing.Short() {
+			fmt.Printf("dataset: %s\n", tc.filename)
+			printCells(cells)
+		}
+	}
 }
 
 func loadData(filename string) (string, error) {
@@ -33,24 +56,11 @@ func loadData(filename string) (string, error) {
 	return string(data), nil
 }
 
-func printCell(cell h3.H3Index) {
-	b := h3.ToGeoBoundary(cell)
-	for _, b := range b {
-		fmt.Println(b.Latitude, ",", b.Longitude)
-	}
-}
-
 func printCells(cells []h3.H3Index) {
 	for i := 0; i < len(cells); i++ {
 		b := h3.ToGeoBoundary(cells[i])
 		for _, b := range b {
 			fmt.Println(b.Longitude, ",", b.Latitude)
 		}
-	}
-}
-
-func printRect(r geometry.Rect) {
-	for i := 0; i < r.NumPoints(); i++ {
-		fmt.Println(r.PointAt(i).X, ",", r.PointAt(i).Y)
 	}
 }
