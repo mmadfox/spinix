@@ -11,7 +11,7 @@ import (
 	"github.com/uber/h3-go"
 )
 
-func TestIndex(t *testing.T) {
+func TestEnsureIndex(t *testing.T) {
 	testCases := []struct {
 		filename string
 		cells    int
@@ -30,6 +30,36 @@ func TestIndex(t *testing.T) {
 		{
 			filename: "feature_collection_3",
 			cells:    11,
+			level:    2,
+		},
+		{
+			filename: "point_1",
+			cells:    1,
+			level:    6,
+		},
+		{
+			filename: "multi_point_1",
+			cells:    2,
+			level:    6,
+		},
+		{
+			filename: "line_string_1",
+			cells:    11,
+			level:    4,
+		},
+		{
+			filename: "multi_line_string_1",
+			cells:    2,
+			level:    8,
+		},
+		{
+			filename: "polygon_1",
+			cells:    2,
+			level:    2,
+		},
+		{
+			filename: "multi_polygon_1",
+			cells:    4,
 			level:    2,
 		},
 	}
