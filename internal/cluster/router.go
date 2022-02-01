@@ -5,6 +5,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/uber/h3-go"
+
 	pb "github.com/mmadfox/spinix/gen/proto/go/cluster/v1"
 	"go.uber.org/zap"
 
@@ -27,6 +29,10 @@ func newRouter(hd *h3geodist.Distributed, logger *zap.Logger) *router {
 		logger: logger,
 	}
 	return &router
+}
+
+func (r *router) Lookup(index h3.H3Index) (h3geodist.Cell, bool) {
+	return r.hd.Lookup(index)
 }
 
 func (r *router) String() string {

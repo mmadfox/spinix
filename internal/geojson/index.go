@@ -4,7 +4,7 @@ import (
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geo"
 	"github.com/tidwall/geojson/geometry"
-	"github.com/uber/h3-go"
+	"github.com/uber/h3-go/v3"
 )
 
 func EnsureIndex(object geojson.Object, level int) []h3.H3Index {

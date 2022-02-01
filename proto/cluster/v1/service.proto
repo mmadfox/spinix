@@ -4,7 +4,7 @@ package cluster.v1;
 
 option go_package = "proto/cluster/v1;clusterv1";
 
-import "cluster/v1/message.proto";
+import "cluster/v1/messages.proto";
 
 service ClusterService {
     rpc VNodeStats(VNodeStatsRequest) returns (VNodeStatsResponse);

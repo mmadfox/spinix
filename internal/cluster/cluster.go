@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/uber/h3-go"
+
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/hashicorp/go-multierror"
@@ -116,6 +118,10 @@ func (c *Cluster) Run() (err error) {
 	return
 }
 
+func (c *Cluster) CurrentLevel() int {
+	return c.opts.H3DistLevel
+}
+
 func (c *Cluster) Shutdown() (err error) {
 	if atomic.LoadUint32(&c.running) == 0 {
 		return nil
@@ -132,6 +138,14 @@ func (c *Cluster) Shutdown() (err error) {
 		err = multierror.Append(err, er)
 	}
 	return
+}
+
+func (c *Cluster) IsOwner(addr string) bool {
+	return c.nodeManager.Owner().Addr() == addr
+}
+
+func (c *Cluster) Lookup(index h3.H3Index) (h3geodist.Cell, bool) {
+	return c.router.Lookup(index)
 }
 
 func (c *Cluster) Join(peers []string) error {

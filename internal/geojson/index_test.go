@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tidwall/geojson"
 
-	"github.com/uber/h3-go"
+	"github.com/uber/h3-go/v3"
 )
 
 func TestEnsureIndex(t *testing.T) {

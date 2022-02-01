@@ -14,7 +14,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/tidwall/geojson v1.3.0
 	github.com/tidwall/rtree v1.3.1
-	github.com/uber/h3-go v3.0.1+incompatible
+	github.com/uber/h3-go/v3 v3.7.1 // indirect
 	go.uber.org/zap v1.20.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/grpc v1.43.0
@@ -44,7 +44,6 @@ require (
 	github.com/tidwall/pinhole v0.0.0-20210130162507-d8644a7c3d19 // indirect
 	github.com/tidwall/pretty v1.1.0 // indirect
 	github.com/tidwall/sjson v1.1.6 // indirect
-	github.com/uber/h3-go/v3 v3.7.1 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect

@@ -40,7 +40,7 @@ func (s *server) Synchronize(_ context.Context, req *pb.SynchronizeRequest) (*pb
 		return nil, err
 	}
 
-	s.logger.Info("Routes table has been pushed by",
+	s.logger.Info("GroupHostsByIndex table has been pushed by",
 		zap.String("coordinator", coordinator.Addr()))
 
 	for i := 0; i < len(req.Routes); i++ {
