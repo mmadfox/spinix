@@ -33,6 +33,11 @@ func TestEnsureIndex(t *testing.T) {
 			level:    2,
 		},
 		{
+			filename: "feature_collection_4",
+			cells:    4,
+			level:    5,
+		},
+		{
 			filename: "point_1",
 			cells:    1,
 			level:    6,
@@ -61,6 +66,11 @@ func TestEnsureIndex(t *testing.T) {
 			filename: "multi_polygon_1",
 			cells:    4,
 			level:    2,
+		},
+		{
+			filename: "feature_1",
+			cells:    1,
+			level:    5,
 		},
 	}
 	for _, tc := range testCases {
