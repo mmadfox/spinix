@@ -8,6 +8,15 @@ import (
 )
 
 func EnsureIndex(object geojson.Object, level int) []h3.H3Index {
+	if object == nil {
+		return []h3.H3Index{}
+	}
+	if level < 0 {
+		level = 0
+	}
+	if level > 6 {
+		level = 6
+	}
 	unique := make(map[h3.H3Index]struct{})
 	object.ForEach(func(geom geojson.Object) bool {
 		cells := buildIndex(geom, level)

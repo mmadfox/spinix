@@ -3,6 +3,7 @@ package geojson
 import (
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -54,13 +55,18 @@ func TestEnsureIndex(t *testing.T) {
 		},
 		{
 			filename: "multi_line_string_1",
-			cells:    2,
-			level:    8,
+			cells:    1,
+			level:    6,
 		},
 		{
 			filename: "polygon_1",
 			cells:    2,
 			level:    2,
+		},
+		{
+			filename: "empty_polygon",
+			cells:    0,
+			level:    6,
 		},
 		{
 			filename: "multi_polygon_1",
@@ -73,11 +79,18 @@ func TestEnsureIndex(t *testing.T) {
 			level:    5,
 		},
 	}
+	parseOpts := geojson.DefaultParseOptions
+	parseOpts.RequireValid = false
 	for _, tc := range testCases {
 		data, err := loadData("./testdata/" + tc.filename + ".json")
 		assert.NoError(t, err)
-		object, err := geojson.Parse(data, geojson.DefaultParseOptions)
-		assert.NoError(t, err)
+		object, err := geojson.Parse(data, parseOpts)
+		if err != nil {
+			if !strings.Contains(err.Error(), "missing coordinates") {
+				assert.NoError(t, err)
+			}
+		}
+
 		cells := EnsureIndex(object, tc.level)
 		assert.Equal(t, tc.cells, len(cells))
 
