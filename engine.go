@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tidwall/geojson/geometry"
+	"github.com/mmadfox/geojson/geometry"
 
 	"github.com/rs/xid"
 )

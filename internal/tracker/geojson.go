@@ -1,9 +1,8 @@
 package tracker
 
 import (
+	"github.com/mmadfox/geojson"
 	"github.com/uber/h3-go/v3"
-
-	"github.com/tidwall/geojson"
 )
 
 type GeoJSON struct {

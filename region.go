@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/tidwall/geojson/geo"
-	"github.com/tidwall/geojson/geometry"
+	"github.com/mmadfox/geojson/geo"
+	"github.com/mmadfox/geojson/geometry"
 	"github.com/tidwall/rtree"
 	"github.com/uber/h3-go"
 )

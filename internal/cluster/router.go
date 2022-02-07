@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/uber/h3-go"
+	"github.com/uber/h3-go/v3"
 
 	pb "github.com/mmadfox/spinix/gen/proto/go/cluster/v1"
 	"go.uber.org/zap"

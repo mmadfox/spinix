@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/uber/h3-go"
+	"github.com/uber/h3-go/v3"
 
 	"google.golang.org/grpc/credentials/insecure"
 

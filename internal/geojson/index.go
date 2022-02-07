@@ -1,35 +1,95 @@
 package geojson
 
 import (
-	"github.com/tidwall/geojson"
-	"github.com/tidwall/geojson/geo"
-	"github.com/tidwall/geojson/geometry"
+	"errors"
+	h3geodist "github.com/mmadfox/go-h3geo-dist"
 	"github.com/uber/h3-go/v3"
+
+	"github.com/mmadfox/geojson"
+	"github.com/mmadfox/geojson/geo"
+	"github.com/mmadfox/geojson/geometry"
 )
 
-func EnsureIndex(object geojson.Object, level int) []h3.H3Index {
-	if object == nil {
-		return []h3.H3Index{}
+var (
+	ErrNilPointer  = errors.New("geojson: nil pointer")
+	ErrNoIndexData = errors.New("geojson: no index data")
+)
+
+type Distributed interface {
+	Lookup(index h3.H3Index) (h3geodist.Cell, bool)
+}
+
+type Index struct {
+	hosts map[string]map[h3.H3Index]struct{}
+}
+
+func (i *Index) ForEachHost(iter func(addr string, cells []h3.H3Index) error) (err error) {
+outer:
+	for addr, index := range i.hosts {
+		cells := make([]h3.H3Index, 0, len(index))
+		for cell := range index {
+			cells = append(cells, cell)
+			if err = iter(addr, cells); err != nil {
+				break outer
+			}
+		}
+	}
+	return
+}
+
+func newIndex() *Index {
+	return &Index{
+		hosts: make(map[string]map[h3.H3Index]struct{}),
+	}
+}
+
+func EnsureIndex(object geojson.Object, dist Distributed, level int) (index *Index, err error) {
+	if object == nil || dist == nil {
+		return nil, ErrNilPointer
 	}
 	if level < 0 {
 		level = 0
 	}
-	if level > 6 {
-		level = 6
+	if level > 15 {
+		level = 15
 	}
-	unique := make(map[h3.H3Index]struct{})
+	index = newIndex()
 	object.ForEach(func(geom geojson.Object) bool {
 		cells := buildIndex(geom, level)
 		for i := 0; i < len(cells); i++ {
-			unique[cells[i]] = struct{}{}
+			dcell, ok := dist.Lookup(cells[i])
+			if !ok {
+				err = ErrNoIndexData
+				return false
+			}
+			if index.hosts[dcell.Host] == nil {
+				index.hosts[dcell.Host] = make(map[h3.H3Index]struct{})
+			}
+			index.hosts[dcell.Host][dcell.H3ID] = struct{}{}
 		}
 		return true
 	})
-	indexes := make([]h3.H3Index, 0, len(unique))
-	for cell := range unique {
-		indexes = append(indexes, cell)
+	if err != nil {
+		return nil, err
 	}
-	return indexes
+	return index, err
+}
+
+func IndexToFeatureCollection(index []h3.H3Index) *geojson.FeatureCollection {
+	polygons := make([]geojson.Object, len(index))
+	for i := 0; i < len(index); i++ {
+		boundary := h3.ToGeoBoundary(index[i])
+		points := make([]geometry.Point, 0, 6)
+		for _, b := range boundary {
+			points = append(points, geometry.Point{
+				X: b.Longitude,
+				Y: b.Latitude,
+			})
+		}
+		poly := geojson.NewPolygon(geometry.NewPoly(points, nil, nil))
+		polygons[i] = geojson.NewFeature(poly, "id:"+h3.ToString(index[i]))
+	}
+	return geojson.NewFeatureCollection(polygons)
 }
 
 func buildIndex(o geojson.Object, level int) []h3.H3Index {

@@ -12,8 +12,8 @@ import (
 
 	"github.com/rs/xid"
 
-	"github.com/tidwall/geojson/geo"
-	"github.com/tidwall/geojson/geometry"
+	"github.com/mmadfox/geojson/geo"
+	"github.com/mmadfox/geojson/geometry"
 )
 
 const (

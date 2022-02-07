@@ -9,7 +9,7 @@ import (
 
 	"github.com/rs/xid"
 
-	"github.com/tidwall/geojson/geometry"
+	"github.com/mmadfox/geojson/geometry"
 )
 
 var ErrRuleNotFound = errors.New("spinix/rule: rule not found")

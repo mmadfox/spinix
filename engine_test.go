@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tidwall/geojson"
+	"github.com/mmadfox/geojson"
 
-	"github.com/tidwall/geojson/geometry"
+	"github.com/mmadfox/geojson/geometry"
 )
 
 //type testCase struct {

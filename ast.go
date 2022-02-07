@@ -8,7 +8,7 @@ import (
 
 	"github.com/rs/xid"
 
-	"github.com/tidwall/geojson"
+	"github.com/mmadfox/geojson"
 )
 
 type Expr interface {

@@ -8,13 +8,13 @@ import (
 
 	"github.com/rs/xid"
 
-	"github.com/tidwall/geojson/geo"
+	"github.com/mmadfox/geojson/geo"
 
 	"github.com/tidwall/rtree"
 
-	"github.com/tidwall/geojson/geometry"
+	"github.com/mmadfox/geojson/geometry"
 
-	"github.com/tidwall/geojson"
+	"github.com/mmadfox/geojson"
 )
 
 var DefaultLayer = xid.NilID()
