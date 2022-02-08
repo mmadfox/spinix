@@ -8,6 +8,7 @@ import (
 type Cluster interface {
 	Lookup(index h3.H3Index) (h3geodist.Cell, bool)
 	CurrentLevel() int
+	Addr() string
 	IsOwner(addr string) bool
 }
 
@@ -17,7 +18,7 @@ type localCluster struct {
 	owner string
 }
 
-func newLocalCluster(owner string, level int) *localCluster {
+func NewLocalCluster(owner string, level int) *localCluster {
 	dist, _ := h3geodist.New(level)
 	_ = dist.Add(owner)
 	return &localCluster{
@@ -29,6 +30,10 @@ func newLocalCluster(owner string, level int) *localCluster {
 
 func (c *localCluster) AddHost(addr string) {
 	_ = c.dist.Add(addr)
+}
+
+func (c *localCluster) Addr() string {
+	return c.owner
 }
 
 func (c *localCluster) Lookup(index h3.H3Index) (h3geodist.Cell, bool) {

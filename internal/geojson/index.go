@@ -2,6 +2,7 @@ package geojson
 
 import (
 	"errors"
+
 	h3geodist "github.com/mmadfox/go-h3geo-dist"
 	"github.com/uber/h3-go/v3"
 
@@ -20,7 +21,39 @@ type Distributed interface {
 }
 
 type Index struct {
+	cells int
 	hosts map[string]map[h3.H3Index]struct{}
+}
+
+func (i *Index) NumCells() int {
+	return i.cells
+}
+
+func (i *Index) Cells() []h3.H3Index {
+	cells := make([]h3.H3Index, 0, i.cells)
+	visit := make(map[h3.H3Index]struct{})
+	for _, index := range i.hosts {
+		for cell := range index {
+			if _, ok := visit[cell]; ok {
+				continue
+			}
+			visit[cell] = struct{}{}
+			cells = append(cells, cell)
+		}
+	}
+	return cells
+}
+
+func (i *Index) ByHost(addr string) []h3.H3Index {
+	index, ok := i.hosts[addr]
+	if !ok {
+		return []h3.H3Index{}
+	}
+	cells := make([]h3.H3Index, 0, len(index))
+	for cell := range index {
+		cells = append(cells, cell)
+	}
+	return cells
 }
 
 func (i *Index) ForEachHost(iter func(addr string, cells []h3.H3Index) error) (err error) {
@@ -29,9 +62,10 @@ outer:
 		cells := make([]h3.H3Index, 0, len(index))
 		for cell := range index {
 			cells = append(cells, cell)
-			if err = iter(addr, cells); err != nil {
-				break outer
-			}
+			i.cells++
+		}
+		if err = iter(addr, cells); err != nil {
+			break outer
 		}
 	}
 	return

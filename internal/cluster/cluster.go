@@ -118,6 +118,10 @@ func (c *Cluster) Run() (err error) {
 	return
 }
 
+func (c *Cluster) Addr() string {
+	return c.nodeManager.Addr()
+}
+
 func (c *Cluster) CurrentLevel() int {
 	return c.opts.H3DistLevel
 }

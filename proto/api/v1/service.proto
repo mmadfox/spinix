@@ -3,3 +3,26 @@ syntax = "proto3";
 package api.v1;
 
 option go_package = "proto/api/v1;apiv1";
+
+service ApiService {
+  rpc Add(AddRequest) returns (AddResponse);
+  rpc Remove(RemoveRequest) returns (RemoveResponse);
+  rpc Detect(DetectRequest) returns (DetectResponse);
+}
+
+message AddRequest {
+  uint64 object_id = 1;
+  repeated uint64 index = 2;
+  uint64 layer_id = 3;
+  string data = 4;
+}
+
+message AddResponse {
+  repeated uint64 index = 1;
+}
+
+message RemoveRequest {}
+message RemoveResponse {}
+
+message DetectRequest {}
+message DetectResponse {}
